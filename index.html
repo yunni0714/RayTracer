@@ -42,7 +42,6 @@
         .mode-toggle-btn.library-btn { background-color: #2980b9; }
         .mode-toggle-btn.library-btn.active { background-color: #1a5276; box-shadow: inset 0 3px 5px rgba(0,0,0,0.2); }
 
-        /* 화면 전환 처리 */
         .screen { display: none; }
         .screen.active { display: flex; }
         
@@ -52,7 +51,7 @@
             padding: 15px 25px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             border-left: 6px solid #27ae60;
             display: flex;
             justify-content: space-between;
@@ -74,26 +73,48 @@
         .diff-Hard { background-color: #e67e22; }
         .diff-Insane { background-color: #e74c3c; }
 
-        /* --- 라이브러리 화면 전용 스타일 --- */
-        #libraryScreen {
-            flex-direction: column;
+        /* 제안 갤러리 패널 */
+        .suggestion-board-container {
+            background-color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            border-left: 6px solid #f39c12;
             width: 100%;
+            box-sizing: border-box;
+            display: none; /* 기본 숨김 */
         }
+        .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .suggestion-header h3 { margin: 0; color: #2c3e50; font-size: 18px; }
+        .sug-btn {
+            padding: 8px 15px; background: #f39c12; color: white; border: none;
+            border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.2s;
+        }
+        .sug-btn:hover { background: #d68910; }
+        
+        .suggestion-item {
+            display: flex; gap: 15px; padding: 15px; border: 1px solid #eee;
+            border-radius: 8px; align-items: center; background: #fafafa;
+        }
+
+        /* 라이브러리 화면 전용 스타일 */
+        #libraryScreen { flex-direction: column; width: 100%; }
         .library-controls {
             display: flex; justify-content: space-between; margin-bottom: 20px;
             background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .library-controls input {
-            flex: 1; padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; margin-right: 15px;
-        }
-        .library-controls select {
-            padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; cursor: pointer;
-        }
+        .library-controls input { flex: 1; padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; margin-right: 15px; }
+        .library-controls select { padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; cursor: pointer; }
         .library-grid-layout {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            width: 100%;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;
         }
         .map-card {
             background: white; border-radius: 12px; padding: 20px;
@@ -114,27 +135,23 @@
         }
         .like-btn:hover { background: #fadbd8; }
         
-        /* 미니 그리드 (썸네일) */
         .mini-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 30px);
-            grid-template-rows: repeat(5, 30px);
+            display: grid; grid-template-columns: repeat(5, 30px); grid-template-rows: repeat(5, 30px);
             gap: 0; background-color: #f9f9f9; border: 2px solid #ddd; border-radius: 4px; padding: 2px;
+            flex-shrink: 0;
         }
         .mini-cell {
             width: 30px; height: 30px; display: flex; justify-content: center; align-items: center;
             box-shadow: inset 0 0 0 1px #eee;
         }
         .mini-cell svg { width: 80%; height: 80%; }
-        /* --- 끝 --- */
 
-
-        .main-content { gap: 40px; width: 100%; }
+        .main-content { display: flex; gap: 40px; width: 100%; align-items: flex-start; }
 
         .board-wrapper {
             position: relative; width: fit-content; height: fit-content;
             background-color: white; padding: 10px; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: transform 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: transform 0.3s ease; flex-shrink: 0;
         }
         body.is-test-mode .board-wrapper { box-shadow: 0 0 20px rgba(39, 174, 96, 0.4); }
 
@@ -166,7 +183,7 @@
             background: rgba(255,255,255,0.8); border-radius: 4px; padding: 2px;
         }
 
-        .palette-area { width: 380px; }
+        .palette-area { width: 380px; flex-shrink: 0; }
         .tabs { display: flex; gap: 5px; margin-bottom: -2px; }
         .tab-btn {
             padding: 10px 15px; border: 2px solid #333; border-bottom: none;
@@ -256,13 +273,12 @@
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <div class="header-actions">
-            <!-- 화면 전환 버튼 추가 -->
             <button id="libraryToggleBtn" class="mode-toggle-btn library-btn" onclick="toggleLibraryScreen()">📚 맵 라이브러리 열기</button>
             <button id="modeToggleBtn" class="mode-toggle-btn" onclick="toggleMode()">🛠️ 현재: 에디터 모드</button>
         </div>
     </div>
 
-    <!-- 1. 라이브러리 게시판 화면 (기본 숨김) -->
+    <!-- 1. 라이브러리 스크린 -->
     <div id="libraryScreen" class="screen">
         <div class="library-controls">
             <input type="text" id="searchInput" placeholder="맵 제목, 제작자 이름으로 검색..." oninput="applyFilters()">
@@ -273,17 +289,29 @@
         </div>
         
         <div class="library-grid-layout" id="libraryGrid">
-            <!-- 맵 카드가 동적으로 렌더링되는 곳 -->
             <p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold;">맵 데이터를 불러오는 중입니다...</p>
         </div>
     </div>
 
-    <!-- 2. 에디터 및 테스트 화면 (기본 켜짐) -->
+    <!-- 2. 에디터 스크린 -->
     <div id="editorScreen" class="screen active" style="flex-direction: column; width: 100%;">
+        
+        <!-- 맵 정보 패널 (라이브러리에서 로드 시 표시) -->
         <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
             <div class="info-text">
                 <h3 id="infoTitle">맵 제목</h3>
                 <p>제작자: <span id="infoAuthor"></span> <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span></p>
+            </div>
+        </div>
+
+        <!-- 새로 추가된 기능: 💡 다른 풀이 제안 (미니 갤러리) -->
+        <div id="suggestionBoardContainer" class="suggestion-board-container">
+            <div class="suggestion-header">
+                <h3>💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
+                <button class="sug-btn" onclick="openSuggestionModal()">내 풀이 제안하기</button>
+            </div>
+            <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;">
+                <!-- 제안 목록이 렌더링 됩니다 -->
             </div>
         </div>
 
@@ -371,6 +399,7 @@
     
     <div id="notification"></div>
 
+    <!-- 맵 업로드 모달 -->
     <div id="uploadModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h3>맵 공유하기</h3>
@@ -392,10 +421,32 @@
         </div>
     </div>
 
+    <!-- 제안하기 팝업 모달 -->
+    <div id="suggestionModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3>💡 내 풀이 제안하기</h3>
+            <p style="font-size: 13px; color: #7f8c8d; margin-top: 0;">현재 화면에 배치된 풀이가 그대로 저장됩니다.</p>
+            <label>카테고리</label>
+            <select id="sugCategory">
+                <option value="NG">🆖 기물 줄임 (더 적은 기물로 클리어)</option>
+                <option value="ABCD">🔠 복수정답 (다른 배치로 클리어)</option>
+            </select>
+            <label>코멘트 (설명)</label>
+            <input type="text" id="sugComment" placeholder="예: 거울 하나 빼도 레이저 닿습니다.">
+            <div class="modal-actions">
+                <button onclick="closeSuggestionModal()">취소</button>
+                <button id="sugSubmitBtn" onclick="submitSuggestion()">제안 등록</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase 통신 로직 및 모듈 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, orderBy, limit, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+        
+        // 익명 로그인을 위한 Auth 모듈 임포트
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBdf2slxxy1fXM-lQ-iL87-2p-uea3nFi8",
@@ -408,6 +459,40 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // 로컬 임시 UID 발급 함수 (Auth 실패 대비용)
+        function getFallbackUid() {
+            let uid = localStorage.getItem('ray_fallback_uid');
+            if (!uid) {
+                uid = 'anon_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('ray_fallback_uid', uid);
+            }
+            return uid;
+        }
+
+        // 익명 로그인 감지 및 UID 발급 에러 핸들링 보강
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUserUid = user.uid;
+                console.log("투명 신분증 발급 완료 UID:", window.currentUserUid);
+            } else {
+                signInAnonymously(auth).catch((error) => {
+                    console.error("익명 로그인 에러", error);
+                    window.currentUserUid = getFallbackUid(); // 에러 시 로컬 ID로 임시 대체
+                    
+                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
+                        setTimeout(() => {
+                            alert("🚨 [개발자 설정 안내]\nFirebase 콘솔에서 익명 로그인이 활성화되지 않아 에러가 발생했습니다.\n\n해결방법: 파이어베이스 콘솔 -> [Authentication] -> [Sign-in method] 메뉴에서 '익명(Anonymous)'을 [사용 설정] 해주세요!\n\n현재는 임시 ID로 동작합니다.");
+                        }, 1000);
+                    }
+                });
+            }
+        });
+        
+        signInAnonymously(auth).catch((e) => {
+            if(!window.currentUserUid) window.currentUserUid = getFallbackUid();
+        });
 
         window.uploadToDB = async function(data) {
             const docRef = await addDoc(collection(db, "maps"), data);
@@ -417,10 +502,12 @@
         window.fetchFromDB = async function(id) {
             const docRef = doc(db, "maps", id);
             const docSnap = await getDoc(docRef);
-            return docSnap.exists() ? docSnap.data() : null;
+            if (docSnap.exists()) {
+                return { id: docSnap.id, ...docSnap.data() };
+            }
+            return null;
         };
 
-        // 라이브러리 목록 가져오기 함수 (게시판 렌더링용)
         window.fetchLibraryList = async function(sortBy = "createdAt") {
             const q = query(collection(db, "maps"), orderBy(sortBy, "desc"), limit(50));
             const querySnapshot = await getDocs(q);
@@ -431,14 +518,37 @@
             return maps;
         };
 
-        // 따봉(추천) 업데이트 함수
-        window.likeMapInDB = async function(id, currentLikes) {
+        window.toggleLikeInDB = async function(id, isLiking) {
             const docRef = doc(db, "maps", id);
-            await updateDoc(docRef, { likes: currentLikes + 1 });
+            await updateDoc(docRef, { likes: increment(isLiking ? 1 : -1) });
+        };
+
+        // 제안하기 백엔드 로직
+        window.uploadSuggestionToDB = async function(mapId, data) {
+            const sugRef = collection(db, "maps", mapId, "suggestions");
+            await addDoc(sugRef, data);
+        };
+
+        window.fetchSuggestionsFromDB = async function(mapId) {
+            const sugRef = collection(db, "maps", mapId, "suggestions");
+            const q = query(sugRef, orderBy("createdAt", "desc"));
+            const snap = await getDocs(q);
+            let sugs = [];
+            snap.forEach(d => sugs.push({ id: d.id, ...d.data() }));
+            return sugs;
+        };
+
+        window.deleteSuggestionFromDB = async function(mapId, sugId) {
+            await deleteDoc(doc(db, "maps", mapId, "suggestions", sugId));
         };
     </script>
 
     <script>
+        // 전역 변수: 현재 접속한 유저, 로드된 맵 정보
+        window.currentUserUid = null;
+        let currentLoadedMapId = null;
+        let currentLoadedMapAuthorUid = null;
+
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
             if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT') return;
@@ -465,7 +575,7 @@
             v_half_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="8" stroke-dasharray="15 10" stroke-linecap="square"/></svg>`,
             v_single_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
             v_target_mirror_a: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
-            v_target_mirror_b: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`
+            v_target_mirror_b: `<svg viewBox="0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`
         };
 
         const GRID_SIZE = 5;
@@ -545,9 +655,12 @@
             }
 
             const packedData = {
-                title: title, author: author, difficulty: difficulty,
+                title: title, 
+                author: author, 
+                difficulty: difficulty,
                 createdAt: new Date().toISOString(), 
-                likes: 0, // 추천수 초기화
+                likes: 0, 
+                authorUid: window.currentUserUid, // 투명 신분증(주인) 기록
                 mapData: mapItems
             };
 
@@ -576,7 +689,9 @@
             }
         }
 
-        // --- 라이브러리 전용 로직 추가 ---
+        // ==========================================
+        // 라이브러리 및 미니 그리드 (공용) 로직
+        // ==========================================
         function toggleLibraryScreen() {
             isLibraryMode = !isLibraryMode;
             const btn = document.getElementById('libraryToggleBtn');
@@ -584,14 +699,12 @@
             const libScreen = document.getElementById('libraryScreen');
 
             if (isLibraryMode) {
-                // 라이브러리 열기
                 btn.innerHTML = "🔙 에디터로 돌아가기";
                 btn.classList.add('active');
                 editorScreen.classList.remove('active');
                 libScreen.classList.add('active');
-                loadLibraryMaps(); // 열 때마다 데이터 갱신
+                loadLibraryMaps(); // 열 때마다 갱신
             } else {
-                // 라이브러리 닫고 에디터로
                 btn.innerHTML = "📚 맵 라이브러리 열기";
                 btn.classList.remove('active');
                 libScreen.classList.remove('active');
@@ -623,6 +736,28 @@
             renderLibraryCards(filtered);
         }
 
+        function createMiniGridDOM(mapDataArray) {
+            const miniGrid = document.createElement('div');
+            miniGrid.className = 'mini-grid';
+            for(let i=0; i<25; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'mini-cell';
+                miniGrid.appendChild(cell);
+            }
+            if (mapDataArray && Array.isArray(mapDataArray)) {
+                mapDataArray.forEach(item => {
+                    if(item.x >= 0 && item.x < 5 && item.y >= 0 && item.y < 5) {
+                        const index = item.y * 5 + item.x;
+                        const cell = miniGrid.children[index];
+                        if(SVG_ART[item.type]) {
+                            cell.innerHTML = `<div style="transform: rotate(${item.rotation || 0}deg); width:100%; height:100%; display:flex; justify-content:center; align-items:center;">${SVG_ART[item.type]}</div>`;
+                        }
+                    }
+                });
+            }
+            return miniGrid;
+        }
+
         function renderLibraryCards(mapsList) {
             const grid = document.getElementById('libraryGrid');
             grid.innerHTML = '';
@@ -632,42 +767,23 @@
                 return;
             }
 
+            const likedMaps = JSON.parse(localStorage.getItem('ray_liked_maps') || '[]');
+
             mapsList.forEach(mapObj => {
-                // 카드 DOM 생성
                 const card = document.createElement('div');
                 card.className = 'map-card';
                 card.onclick = (e) => {
-                    // 따봉 버튼 클릭은 맵 플레이 진입을 막음
                     if (e.target.closest('.like-btn')) return;
                     playMapFromLibrary(mapObj);
                 };
 
-                // 미니 그리드 (썸네일) DOM 뼈대 생성
-                const miniGrid = document.createElement('div');
-                miniGrid.className = 'mini-grid';
-                for(let i=0; i<25; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'mini-cell';
-                    miniGrid.appendChild(cell);
-                }
+                const miniGrid = createMiniGridDOM(mapObj.mapData);
 
-                // 맵 데이터를 읽어서 미니 그리드 안에 SVG 그려넣기
-                if (mapObj.mapData && Array.isArray(mapObj.mapData)) {
-                    mapObj.mapData.forEach(item => {
-                        if(item.x >= 0 && item.x < 5 && item.y >= 0 && item.y < 5) {
-                            const index = item.y * 5 + item.x;
-                            const cell = miniGrid.children[index];
-                            if(SVG_ART[item.type]) {
-                                cell.innerHTML = `<div style="transform: rotate(${item.rotation || 0}deg); width:100%; height:100%; display:flex; justify-content:center; align-items:center;">${SVG_ART[item.type]}</div>`;
-                            }
-                        }
-                    });
-                }
-
-                // 정보 및 추천 버튼 부착
                 const likes = mapObj.likes || 0;
                 const diff = mapObj.difficulty || 'Normal';
                 const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
+                const isLiked = likedMaps.includes(mapObj.id);
+                const btnStyle = isLiked ? 'color: #c0392b; background: #fadbd8;' : '';
 
                 card.innerHTML = `
                     <div class="card-meta">
@@ -678,7 +794,7 @@
                     </div>
                     <div class="card-actions">
                         <span class="difficulty-badge diff-${diff}">${diff}</span>
-                        <button class="like-btn" onclick="handleLike('${mapObj.id}', ${likes}, this)">
+                        <button class="like-btn" style="${btnStyle}" onclick="handleLike('${mapObj.id}', this)">
                             👍 <span>${likes}</span>
                         </button>
                     </div>
@@ -688,37 +804,53 @@
             });
         }
 
-        async function handleLike(mapId, currentLikes, btnElement) {
-            // 따봉(추천) 연타 막기
+        async function handleLike(mapId, btnElement) {
             if(btnElement.disabled) return;
             btnElement.disabled = true;
+            
+            let likedMaps = JSON.parse(localStorage.getItem('ray_liked_maps') || '[]');
+            const isLiking = !likedMaps.includes(mapId); 
+
             try {
-                if(window.likeMapInDB) {
-                    await window.likeMapInDB(mapId, currentLikes);
+                if(window.toggleLikeInDB) {
+                    await window.toggleLikeInDB(mapId, isLiking);
+                    if (isLiking) likedMaps.push(mapId);
+                    else likedMaps = likedMaps.filter(id => id !== mapId);
+                    localStorage.setItem('ray_liked_maps', JSON.stringify(likedMaps));
+
                     const span = btnElement.querySelector('span');
-                    span.innerText = currentLikes + 1;
-                    btnElement.style.color = '#c0392b';
-                    btnElement.style.background = '#fadbd8';
-                    showNotification("추천(따봉)을 눌렀습니다!", "#e74c3c");
+                    let currentLikes = parseInt(span.innerText);
+                    span.innerText = isLiking ? currentLikes + 1 : currentLikes - 1;
+                    
+                    if (isLiking) {
+                        btnElement.style.color = '#c0392b';
+                        btnElement.style.background = '#fadbd8';
+                        showNotification("추천(따봉)을 눌렀습니다!", "#e74c3c");
+                    } else {
+                        btnElement.style.color = '';
+                        btnElement.style.background = '';
+                        showNotification("추천을 취소했습니다.", "#7f8c8d");
+                    }
                 }
             } catch(e) {
-                alert("추천 실패: " + e.message);
+                alert("추천 처리 실패: " + e.message);
+            } finally {
                 btnElement.disabled = false;
             }
         }
 
+        // ==========================================
+        // 💡 갤러리 및 제안 관련 로직 추가
+        // ==========================================
         function playMapFromLibrary(mapObj) {
-            // 라이브러리 화면 닫기
             if(isLibraryMode) {
                 toggleLibraryScreen(); 
             }
-            
-            // 데이터 뿌리기
-            if(mapObj.mapData) {
-                applyMapData(mapObj.mapData);
-            }
+            if(mapObj.mapData) applyMapData(mapObj.mapData);
 
-            // 맵 정보 띄우기
+            currentLoadedMapId = mapObj.id;
+            currentLoadedMapAuthorUid = mapObj.authorUid;
+
             document.getElementById('loadedMapInfo').style.display = 'flex';
             document.getElementById('infoTitle').innerText = `🗺️ ${mapObj.title}`;
             document.getElementById('infoAuthor').innerText = mapObj.author;
@@ -727,13 +859,148 @@
             diffSpan.innerText = diff;
             diffSpan.className = `difficulty-badge diff-${diff}`;
 
-            showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
+            // 남의 맵을 로드했으니 제안 게시판 활성화
+            document.getElementById('suggestionBoardContainer').style.display = 'block';
+            loadSuggestionsForCurrentMap();
 
-            // 무조건 테스트 모드로 강제 진입 (플레이어가 맵을 풀 수 있게)
+            showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
             if (isEditorMode) toggleMode();
         }
-        // --- 끝 ---
 
+        function openSuggestionModal() {
+            if (!window.currentUserUid) {
+                alert("서버 연결 및 로그인 정보를 확인 중입니다. 잠시 후 다시 시도해주세요.");
+                return;
+            }
+            document.getElementById('suggestionModal').style.display = 'flex';
+        }
+
+        function closeSuggestionModal() {
+            document.getElementById('suggestionModal').style.display = 'none';
+        }
+
+        async function submitSuggestion() {
+            const category = document.getElementById('sugCategory').value;
+            const comment = document.getElementById('sugComment').value.trim();
+            if (!comment) { alert("코멘트(설명)를 입력해주세요."); return; }
+
+            const mapItems = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (mapData[r][c]) {
+                        mapItems.push({ 
+                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].rotation,
+                            canMove: mapData[r][c].canMove, canRotate: mapData[r][c].canRotate, isInventory: mapData[r][c].isInventory || false
+                        });
+                    }
+                }
+            }
+
+            const sugData = {
+                category: category,
+                comment: comment,
+                suggesterUid: window.currentUserUid,
+                createdAt: new Date().toISOString(),
+                mapData: mapItems
+            };
+
+            const btn = document.getElementById('sugSubmitBtn');
+            btn.innerText = "등록 중..."; btn.disabled = true;
+
+            try {
+                if(window.uploadSuggestionToDB) {
+                    await window.uploadSuggestionToDB(currentLoadedMapId, sugData);
+                    showNotification("새로운 풀이 제안이 등록되었습니다!", "#f39c12");
+                    closeSuggestionModal();
+                    loadSuggestionsForCurrentMap(); // 즉시 리프레시
+                }
+            } catch (error) {
+                alert("제안 등록 실패: " + error.message);
+            } finally {
+                btn.innerText = "제안 등록"; btn.disabled = false;
+                document.getElementById('sugComment').value = "";
+            }
+        }
+
+        async function loadSuggestionsForCurrentMap() {
+            if (!currentLoadedMapId) return;
+            const listDiv = document.getElementById('suggestionList');
+            listDiv.innerHTML = '<p style="color:#7f8c8d; font-size:13px;">불러오는 중...</p>';
+
+            try {
+                if (window.fetchSuggestionsFromDB) {
+                    const sugs = await window.fetchSuggestionsFromDB(currentLoadedMapId);
+                    document.getElementById('sugCount').innerText = sugs.length;
+                    listDiv.innerHTML = '';
+                    
+                    if (sugs.length === 0) {
+                        listDiv.innerHTML = '<p style="color:#7f8c8d; font-size:14px; text-align:center;">아직 등록된 제안이 없습니다. 첫 번째로 풀이를 뽐내보세요!</p>';
+                        return;
+                    }
+
+                    sugs.forEach(sug => {
+                        const item = document.createElement('div');
+                        item.className = 'suggestion-item';
+                        
+                        const miniGrid = createMiniGridDOM(sug.mapData);
+
+                        const content = document.createElement('div');
+                        content.style.flex = "1";
+                        let catBadge = sug.category === 'NG' 
+                            ? '<span style="background:#e74c3c;color:white;padding:3px 6px;border-radius:4px;font-size:12px;font-weight:bold;">🆖 기물 줄임</span>' 
+                            : '<span style="background:#3498db;color:white;padding:3px 6px;border-radius:4px;font-size:12px;font-weight:bold;">🔠 복수정답</span>';
+                        
+                        content.innerHTML = `
+                            <div style="margin-bottom:8px;">${catBadge} <span style="color:#7f8c8d;font-size:12px;margin-left:5px;">${new Date(sug.createdAt).toLocaleDateString()}</span></div>
+                            <p style="margin:0; font-weight:bold; color:#2c3e50;">${sug.comment}</p>
+                        `;
+
+                        const actions = document.createElement('div');
+                        actions.style = "display:flex; flex-direction:column; gap:5px;";
+                        
+                        const testBtn = document.createElement('button');
+                        testBtn.innerHTML = "▶️ 이 풀이로 테스트";
+                        testBtn.style = "padding:8px 12px; border:none; background:#2ecc71; color:white; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;";
+                        testBtn.onclick = () => {
+                            applyMapData(sug.mapData);
+                            showNotification("제안된 풀이를 불러왔습니다. 확인해보세요!", "#27ae60");
+                        };
+                        actions.appendChild(testBtn);
+
+                        // 삭제 권한 뷰 (맵 원작자이거나 자기가 쓴 제안일 때만)
+                        if (window.currentUserUid === currentLoadedMapAuthorUid || window.currentUserUid === sug.suggesterUid) {
+                            const delBtn = document.createElement('button');
+                            delBtn.innerHTML = "🗑️ 삭제";
+                            delBtn.style = "padding:8px 12px; border:1px solid #e74c3c; background:transparent; color:#e74c3c; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;";
+                            delBtn.onclick = async () => {
+                                if(confirm("이 제안을 삭제하시겠습니까?")) {
+                                    try {
+                                        await window.deleteSuggestionFromDB(currentLoadedMapId, sug.id);
+                                        showNotification("제안이 삭제되었습니다.", "#e74c3c");
+                                        loadSuggestionsForCurrentMap(); // 삭제 후 새로고침
+                                    } catch(e) {
+                                        alert("삭제 권한이 없거나 오류가 발생했습니다.");
+                                    }
+                                }
+                            };
+                            actions.appendChild(delBtn);
+                        }
+
+                        item.appendChild(miniGrid);
+                        item.appendChild(content);
+                        item.appendChild(actions);
+                        listDiv.appendChild(item);
+                    });
+                }
+            } catch(e) {
+                listDiv.innerHTML = `<p style="color:red;">게시판을 불러오는 데 실패했습니다.</p>`;
+            }
+        }
+
+
+        // ==========================================
+        // 에디터 핵심 로직 (Undo, Drag & Drop 등)
+        // ==========================================
         let undoStack = [];
 
         function saveStateDirectly() {
@@ -1308,6 +1575,8 @@
                     document.querySelectorAll('.grid-cell').forEach(cell => updateCellVisual(cell, null));
                     showNotification("맵이 전체 초기화되었습니다.");
                     document.getElementById('loadedMapInfo').style.display = 'none'; 
+                    document.getElementById('suggestionBoardContainer').style.display = 'none'; // 제안 게시판도 숨김
+                    currentLoadedMapId = null;
                 } else {
                     let recovered = false;
                     for (let r = 0; r < GRID_SIZE; r++) {
@@ -1390,8 +1659,14 @@
                     const diffSpan = document.getElementById('infoDifficulty');
                     const diff = parsedData.difficulty || 'Normal';
                     diffSpan.innerText = diff; diffSpan.className = `difficulty-badge diff-${diff}`;
+                    
+                    // 수동 Import시에는 제안 게시판을 숨깁니다 (DB 연동 ID가 없으므로)
+                    document.getElementById('suggestionBoardContainer').style.display = 'none';
+                    currentLoadedMapId = null; 
                 } else {
                     document.getElementById('loadedMapInfo').style.display = 'none';
+                    document.getElementById('suggestionBoardContainer').style.display = 'none';
+                    currentLoadedMapId = null;
                 }
                 showNotification("맵을 성공적으로 불러왔습니다!");
             } catch (error) { alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message); }
