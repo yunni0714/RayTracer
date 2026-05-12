@@ -37,6 +37,30 @@
         }
         .mode-toggle-btn.test-mode { background-color: #27ae60; }
         
+        /* 추가된 맵 정보 패널 스타일 */
+        .loaded-map-info {
+            background-color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            border-left: 6px solid #27ae60;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .loaded-map-info .info-text h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 20px; }
+        .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 15px; font-weight: bold; }
+        .difficulty-badge { 
+            padding: 4px 10px; border-radius: 6px; color: white; 
+            font-size: 13px; font-weight: bold; margin-left: 5px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .diff-Easy { background-color: #2ecc71; }
+        .diff-Normal { background-color: #f39c12; color: #fff; }
+        .diff-Hard { background-color: #e67e22; }
+        .diff-Insane { background-color: #e74c3c; }
+
         .main-content {
             display: flex;
             gap: 40px;
@@ -217,6 +241,14 @@
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <button id="modeToggleBtn" class="mode-toggle-btn" onclick="toggleMode()">🛠️ 현재: 에디터 모드</button>
+    </div>
+
+    <!-- 불러온 맵 정보 패널 (기본 숨김) -->
+    <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
+        <div class="info-text">
+            <h3 id="infoTitle">맵 제목</h3>
+            <p>제작자: <span id="infoAuthor"></span> <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span></p>
+        </div>
     </div>
 
     <div class="main-content">
@@ -416,6 +448,15 @@
                                 document.getElementById('output').value = "가져온 맵 데이터 정보:\n" + JSON.stringify(mapDoc, null, 2);
                                 showNotification(`[${mapDoc.title}] 맵을 성공적으로 불러왔습니다!`, "#27ae60");
                                 
+                                // UI에 불러온 맵 정보 업데이트
+                                document.getElementById('loadedMapInfo').style.display = 'flex';
+                                document.getElementById('infoTitle').innerText = `🗺️ ${mapDoc.title}`;
+                                document.getElementById('infoAuthor').innerText = mapDoc.author;
+                                
+                                const diffSpan = document.getElementById('infoDifficulty');
+                                diffSpan.innerText = mapDoc.difficulty;
+                                diffSpan.className = `difficulty-badge diff-${mapDoc.difficulty}`;
+
                                 // 성공 시 바로 플레이할 수 있게 테스트 모드로 강제 전환
                                 if (isEditorMode) toggleMode(); 
                             } else {
@@ -1147,6 +1188,7 @@
                     mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
                     document.querySelectorAll('.grid-cell').forEach(cell => updateCellVisual(cell, null));
                     showNotification("맵이 전체 초기화되었습니다.");
+                    document.getElementById('loadedMapInfo').style.display = 'none'; // 새 맵 작성 시 정보 창 숨김
                 } else {
                     let recovered = false;
                     for (let r = 0; r < GRID_SIZE; r++) {
@@ -1234,11 +1276,25 @@
                     toggleMode(); 
                 }
 
-                // 배열 형태(순수 맵데이터)인지 보따리 형태(DB에서 가져온)인지 대응
                 const mapArray = Array.isArray(parsedData) ? parsedData : parsedData.mapData;
                 if (!mapArray) throw new Error("맵 데이터(배열)를 찾을 수 없습니다.");
 
                 applyMapData(mapArray);
+                
+                // 만약 텍스트 상자에 복사한 내용이 JSON 포장지(title 등 메타데이터 포함)라면 UI 업데이트
+                if (!Array.isArray(parsedData) && parsedData.title) {
+                    document.getElementById('loadedMapInfo').style.display = 'flex';
+                    document.getElementById('infoTitle').innerText = `🗺️ ${parsedData.title}`;
+                    document.getElementById('infoAuthor').innerText = parsedData.author || '알 수 없음';
+                    
+                    const diffSpan = document.getElementById('infoDifficulty');
+                    const diff = parsedData.difficulty || 'Normal';
+                    diffSpan.innerText = diff;
+                    diffSpan.className = `difficulty-badge diff-${diff}`;
+                } else {
+                    document.getElementById('loadedMapInfo').style.display = 'none'; // 순수 배열만 넣으면 숨김
+                }
+
                 showNotification("맵을 성공적으로 불러왔습니다!");
             } catch (error) {
                 alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message);
