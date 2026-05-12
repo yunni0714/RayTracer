@@ -122,7 +122,7 @@
             padding: 8px 15px; background: #f39c12; color: white; border: none;
             border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.2s;
         }
-        .sug-btn:hover { background: #d68910; }
+        .sug-btn:hover { filter: brightness(0.9); }
         
         .suggestion-item {
             display: flex; gap: 15px; padding: 15px; border: 1px solid #eee;
@@ -347,11 +347,12 @@
             </div>
         </div>
 
-        <!-- 다른 풀이 제안 (미니 갤러리) -->
+        <!-- 다른 풀이 제안 & 맵 수정 영역 (미니 갤러리) -->
         <div id="suggestionBoardContainer" class="suggestion-board-container">
             <div class="suggestion-header">
-                <h3>💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
-                <button class="sug-btn" onclick="openSuggestionModal()">내 풀이 제안하기</button>
+                <h3 id="suggestionHeaderTitle">💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
+                <!-- 버튼 ID 추가 및 함수 변경 -->
+                <button id="sugHeaderBtn" class="sug-btn" onclick="handleSugHeaderBtnAction()">내 풀이 제안하기</button>
             </div>
             <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;">
                 <!-- 제안 목록이 렌더링 됩니다 -->
@@ -459,7 +460,8 @@
             </select>
             <div class="modal-actions">
                 <button onclick="closeUploadModal()">취소</button>
-                <button onclick="packAndUploadMap()">서버에 업로드</button>
+                <!-- 제출 버튼 ID 부여 -->
+                <button id="uploadSubmitBtn" onclick="packAndUploadMap()">서버에 업로드</button>
             </div>
         </div>
     </div>
@@ -509,18 +511,27 @@
         }
 
         onAuthStateChanged(auth, (user) => {
-            if (user) { window.currentUserUid = user.uid; } 
+            if (user) { 
+                window.currentUserUid = user.uid; 
+                if(typeof updateSugHeaderBtnUI === 'function') updateSugHeaderBtnUI(); // 늦게 발급되었을 때 버튼 업데이트
+            } 
             else {
                 signInAnonymously(auth).catch((error) => {
                     window.currentUserUid = getFallbackUid();
                     if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
                         setTimeout(() => { alert("🚨 [안내] 파이어베이스 익명 로그인이 꺼져있어 임시 ID로 동작합니다."); }, 1000);
                     }
+                    if(typeof updateSugHeaderBtnUI === 'function') updateSugHeaderBtnUI();
                 });
             }
         });
         
-        signInAnonymously(auth).catch((e) => { if(!window.currentUserUid) window.currentUserUid = getFallbackUid(); });
+        signInAnonymously(auth).catch((e) => { 
+            if(!window.currentUserUid) {
+                window.currentUserUid = getFallbackUid();
+                if(typeof updateSugHeaderBtnUI === 'function') updateSugHeaderBtnUI();
+            }
+        });
 
         window.uploadToDB = async function(data) {
             const docRef = await addDoc(collection(db, "maps"), data);
@@ -542,19 +553,23 @@
             return maps;
         };
 
-        // 새로운 반응 업데이트 로직 (likes -> reactionOk, reactionGod)
         window.updateMapReactionsInDB = async function(id, type, change) {
             const docRef = doc(db, "maps", id);
             await updateDoc(docRef, { [type]: increment(change) });
         };
 
-        // 난이도 투표 업데이트 로직
         window.updateMapDifficultyVoteInDB = async function(id, oldVote, newVote) {
             const docRef = doc(db, "maps", id);
             const updates = {};
             if (oldVote) updates[`diffVotes.${oldVote}`] = increment(-1);
             if (newVote) updates[`diffVotes.${newVote}`] = increment(1);
             await updateDoc(docRef, updates);
+        };
+
+        // 기존 맵 데이터 덮어쓰기 업데이트 로직
+        window.updateMapInDB = async function(id, data) {
+            const docRef = doc(db, "maps", id);
+            await updateDoc(docRef, data);
         };
 
         window.uploadSuggestionToDB = async function(mapId, data) {
@@ -580,6 +595,8 @@
         window.currentUserUid = null;
         let currentLoadedMapId = null;
         let currentLoadedMapAuthorUid = null;
+        let currentLoadedMapObj = null; // 불러온 맵 객체 캐싱
+        let isEditingMap = false; // 현재 덮어쓰기 수정 모드인지 체크
 
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
@@ -659,7 +676,12 @@
             }
         });
 
-        function closeUploadModal() { document.getElementById('uploadModal').style.display = 'none'; }
+        function closeUploadModal() { 
+            document.getElementById('uploadModal').style.display = 'none'; 
+            isEditingMap = false; // 모달 닫을 때 상태 초기화
+            document.getElementById('uploadModal').querySelector('h3').innerText = "맵 공유하기";
+            document.getElementById('uploadSubmitBtn').innerText = "서버에 업로드";
+        }
 
         async function packAndUploadMap() {
             const title = document.getElementById('mapTitle').value.trim();
@@ -680,38 +702,64 @@
                 }
             }
 
-            const packedData = {
-                title: title, 
-                author: author, 
-                difficulty: difficulty,
-                createdAt: new Date().toISOString(), 
-                // DB 필드 확장: 반응 2종 및 난이도 투표함 추가
-                reactionOk: 0, 
-                reactionGod: 0,
-                diffVotes: { Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
-                authorUid: window.currentUserUid,
-                mapData: mapItems
-            };
-
-            const uploadBtn = document.querySelector('.modal-actions button:nth-child(2)');
+            const uploadBtn = document.getElementById('uploadSubmitBtn');
             const originalText = uploadBtn.innerText;
-            uploadBtn.innerText = "서버 업로드 중...";
+            uploadBtn.innerText = "서버 처리 중...";
             uploadBtn.disabled = true;
 
             try {
-                if (window.uploadToDB) {
-                    const docId = await window.uploadToDB(packedData);
-                    const baseUrl = window.location.href.split('?')[0]; 
-                    const shareUrl = `${baseUrl}?mapId=${docId}`;
-                    
-                    document.getElementById('output').value = "🚀 맵 공유 링크가 생성되었습니다!\n아래 주소를 복사해서 친구들에게 공유하세요.\n\n" + shareUrl;
-                    showNotification("서버 업로드 완료! 텍스트 상자의 링크를 확인하세요.", "#8e44ad");
-                } else { alert("데이터베이스 연결을 준비 중입니다."); }
-            } catch (error) { alert("업로드 중 오류가 발생했습니다: " + error.message); } 
-            finally {
+                if (isEditingMap && currentLoadedMapId) {
+                    // 수정 모드: 기존 맵 데이터를 업데이트
+                    const updateData = {
+                        title: title, 
+                        author: author, 
+                        difficulty: difficulty,
+                        mapData: mapItems
+                        // createdAt, likes, authorUid 등은 덮어쓰지 않음
+                    };
+                    if (window.updateMapInDB) {
+                        await window.updateMapInDB(currentLoadedMapId, updateData);
+                        showNotification("맵이 성공적으로 수정되었습니다!", "#27ae60");
+                        
+                        // 로컬 객체 업데이트 및 UI 갱신
+                        currentLoadedMapObj.title = title;
+                        currentLoadedMapObj.author = author;
+                        currentLoadedMapObj.difficulty = difficulty;
+                        currentLoadedMapObj.mapData = mapItems;
+                        playMapFromLibrary(currentLoadedMapObj);
+                    }
+                } else {
+                    // 신규 업로드 모드
+                    const packedData = {
+                        title: title, 
+                        author: author, 
+                        difficulty: difficulty,
+                        createdAt: new Date().toISOString(), 
+                        reactionOk: 0, 
+                        reactionGod: 0,
+                        diffVotes: { Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
+                        authorUid: window.currentUserUid,
+                        mapData: mapItems
+                    };
+
+                    if (window.uploadToDB) {
+                        const docId = await window.uploadToDB(packedData);
+                        const baseUrl = window.location.href.split('?')[0]; 
+                        const shareUrl = `${baseUrl}?mapId=${docId}`;
+                        
+                        document.getElementById('output').value = "🚀 맵 공유 링크가 생성되었습니다!\n아래 주소를 복사해서 친구들에게 공유하세요.\n\n" + shareUrl;
+                        showNotification("서버 업로드 완료! 텍스트 상자의 링크를 확인하세요.", "#8e44ad");
+                    } else { alert("데이터베이스 연결을 준비 중입니다."); }
+                }
+            } catch (error) { 
+                alert("처리 중 오류가 발생했습니다: " + error.message); 
+            } finally {
                 closeUploadModal();
                 uploadBtn.innerText = originalText; uploadBtn.disabled = false;
-                document.getElementById('mapTitle').value = ""; document.getElementById('mapAuthor').value = "";
+                if (!isEditingMap) {
+                    document.getElementById('mapTitle').value = ""; 
+                    document.getElementById('mapAuthor').value = "";
+                }
             }
         }
 
@@ -731,11 +779,13 @@
                 document.getElementById('suggestionBoardContainer').style.display = 'none';
                 currentLoadedMapId = null;
                 currentLoadedMapAuthorUid = null;
+                currentLoadedMapObj = null;
 
                 const url = new URL(window.location);
                 url.searchParams.delete('mapId');
                 window.history.pushState({}, '', url);
                 showNotification("새로운 맵이 생성되었습니다!", "#e67e22");
+                updateSugHeaderBtnUI();
             }
         }
 
@@ -804,7 +854,6 @@
             return miniGrid;
         }
 
-        // 유저 체감 난이도 계산 (가장 투표가 많은 항목)
         function calculateUserDifficulty(diffVotes) {
             if (!diffVotes) return null;
             let total = diffVotes.Easy + diffVotes.Normal + diffVotes.Hard + diffVotes.Insane;
@@ -821,6 +870,8 @@
                 return;
             }
 
+            const likedMaps = JSON.parse(localStorage.getItem('ray_liked_maps') || '[]');
+
             mapsList.forEach(mapObj => {
                 const card = document.createElement('div');
                 card.className = 'map-card';
@@ -834,7 +885,6 @@
                 const userDiff = calculateUserDifficulty(mapObj.diffVotes);
                 const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
 
-                // 카드의 기능 변경: 버튼이 아니라 단순 집계 수치만 노출 (평가는 테스트 진입 후 가능)
                 card.innerHTML = `
                     <div class="card-meta">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -858,7 +908,6 @@
             });
         }
 
-        // --- 로컬 평가 상태 저장/불러오기 ---
         function getMapLocalState(mapId) {
             const state = JSON.parse(localStorage.getItem('ray_map_states') || '{}');
             return state[mapId] || { ok: false, god: false, diff: null };
@@ -879,6 +928,7 @@
 
             currentLoadedMapId = mapObj.id;
             currentLoadedMapAuthorUid = mapObj.authorUid;
+            currentLoadedMapObj = mapObj; // 객체 캐싱 (수정용)
             currentMapReactions.ok = mapObj.reactionOk || 0;
             currentMapReactions.god = mapObj.reactionGod || 0;
 
@@ -891,7 +941,6 @@
             diffSpan.innerText = diff;
             diffSpan.className = `difficulty-badge diff-${diff}`;
 
-            // 유저 평가 난이도 뱃지 업데이트
             const userDiffSpan = document.getElementById('infoUserDifficulty');
             const userDiff = calculateUserDifficulty(mapObj.diffVotes);
             if (userDiff) {
@@ -902,10 +951,10 @@
                 userDiffSpan.className = `difficulty-badge diff-None`;
             }
 
-            // 반응 영역 UI 동기화
             updateReactionUI(mapObj.id);
 
             document.getElementById('suggestionBoardContainer').style.display = 'block';
+            updateSugHeaderBtnUI(); // 제안/수정 버튼 권한 반영
             loadSuggestionsForCurrentMap();
 
             showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
@@ -913,7 +962,6 @@
             if (isEditorMode) toggleMode();
         }
 
-        // 반응(✅, 👍) 토글 로직
         async function toggleReaction(type) {
             if (!currentLoadedMapId) return;
             const btn = type === 'ok' ? document.getElementById('btnReactOk') : document.getElementById('btnReactGod');
@@ -940,14 +988,12 @@
             finally { btn.disabled = false; }
         }
 
-        // 난이도 투표 로직
         async function voteDifficulty(diffLevel) {
             if (!currentLoadedMapId) return;
             const state = getMapLocalState(currentLoadedMapId);
-            if (state.diff === diffLevel) return; // 이미 누른 항목
+            if (state.diff === diffLevel) return; 
             
             const oldVote = state.diff;
-            // 모든 난이도 버튼 잠금 처리
             document.querySelectorAll('.diff-vote-btn').forEach(b => b.disabled = true);
 
             try {
@@ -986,12 +1032,48 @@
 
 
         // ==========================================
-        // 제안 게시판(미니 갤러리) 로직
+        // 💡 맵 소유권 및 제안 게시판(미니 갤러리)
         // ==========================================
-        function openSuggestionModal() {
-            if (!window.currentUserUid) { alert("로그인 정보를 확인 중입니다. 잠시 후 시도해주세요."); return; }
-            document.getElementById('suggestionModal').style.display = 'flex';
+        function updateSugHeaderBtnUI() {
+            const btn = document.getElementById('sugHeaderBtn');
+            const headerTitle = document.getElementById('suggestionHeaderTitle');
+            if (!btn || !headerTitle) return;
+            
+            // 내 맵인지 판단하여 버튼 및 타이틀 동적 변경
+            if (currentLoadedMapAuthorUid && window.currentUserUid === currentLoadedMapAuthorUid) {
+                btn.innerHTML = "✏️ 맵 수정하기";
+                btn.style.backgroundColor = "#27ae60"; 
+                headerTitle.innerHTML = `💡 제안 관리 및 맵 수정 (<span id="sugCount">0</span>건)`;
+            } else {
+                btn.innerHTML = "내 풀이 제안하기";
+                btn.style.backgroundColor = "#f39c12"; 
+                headerTitle.innerHTML = `💡 다른 풀이 제안 (<span id="sugCount">0</span>건)`;
+            }
         }
+
+        function handleSugHeaderBtnAction() {
+            if (!window.currentUserUid) { 
+                alert("로그인 정보를 확인 중입니다. 잠시 후 시도해주세요."); 
+                return; 
+            }
+
+            if (currentLoadedMapAuthorUid && window.currentUserUid === currentLoadedMapAuthorUid) {
+                // 내 맵인 경우 -> 맵 수정 모달 띄우기
+                isEditingMap = true;
+                document.getElementById('mapTitle').value = currentLoadedMapObj.title || "";
+                document.getElementById('mapAuthor').value = currentLoadedMapObj.author || "";
+                document.getElementById('mapDifficulty').value = currentLoadedMapObj.difficulty || "Normal";
+                
+                document.getElementById('uploadModal').querySelector('h3').innerText = "✏️ 맵 수정하기";
+                document.getElementById('uploadSubmitBtn').innerText = "수정 반영하기";
+                document.getElementById('uploadModal').style.display = 'flex';
+            } else {
+                // 남의 맵인 경우 -> 제안 작성 모달 띄우기
+                openSuggestionModal();
+            }
+        }
+
+        function openSuggestionModal() { document.getElementById('suggestionModal').style.display = 'flex'; }
         function closeSuggestionModal() { document.getElementById('suggestionModal').style.display = 'none'; }
 
         async function submitSuggestion() {
@@ -1038,9 +1120,11 @@
             try {
                 if (window.fetchSuggestionsFromDB) {
                     const sugs = await window.fetchSuggestionsFromDB(currentLoadedMapId);
-                    document.getElementById('sugCount').innerText = sugs.length;
-                    listDiv.innerHTML = '';
                     
+                    const countSpan = document.getElementById('sugCount');
+                    if(countSpan) countSpan.innerText = sugs.length;
+                    
+                    listDiv.innerHTML = '';
                     if (sugs.length === 0) {
                         listDiv.innerHTML = '<p style="color:#7f8c8d; font-size:14px; text-align:center;">아직 등록된 제안이 없습니다. 첫 번째로 풀이를 뽐내보세요!</p>';
                         return;
