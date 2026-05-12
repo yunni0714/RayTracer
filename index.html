@@ -11,6 +11,7 @@
             padding: 20px; 
             background-color: #f9f9f9; 
             margin: 0;
+            min-height: 100vh;
         }
         
         .header-bar {
@@ -23,9 +24,11 @@
             border-bottom: 2px solid #ddd;
         }
 
+        .header-actions { display: flex; gap: 10px; }
+
         .mode-toggle-btn {
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 12px 20px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             background-color: #8e44ad;
@@ -36,8 +39,14 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .mode-toggle-btn.test-mode { background-color: #27ae60; }
+        .mode-toggle-btn.library-btn { background-color: #2980b9; }
+        .mode-toggle-btn.library-btn.active { background-color: #1a5276; box-shadow: inset 0 3px 5px rgba(0,0,0,0.2); }
+
+        /* 화면 전환 처리 */
+        .screen { display: none; }
+        .screen.active { display: flex; }
         
-        /* 추가된 맵 정보 패널 스타일 */
+        /* 맵 정보 패널 */
         .loaded-map-info {
             background-color: #fff;
             padding: 15px 25px;
@@ -48,134 +57,149 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
+            box-sizing: border-box;
         }
         .loaded-map-info .info-text h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 20px; }
         .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 15px; font-weight: bold; }
+        
         .difficulty-badge { 
             padding: 4px 10px; border-radius: 6px; color: white; 
             font-size: 13px; font-weight: bold; margin-left: 5px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-block;
         }
         .diff-Easy { background-color: #2ecc71; }
         .diff-Normal { background-color: #f39c12; color: #fff; }
         .diff-Hard { background-color: #e67e22; }
         .diff-Insane { background-color: #e74c3c; }
 
-        .main-content {
-            display: flex;
-            gap: 40px;
+        /* --- 라이브러리 화면 전용 스타일 --- */
+        #libraryScreen {
+            flex-direction: column;
+            width: 100%;
         }
+        .library-controls {
+            display: flex; justify-content: space-between; margin-bottom: 20px;
+            background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .library-controls input {
+            flex: 1; padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; margin-right: 15px;
+        }
+        .library-controls select {
+            padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; cursor: pointer;
+        }
+        .library-grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+        .map-card {
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;
+            display: flex; flex-direction: column; align-items: center; cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .map-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); border-color: #2980b9; }
+        
+        .card-meta { width: 100%; margin-top: 15px; }
+        .card-meta h4 { margin: 0 0 5px 0; font-size: 18px; color: #2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-meta p { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; }
+        .card-actions { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
+        
+        .like-btn { 
+            background: none; border: none; font-size: 16px; color: #e74c3c; cursor: pointer; 
+            display: flex; align-items: center; gap: 5px; font-weight: bold; padding: 5px 10px; border-radius: 20px; transition: background 0.2s;
+        }
+        .like-btn:hover { background: #fadbd8; }
+        
+        /* 미니 그리드 (썸네일) */
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 30px);
+            grid-template-rows: repeat(5, 30px);
+            gap: 0; background-color: #f9f9f9; border: 2px solid #ddd; border-radius: 4px; padding: 2px;
+        }
+        .mini-cell {
+            width: 30px; height: 30px; display: flex; justify-content: center; align-items: center;
+            box-shadow: inset 0 0 0 1px #eee;
+        }
+        .mini-cell svg { width: 80%; height: 80%; }
+        /* --- 끝 --- */
+
+
+        .main-content { gap: 40px; width: 100%; }
 
         .board-wrapper {
-            position: relative;
-            width: fit-content;
-            height: fit-content;
-            transition: transform 0.3s ease;
-            background-color: white;
-            padding: 10px; 
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: relative; width: fit-content; height: fit-content;
+            background-color: white; padding: 10px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: transform 0.3s ease;
         }
-        
-        body.is-test-mode .board-wrapper {
-            box-shadow: 0 0 20px rgba(39, 174, 96, 0.4);
-        }
+        body.is-test-mode .board-wrapper { box-shadow: 0 0 20px rgba(39, 174, 96, 0.4); }
 
         .grid-container {
-            display: grid;
-            grid-template-columns: repeat(5, 100px);
-            grid-template-rows: repeat(5, 100px);
-            gap: 0; 
-            position: relative;
-            z-index: 1;
+            display: grid; grid-template-columns: repeat(5, 100px); grid-template-rows: repeat(5, 100px);
+            gap: 0; position: relative; z-index: 1;
         }
         
         #laserCanvas {
-            position: absolute;
-            top: 10px; left: 10px; 
-            z-index: 2; 
-            pointer-events: none; 
+            position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none; 
         }
 
         .grid-cell {
-            background-color: transparent;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; position: relative; user-select: none;
+            background-color: transparent; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; position: relative; user-select: none; box-shadow: inset 0 0 0 1px #e5e5e5;
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><g stroke='%23bbbbbb' stroke-width='2' fill='none'><path d='M0 15 L0 0 L15 0'/><path d='M85 0 L100 0 L100 15'/><path d='M0 85 L0 100 L15 100'/><path d='M100 85 L100 100 L85 100'/></g></svg>");
         }
         .grid-cell:hover { background-color: #f0f8ff; }
         
         .grid-cell .item { 
-            width: 80%; height: 80%; 
-            pointer-events: none; 
-            display: flex; justify-content: center; align-items: center;
+            width: 80%; height: 80%; pointer-events: none; display: flex; justify-content: center; align-items: center;
             transition: transform 0.15s ease-in-out; 
         }
         .grid-cell .item svg { width: 100%; height: 100%; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.15)); }
 
         .modifier-icons {
-            position: absolute;
-            top: 5px; right: 5px;
-            display: flex; gap: 2px;
-            font-size: 14px;
-            pointer-events: none;
-            z-index: 3;
-            background: rgba(255,255,255,0.8);
-            border-radius: 4px;
-            padding: 2px;
+            position: absolute; top: 5px; right: 5px; display: flex; gap: 2px;
+            font-size: 14px; pointer-events: none; z-index: 3;
+            background: rgba(255,255,255,0.8); border-radius: 4px; padding: 2px;
         }
-        .badge-rot { color: #2980b9; }
-        .badge-lock { color: #c0392b; }
 
         .palette-area { width: 380px; }
         .tabs { display: flex; gap: 5px; margin-bottom: -2px; }
         .tab-btn {
             padding: 10px 15px; border: 2px solid #333; border-bottom: none;
-            background: white; border-radius: 10px 10px 0 0; cursor: pointer;
-            font-weight: bold; font-size: 14px;
+            background: white; border-radius: 10px 10px 0 0; cursor: pointer; font-weight: bold; font-size: 14px;
         }
         .tab-btn.active { background: #333; color: white; }
         
         .palette-box {
-            border: 2px solid #333; border-radius: 0 10px 10px 10px;
-            padding: 20px; background: white; min-height: 200px;
+            border: 2px solid #333; border-radius: 0 10px 10px 10px; padding: 20px; background: white; min-height: 200px;
         }
         
         .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
         .tool-item {
-            position: relative;
-            height: 60px; border: 2px solid #ccc; border-radius: 8px;
+            position: relative; height: 60px; border: 2px solid #ccc; border-radius: 8px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 14px; font-weight: bold; color: #666; 
-            cursor: pointer; user-select: none; text-align: center;
-            background-color: white;
-            transition: all 0.2s ease;
+            font-size: 14px; font-weight: bold; color: #666; cursor: pointer; user-select: none; text-align: center;
+            background-color: white; transition: all 0.2s ease;
         }
         .tool-item svg { width: 70%; height: 70%; pointer-events: none; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1)); }
         
         .tool-item:hover { border-color: #666; }
-        .tool-item:not(.mod-tool).selected { 
-            border-color: #e74c3c; background-color: #fadbd8; box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); 
-        }
-
+        .tool-item:not(.mod-tool).selected { border-color: #e74c3c; background-color: #fadbd8; box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }
         .tool-item.mod-tool { background-color: #fcf3cf; border-color: #f1c40f; color: #b9770e; }
         .tool-item.mod-tool.selected { background-color: #f1c40f; border-color: #d4ac0d; color: white; box-shadow: 0 0 5px rgba(241, 196, 15, 0.6); }
-
         .tool-item.mod-tool.rot-tool { background-color: #d4e6f1; border-color: #2980b9; color: #154360; }
         .tool-item.mod-tool.rot-tool.selected { background-color: #2980b9; border-color: #1a5276; color: white; box-shadow: 0 0 5px rgba(41, 128, 185, 0.6); }
-
         .tool-item.mod-tool.inv-tool { background-color: #fadbd8; border-color: #e74c3c; color: #922b21; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .tool-item.mod-tool.inv-tool.selected { background-color: #c0392b; border-color: #922b21; color: white; box-shadow: 0 0 12px rgba(192, 57, 43, 0.8), inset 0 2px 4px rgba(0,0,0,0.3); transform: scale(1.05); }
 
-        .modifier-section {
-            margin-top: 15px; border: 2px solid #333; border-radius: 10px; padding: 15px; background-color: #fff;
-        }
+        .modifier-section { margin-top: 15px; border: 2px solid #333; border-radius: 10px; padding: 15px; background-color: #fff; }
         .modifier-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #d35400; }
         
-        #testModeInventory {
-            border: 2px solid #27ae60; border-radius: 10px; padding: 20px; background-color: #eafaf1;
-            margin-bottom: 15px; display: none;
-        }
+        #testModeInventory { border: 2px solid #27ae60; border-radius: 10px; padding: 20px; background-color: #eafaf1; margin-bottom: 15px; display: none; }
         #testModeInventory h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #1e8449; }
         
         .inv-count {
@@ -185,8 +209,7 @@
 
         .drag-ghost {
             position: fixed; width: 80px; height: 80px; pointer-events: none; z-index: 9999;
-            opacity: 0.8; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.4));
-            display: flex; justify-content: center; align-items: center;
+            opacity: 0.8; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.4)); display: flex; justify-content: center; align-items: center;
         }
         .drag-ghost svg { width: 100%; height: 100%; }
         
@@ -198,25 +221,18 @@
         button.action-btn:hover { background: #1a252f; }
         button.sim-btn { background: #e74c3c; width: 100%; margin-bottom: 15px; font-size: 16px; padding: 15px; transition: background-color 0.3s;}
         button.sim-btn:hover { filter: brightness(1.1); }
-        textarea { width: 100%; height: 120px; margin-top: 10px; resize: none; padding: 10px; box-sizing: border-box; font-family: monospace; border: 2px solid #ccc; border-radius: 5px;}
-
         .upload-btn { background-color: #8e44ad !important; width: 100%; font-size: 16px; padding: 15px !important; margin-top: 10px; }
         .upload-btn:hover { background-color: #732d91 !important; }
+        textarea { width: 100%; height: 120px; margin-top: 10px; resize: none; padding: 10px; box-sizing: border-box; font-family: monospace; border: 2px solid #ccc; border-radius: 5px;}
 
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 2000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000;
             display: flex; justify-content: center; align-items: center;
         }
-        .modal-content {
-            background: white; padding: 30px; border-radius: 12px; width: 350px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 350px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h3 { margin-top: 0; color: #2c3e50; font-size: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .modal-content label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #555; }
-        .modal-content input, .modal-content select {
-            width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
-        }
+        .modal-content input, .modal-content select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
         .modal-actions button { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .modal-actions button:nth-child(1) { background: #bdc3c7; color: #333; }
@@ -224,7 +240,6 @@
 
         body.is-test-mode .modifier-section { display: none; }
         body.is-test-mode .badge-inv { display: none; } 
-        
         body:not(.unlocked) #group-advanced .tool-item { display: none; }
         body.unlocked #advanced-empty-msg { display: none; }
         
@@ -240,101 +255,117 @@
 
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
-        <button id="modeToggleBtn" class="mode-toggle-btn" onclick="toggleMode()">🛠️ 현재: 에디터 모드</button>
-    </div>
-
-    <!-- 불러온 맵 정보 패널 (기본 숨김) -->
-    <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
-        <div class="info-text">
-            <h3 id="infoTitle">맵 제목</h3>
-            <p>제작자: <span id="infoAuthor"></span> <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span></p>
+        <div class="header-actions">
+            <!-- 화면 전환 버튼 추가 -->
+            <button id="libraryToggleBtn" class="mode-toggle-btn library-btn" onclick="toggleLibraryScreen()">📚 맵 라이브러리 열기</button>
+            <button id="modeToggleBtn" class="mode-toggle-btn" onclick="toggleMode()">🛠️ 현재: 에디터 모드</button>
         </div>
     </div>
 
-    <div class="main-content">
-        <div class="board-wrapper">
-            <div class="grid-container" id="grid"></div>
-            <canvas id="laserCanvas"></canvas> 
-            <div class="help-text">
-                🖱️ <strong>기물 잡고 이동:</strong> 드래그 후 도구 자동 재선택<br>
-                🖱️ <strong>기물 든 상태 클릭:</strong> 같은 기물이면 <span class="help-highlight">회전</span>, 다른 기물이면 <span class="help-highlight">덮어쓰기</span><br>
-                🖱️ <strong>빈손 상태 클릭:</strong> 특성 덧칠 및 회전 <br>
+    <!-- 1. 라이브러리 게시판 화면 (기본 숨김) -->
+    <div id="libraryScreen" class="screen">
+        <div class="library-controls">
+            <input type="text" id="searchInput" placeholder="맵 제목, 제작자 이름으로 검색..." oninput="applyFilters()">
+            <select id="sortSelect" onchange="loadLibraryMaps()">
+                <option value="createdAt">최신 등록순</option>
+                <option value="likes">추천(따봉)순</option>
+            </select>
+        </div>
+        
+        <div class="library-grid-layout" id="libraryGrid">
+            <!-- 맵 카드가 동적으로 렌더링되는 곳 -->
+            <p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold;">맵 데이터를 불러오는 중입니다...</p>
+        </div>
+    </div>
+
+    <!-- 2. 에디터 및 테스트 화면 (기본 켜짐) -->
+    <div id="editorScreen" class="screen active" style="flex-direction: column; width: 100%;">
+        <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
+            <div class="info-text">
+                <h3 id="infoTitle">맵 제목</h3>
+                <p>제작자: <span id="infoAuthor"></span> <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span></p>
             </div>
         </div>
 
-        <div class="palette-area">
-            <button id="laserToggleBtn" class="action-btn sim-btn" onclick="toggleLaser()">🔴 실시간 레이저 켜기 (OFF)</button>
-
-            <div id="testModeInventory">
-                <h3>🎒 플레이어 인벤토리</h3>
-                <div class="tool-grid" id="inventoryGrid"></div>
+        <div class="main-content">
+            <div class="board-wrapper">
+                <div class="grid-container" id="grid"></div>
+                <canvas id="laserCanvas"></canvas> 
+                <div class="help-text">
+                    🖱️ <strong>기물 잡고 이동:</strong> 드래그 후 도구 자동 재선택<br>
+                    🖱️ <strong>기물 든 상태 클릭:</strong> 같은 기물이면 <span class="help-highlight">회전</span>, 다른 기물이면 <span class="help-highlight">덮어쓰기</span><br>
+                    🖱️ <strong>빈손 상태 클릭:</strong> 특성 덧칠 및 회전 <br>
+                </div>
             </div>
 
-            <div id="editorPaletteGroup">
-                <div class="tabs">
-                    <div class="tab-btn active" data-target="basic">초급 기물</div>
-                    <div class="tab-btn" data-target="intermediate">중급 기물</div>
-                    <div class="tab-btn" id="advancedTab" data-target="advanced">상급 기물</div>
+            <div class="palette-area">
+                <button id="laserToggleBtn" class="action-btn sim-btn" onclick="toggleLaser()">🔴 실시간 레이저 켜기 (OFF)</button>
+
+                <div id="testModeInventory">
+                    <h3>🎒 플레이어 인벤토리</h3>
+                    <div class="tool-grid" id="inventoryGrid"></div>
+                </div>
+
+                <div id="editorPaletteGroup">
+                    <div class="tabs">
+                        <div class="tab-btn active" data-target="basic">초급 기물</div>
+                        <div class="tab-btn" data-target="intermediate">중급 기물</div>
+                        <div class="tab-btn" id="advancedTab" data-target="advanced">상급 기물</div>
+                    </div>
+                    
+                    <div class="palette-box">
+                        <div class="tool-grid tool-group" id="group-basic">
+                            <div class="tool-item" data-tool="ray" title="Ray"></div>
+                            <div class="tool-item" data-tool="target" title="표적"></div>
+                            <div class="tool-item" style="border:none; background:transparent;"></div>
+                            
+                            <div class="tool-item" data-tool="mirror" title="거울"></div>
+                            <div class="tool-item" data-tool="half_mirror" title="반거울"></div>
+                            <div class="tool-item" style="border:none; background:transparent;"></div>
+                            
+                            <div class="tool-item" data-tool="single_mirror" title="단면거울"></div>
+                            <div class="tool-item" data-tool="target_mirror_a" title="단면 표적거울 A"></div>
+                            <div class="tool-item" data-tool="target_mirror_b" title="단면 표적거울 B"></div>
+                            
+                            <div class="tool-item" data-tool="block" title="블록"></div>
+                            <div class="tool-item" data-tool="tunnel" title="터널"></div>
+                        </div>
+                        <div class="tool-grid tool-group" id="group-intermediate" style="display: none;"><p style="grid-column: span 3; text-align: center; color: #999;">비어 있음</p></div>
+                        <div class="tool-grid tool-group" id="group-advanced" style="display: none;">
+                            <p id="advanced-empty-msg" style="grid-column: span 3; text-align: center; color: #999;">비어 있음 :(</p>
+                            <div class="tool-item" data-tool="mirror_45" title="45도 거울"></div>
+                            <div class="tool-item" data-tool="half_mirror_45" title="45도 반거울"></div>
+                            <div class="tool-item" style="border:none; background:transparent;"></div>
+                            <div class="tool-item" data-tool="diag_single_mirror_a" title="45도 단면거울 A"></div>
+                            <div class="tool-item" data-tool="diag_single_mirror_b" title="45도 단면거울 B"></div>
+                            <div class="tool-item" style="border:none; background:transparent;"></div>
+                            <div class="tool-item" data-tool="v_mirror" title="수직 거울"></div>
+                            <div class="tool-item" data-tool="v_half_mirror" title="수직 반거울"></div>
+                            <div class="tool-item" style="border:none; background:transparent;"></div>
+                            <div class="tool-item" data-tool="v_single_mirror" title="수직 단면거울"></div>
+                            <div class="tool-item" data-tool="v_target_mirror_a" title="수직 단면 표적거울 A"></div>
+                            <div class="tool-item" data-tool="v_target_mirror_b" title="수직 단면 표적거울 B"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modifier-section">
+                    <h3>특성 부여 옵션 (선택 후 포인터로 덧칠 가능)</h3>
+                    <div class="tool-grid">
+                        <div class="tool-item mod-tool rot-tool" data-mod="rotatable" title="회전 가능">🔄 회전 가능</div>
+                        <div class="tool-item mod-tool" data-mod="lock" title="회전 불가">🔒 회전 불가</div>
+                        <div class="tool-item mod-tool inv-tool" data-mod="inv" title="유저 지급">🎒 유저 지급</div>
+                    </div>
                 </div>
                 
-                <div class="palette-box">
-                    <div class="tool-grid tool-group" id="group-basic">
-                        <div class="tool-item" data-tool="ray" title="Ray (상급 기물 배치 시 45도 회전 지원)"></div>
-                        <div class="tool-item" data-tool="target" title="표적 (상급 기물 배치 시 45도 회전 지원)"></div>
-                        <div class="tool-item" style="border:none; background:transparent;"></div>
-                        
-                        <div class="tool-item" data-tool="mirror" title="거울"></div>
-                        <div class="tool-item" data-tool="half_mirror" title="반거울"></div>
-                        <div class="tool-item" style="border:none; background:transparent;"></div>
-                        
-                        <div class="tool-item" data-tool="single_mirror" title="단면거울"></div>
-                        <div class="tool-item" data-tool="target_mirror_a" title="단면 표적거울 A"></div>
-                        <div class="tool-item" data-tool="target_mirror_b" title="단면 표적거울 B"></div>
-                        
-                        <div class="tool-item" data-tool="block" title="블록"></div>
-                        <div class="tool-item" data-tool="tunnel" title="터널"></div>
-                    </div>
-                    
-                    <div class="tool-grid tool-group" id="group-intermediate" style="display: none;"><p style="grid-column: span 3; text-align: center; color: #999;">비어 있음</p></div>
-                    
-                    <div class="tool-grid tool-group" id="group-advanced" style="display: none;">
-                        <p id="advanced-empty-msg" style="grid-column: span 3; text-align: center; color: #999;">비어 있음 :(</p>
-                        
-                        <div class="tool-item" data-tool="mirror_45" title="45도 거울"></div>
-                        <div class="tool-item" data-tool="half_mirror_45" title="45도 반거울"></div>
-                        <div class="tool-item" style="border:none; background:transparent;"></div>
-
-                        <div class="tool-item" data-tool="diag_single_mirror_a" title="45도 단면거울 A"></div>
-                        <div class="tool-item" data-tool="diag_single_mirror_b" title="45도 단면거울 B"></div>
-                        <div class="tool-item" style="border:none; background:transparent;"></div>
-                        
-                        <div class="tool-item" data-tool="v_mirror" title="수직 거울"></div>
-                        <div class="tool-item" data-tool="v_half_mirror" title="수직 반거울"></div>
-                        <div class="tool-item" style="border:none; background:transparent;"></div>
-
-                        <div class="tool-item" data-tool="v_single_mirror" title="수직 단면거울"></div>
-                        <div class="tool-item" data-tool="v_target_mirror_a" title="수직 단면 표적거울 A"></div>
-                        <div class="tool-item" data-tool="v_target_mirror_b" title="수직 단면 표적거울 B"></div>
-                    </div>
+                <div class="actions">
+                    <button class="action-btn" onclick="clearGrid()">전체 지우기</button>
+                    <button class="action-btn" onclick="importData()" style="background-color: #16a085;">JSON 불러오기</button>
+                    <button class="action-btn" onclick="exportData()">JSON 추출</button>
+                    <button class="action-btn upload-btn" onclick="document.getElementById('uploadModal').style.display='flex'">☁️ 서버에 맵 등록하기</button>
                 </div>
+                <textarea id="output" placeholder="JSON을 입력하세요."></textarea>
             </div>
-
-            <div class="modifier-section">
-                <h3>특성 부여 옵션 (선택 후 포인터로 덧칠 가능)</h3>
-                <div class="tool-grid">
-                    <div class="tool-item mod-tool rot-tool" data-mod="rotatable" title="기본적으로 맵 기물은 고정되지만, 이 특성을 주면 유저가 회전시킬 수는 있습니다. (인벤토리 불가)">🔄 회전 가능</div>
-                    <div class="tool-item mod-tool" data-mod="lock" title="인벤토리에 지급된 기물이더라도 회전을 막습니다.">🔒 회전 불가</div>
-                    <div class="tool-item mod-tool inv-tool" data-mod="inv" title="테스트 시작 시 플레이어 인벤토리에 지급합니다. (회전 가능과 동시 선택 불가)">🎒 유저 지급</div>
-                </div>
-            </div>
-            
-            <div class="actions">
-                <button class="action-btn" onclick="clearGrid()">전체 지우기</button>
-                <button class="action-btn" onclick="importData()" style="background-color: #16a085;">JSON 불러오기</button>
-                <button class="action-btn" onclick="exportData()">JSON 추출</button>
-                <button class="action-btn upload-btn" onclick="document.getElementById('uploadModal').style.display='flex'">☁️ 서버에 맵 등록하기</button>
-            </div>
-            <textarea id="output" placeholder="JSON을 입력하세요."></textarea>
         </div>
     </div>
     
@@ -361,9 +392,10 @@
         </div>
     </div>
 
+    <!-- Firebase 통신 로직 및 모듈 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBdf2slxxy1fXM-lQ-iL87-2p-uea3nFi8",
@@ -377,7 +409,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 외부 일반 스크립트에서도 호출할 수 있게 전역 window 객체에 연결
         window.uploadToDB = async function(data) {
             const docRef = await addDoc(collection(db, "maps"), data);
             return docRef.id;
@@ -388,6 +419,23 @@
             const docSnap = await getDoc(docRef);
             return docSnap.exists() ? docSnap.data() : null;
         };
+
+        // 라이브러리 목록 가져오기 함수 (게시판 렌더링용)
+        window.fetchLibraryList = async function(sortBy = "createdAt") {
+            const q = query(collection(db, "maps"), orderBy(sortBy, "desc"), limit(50));
+            const querySnapshot = await getDocs(q);
+            let maps = [];
+            querySnapshot.forEach((doc) => {
+                maps.push({ id: doc.id, ...doc.data() });
+            });
+            return maps;
+        };
+
+        // 따봉(추천) 업데이트 함수
+        window.likeMapInDB = async function(id, currentLikes) {
+            const docRef = doc(db, "maps", id);
+            await updateDoc(docRef, { likes: currentLikes + 1 });
+        };
     </script>
 
     <script>
@@ -395,9 +443,7 @@
         document.addEventListener('touchend', function (event) {
             if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT') return;
             let now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault(); 
-            }
+            if (now - lastTouchEnd <= 300) { event.preventDefault(); }
             lastTouchEnd = now;
         }, { passive: false });
 
@@ -425,40 +471,26 @@
         const GRID_SIZE = 5;
         const CELL_SIZE = 100;
         
+        let allLibraryMaps = []; // 로드된 라이브러리 캐시
+        let isLibraryMode = false;
+
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tool-item[data-tool]').forEach(item => {
                 const type = item.dataset.tool;
-                if(SVG_ART[type]) {
-                    item.innerHTML = SVG_ART[type];
-                }
+                if(SVG_ART[type]) { item.innerHTML = SVG_ART[type]; }
             });
 
-            // 주소창(URL) 검사: ?mapId= 파라미터가 있으면 DB에서 맵을 긁어옵니다!
+            // 초기 URL 검사 로직
             const urlParams = new URLSearchParams(window.location.search);
             const mapId = urlParams.get('mapId');
             if (mapId) {
-                // Firebase 모듈 로딩 지연 대응을 위해 0.5초 대기
                 setTimeout(async () => {
                     if (window.fetchFromDB) {
                         try {
                             showNotification("서버에서 맵을 불러오는 중...", "#f39c12");
                             const mapDoc = await window.fetchFromDB(mapId);
                             if (mapDoc) {
-                                applyMapData(mapDoc.mapData);
-                                document.getElementById('output').value = "가져온 맵 데이터 정보:\n" + JSON.stringify(mapDoc, null, 2);
-                                showNotification(`[${mapDoc.title}] 맵을 성공적으로 불러왔습니다!`, "#27ae60");
-                                
-                                // UI에 불러온 맵 정보 업데이트
-                                document.getElementById('loadedMapInfo').style.display = 'flex';
-                                document.getElementById('infoTitle').innerText = `🗺️ ${mapDoc.title}`;
-                                document.getElementById('infoAuthor').innerText = mapDoc.author;
-                                
-                                const diffSpan = document.getElementById('infoDifficulty');
-                                diffSpan.innerText = mapDoc.difficulty;
-                                diffSpan.className = `difficulty-badge diff-${mapDoc.difficulty}`;
-
-                                // 성공 시 바로 플레이할 수 있게 테스트 모드로 강제 전환
-                                if (isEditorMode) toggleMode(); 
+                                playMapFromLibrary(mapDoc);
                             } else {
                                 alert("존재하지 않거나 삭제된 맵입니다.");
                             }
@@ -491,19 +523,14 @@
             }
         });
 
-        function closeUploadModal() {
-            document.getElementById('uploadModal').style.display = 'none';
-        }
+        function closeUploadModal() { document.getElementById('uploadModal').style.display = 'none'; }
 
         async function packAndUploadMap() {
             const title = document.getElementById('mapTitle').value.trim();
             const author = document.getElementById('mapAuthor').value.trim();
             const difficulty = document.getElementById('mapDifficulty').value;
             
-            if (!title || !author) {
-                alert("맵 제목과 제작자 닉네임을 모두 입력해주세요.");
-                return;
-            }
+            if (!title || !author) { alert("맵 제목과 제작자 닉네임을 모두 입력해주세요."); return; }
 
             const mapItems = [];
             for (let r = 0; r < GRID_SIZE; r++) {
@@ -518,10 +545,9 @@
             }
 
             const packedData = {
-                title: title,
-                author: author,
-                difficulty: difficulty,
+                title: title, author: author, difficulty: difficulty,
                 createdAt: new Date().toISOString(), 
+                likes: 0, // 추천수 초기화
                 mapData: mapItems
             };
 
@@ -545,13 +571,168 @@
                 alert("업로드 중 오류가 발생했습니다: " + error.message);
             } finally {
                 closeUploadModal();
-                uploadBtn.innerText = originalText;
-                uploadBtn.disabled = false;
-                
-                document.getElementById('mapTitle').value = "";
-                document.getElementById('mapAuthor').value = "";
+                uploadBtn.innerText = originalText; uploadBtn.disabled = false;
+                document.getElementById('mapTitle').value = ""; document.getElementById('mapAuthor').value = "";
             }
         }
+
+        // --- 라이브러리 전용 로직 추가 ---
+        function toggleLibraryScreen() {
+            isLibraryMode = !isLibraryMode;
+            const btn = document.getElementById('libraryToggleBtn');
+            const editorScreen = document.getElementById('editorScreen');
+            const libScreen = document.getElementById('libraryScreen');
+
+            if (isLibraryMode) {
+                // 라이브러리 열기
+                btn.innerHTML = "🔙 에디터로 돌아가기";
+                btn.classList.add('active');
+                editorScreen.classList.remove('active');
+                libScreen.classList.add('active');
+                loadLibraryMaps(); // 열 때마다 데이터 갱신
+            } else {
+                // 라이브러리 닫고 에디터로
+                btn.innerHTML = "📚 맵 라이브러리 열기";
+                btn.classList.remove('active');
+                libScreen.classList.remove('active');
+                editorScreen.classList.add('active');
+            }
+        }
+
+        async function loadLibraryMaps() {
+            const sortBy = document.getElementById('sortSelect').value;
+            const grid = document.getElementById('libraryGrid');
+            grid.innerHTML = '<p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold;">맵 데이터를 불러오는 중입니다...</p>';
+
+            try {
+                if (window.fetchLibraryList) {
+                    allLibraryMaps = await window.fetchLibraryList(sortBy);
+                    renderLibraryCards(allLibraryMaps);
+                }
+            } catch(e) {
+                grid.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다: ${e.message}</p>`;
+            }
+        }
+
+        function applyFilters() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allLibraryMaps.filter(map => 
+                (map.title && map.title.toLowerCase().includes(q)) || 
+                (map.author && map.author.toLowerCase().includes(q))
+            );
+            renderLibraryCards(filtered);
+        }
+
+        function renderLibraryCards(mapsList) {
+            const grid = document.getElementById('libraryGrid');
+            grid.innerHTML = '';
+            
+            if(mapsList.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; width: 100%; color: #7f8c8d;">검색 결과나 등록된 맵이 없습니다.</p>';
+                return;
+            }
+
+            mapsList.forEach(mapObj => {
+                // 카드 DOM 생성
+                const card = document.createElement('div');
+                card.className = 'map-card';
+                card.onclick = (e) => {
+                    // 따봉 버튼 클릭은 맵 플레이 진입을 막음
+                    if (e.target.closest('.like-btn')) return;
+                    playMapFromLibrary(mapObj);
+                };
+
+                // 미니 그리드 (썸네일) DOM 뼈대 생성
+                const miniGrid = document.createElement('div');
+                miniGrid.className = 'mini-grid';
+                for(let i=0; i<25; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mini-cell';
+                    miniGrid.appendChild(cell);
+                }
+
+                // 맵 데이터를 읽어서 미니 그리드 안에 SVG 그려넣기
+                if (mapObj.mapData && Array.isArray(mapObj.mapData)) {
+                    mapObj.mapData.forEach(item => {
+                        if(item.x >= 0 && item.x < 5 && item.y >= 0 && item.y < 5) {
+                            const index = item.y * 5 + item.x;
+                            const cell = miniGrid.children[index];
+                            if(SVG_ART[item.type]) {
+                                cell.innerHTML = `<div style="transform: rotate(${item.rotation || 0}deg); width:100%; height:100%; display:flex; justify-content:center; align-items:center;">${SVG_ART[item.type]}</div>`;
+                            }
+                        }
+                    });
+                }
+
+                // 정보 및 추천 버튼 부착
+                const likes = mapObj.likes || 0;
+                const diff = mapObj.difficulty || 'Normal';
+                const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
+
+                card.innerHTML = `
+                    <div class="card-meta">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <h4 title="${mapObj.title}">${mapObj.title || '제목 없음'}</h4>
+                        </div>
+                        <p>${mapObj.author || '알 수 없음'} • ${dateStr}</p>
+                    </div>
+                    <div class="card-actions">
+                        <span class="difficulty-badge diff-${diff}">${diff}</span>
+                        <button class="like-btn" onclick="handleLike('${mapObj.id}', ${likes}, this)">
+                            👍 <span>${likes}</span>
+                        </button>
+                    </div>
+                `;
+                card.insertBefore(miniGrid, card.firstChild);
+                grid.appendChild(card);
+            });
+        }
+
+        async function handleLike(mapId, currentLikes, btnElement) {
+            // 따봉(추천) 연타 막기
+            if(btnElement.disabled) return;
+            btnElement.disabled = true;
+            try {
+                if(window.likeMapInDB) {
+                    await window.likeMapInDB(mapId, currentLikes);
+                    const span = btnElement.querySelector('span');
+                    span.innerText = currentLikes + 1;
+                    btnElement.style.color = '#c0392b';
+                    btnElement.style.background = '#fadbd8';
+                    showNotification("추천(따봉)을 눌렀습니다!", "#e74c3c");
+                }
+            } catch(e) {
+                alert("추천 실패: " + e.message);
+                btnElement.disabled = false;
+            }
+        }
+
+        function playMapFromLibrary(mapObj) {
+            // 라이브러리 화면 닫기
+            if(isLibraryMode) {
+                toggleLibraryScreen(); 
+            }
+            
+            // 데이터 뿌리기
+            if(mapObj.mapData) {
+                applyMapData(mapObj.mapData);
+            }
+
+            // 맵 정보 띄우기
+            document.getElementById('loadedMapInfo').style.display = 'flex';
+            document.getElementById('infoTitle').innerText = `🗺️ ${mapObj.title}`;
+            document.getElementById('infoAuthor').innerText = mapObj.author;
+            const diffSpan = document.getElementById('infoDifficulty');
+            const diff = mapObj.difficulty || 'Normal';
+            diffSpan.innerText = diff;
+            diffSpan.className = `difficulty-badge diff-${diff}`;
+
+            showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
+
+            // 무조건 테스트 모드로 강제 진입 (플레이어가 맵을 풀 수 있게)
+            if (isEditorMode) toggleMode();
+        }
+        // --- 끝 ---
 
         let undoStack = [];
 
@@ -585,7 +766,6 @@
 
         document.addEventListener('keydown', function(e) {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
-
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 undo();
@@ -635,11 +815,8 @@
         }
 
         function refreshLaser() {
-            if (isLaserOn) {
-                simulateLaser();
-            } else {
-                clearLaser();
-            }
+            if (isLaserOn) simulateLaser();
+            else clearLaser();
         }
 
         function isAdvancedMap() {
@@ -647,8 +824,7 @@
                 'mirror_45', 'half_mirror_45', 
                 'diag_single_mirror_a', 'v_target_mirror_a', 
                 'diag_single_mirror_b', 'v_target_mirror_b',
-                'v_mirror', 'v_half_mirror', 
-                'v_single_mirror'
+                'v_mirror', 'v_half_mirror', 'v_single_mirror'
             ];
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
@@ -670,7 +846,6 @@
         function executeRotation(r, c) {
             let item = mapData[r][c];
             if (!item) return;
-
             let step = getRotationStep(item.type);
             
             if (step === 90 && item.rotation % 90 !== 0) {
@@ -713,7 +888,6 @@
             isEditorMode = !isEditorMode;
             const btn = document.getElementById('modeToggleBtn');
             const body = document.body;
-            
             undoStack = []; 
 
             if (isEditorMode) {
@@ -758,7 +932,6 @@
             }
             
             deselectAllTools(); 
-            
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
                     const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
@@ -805,7 +978,6 @@
                     grid.appendChild(div);
                 }
             }
-            
             if (!hasItems) {
                 grid.innerHTML = `<p style="grid-column: span 3; text-align: center; color: #999; margin: 10px 0;">지급된 기물이 없습니다.</p>`;
                 deselectAllTools();
@@ -850,8 +1022,7 @@
                 if (modType === 'rotatable') {
                     isModRotatableActive = isSelected;
                     if (isSelected) {
-                        isModInvActive = false;
-                        isModLockActive = false;
+                        isModInvActive = false; isModLockActive = false;
                         document.querySelector('[data-mod="inv"]').classList.remove('selected');
                         document.querySelector('[data-mod="lock"]').classList.remove('selected');
                     }
@@ -864,14 +1035,11 @@
                     }
                 }
                 this.classList.toggle('selected', isSelected);
-                if (selectedTool !== null && hasPlacedSinceSelection) {
-                    deselectAllTools();
-                }
+                if (selectedTool !== null && hasPlacedSinceSelection) deselectAllTools();
             });
         });
 
-        let dragSource = null; 
-        let dragGhost = null;
+        let dragSource = null; let dragGhost = null;
 
         document.addEventListener('contextmenu', (e) => {
             if (dragSource) {
@@ -902,16 +1070,11 @@
                     let type, rot;
                     if (dragSource.origin === 'grid') {
                         let cellData = mapData[dragSource.r][dragSource.c];
-                        if (cellData) {
-                            type = cellData.type;
-                            rot = cellData.rotation || 0;
-                        }
+                        if (cellData) { type = cellData.type; rot = cellData.rotation || 0; }
                     } else if (dragSource.origin === 'inventory') {
-                        type = dragSource.type;
-                        rot = dragSource.rotation || 0; 
+                        type = dragSource.type; rot = dragSource.rotation || 0; 
                     } else {
-                        type = dragSource.type;
-                        rot = 0;
+                        type = dragSource.type; rot = 0;
                     }
                     if (type && SVG_ART[type]) {
                         dragGhost.innerHTML = `<div style="transform: rotate(${rot}deg); width: 100%; height: 100%;">${SVG_ART[type]}</div>`;
@@ -940,8 +1103,7 @@
                 let isToolItem = dropTarget ? dropTarget.closest('.tool-item') : null;
                 
                 if (dropCell) {
-                    let r = parseInt(dropCell.dataset.row);
-                    let c = parseInt(dropCell.dataset.col);
+                    let r = parseInt(dropCell.dataset.row); let c = parseInt(dropCell.dataset.col);
                     
                     if (dragSource.origin === 'grid') {
                         if (dragSource.r === r && dragSource.c === c) {
@@ -951,21 +1113,17 @@
                                     if (lastActiveTool.type === mapData[r][c].type) {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {
                                         } else {
-                                            executeRotation(r, c);
-                                            updateCellVisual(dropCell, mapData[r][c]);
-                                            refreshLaser(); 
+                                            executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); 
                                         }
                                     } 
                                     else { 
                                         if (isEditorMode) {
                                             mapData[r][c] = { 
                                                 type: lastActiveTool.type, rotation: 0, 
-                                                isInventory: isModInvActive,
-                                                canMove: isModInvActive, 
+                                                isInventory: isModInvActive, canMove: isModInvActive, 
                                                 canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                                             };
-                                            updateCellVisual(dropCell, mapData[r][c]);
-                                            refreshLaser();
+                                            updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
                                         } else {
                                             if (!mapData[r][c].isInventory) {
                                             } else if (lastActiveTool.isInvTool && playerInventory[lastActiveTool.invKey] && playerInventory[lastActiveTool.invKey].count > 0) {
@@ -975,17 +1133,14 @@
                                                     canMove: true, canRotate: lastActiveTool.canRotate, isInventory: true 
                                                 };
                                                 playerInventory[lastActiveTool.invKey].count--;
-                                                renderInventoryUI();
-                                                updateCellVisual(dropCell, mapData[r][c]);
-                                                refreshLaser();
+                                                renderInventoryUI(); updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
                                             }
                                         }
                                     }
                                 } 
                                 else { 
                                     if (isEditorMode && (isModRotatableActive || isModLockActive || isModInvActive)) {
-                                        let data = mapData[r][c];
-                                        let toggledOff = false;
+                                        let data = mapData[r][c]; let toggledOff = false;
                                         if (isModInvActive && !isModLockActive) { 
                                             if (data.isInventory && data.canRotate) toggledOff = true;
                                             else { data.isInventory = true; data.canMove = true; data.canRotate = true; }
@@ -1001,9 +1156,7 @@
                                     } else {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {}
                                         else {
-                                            executeRotation(r, c);
-                                            updateCellVisual(dropCell, mapData[r][c]);
-                                            refreshLaser();
+                                            executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
                                         }
                                     }
                                 }
@@ -1018,8 +1171,7 @@
                                 mapData[dragSource.r][dragSource.c] = temp;
                                 const sourceCell = document.querySelector(`.grid-cell[data-row='${dragSource.r}'][data-col='${dragSource.c}']`);
                                 updateCellVisual(sourceCell, mapData[dragSource.r][dragSource.c]);
-                                updateCellVisual(dropCell, mapData[r][c]);
-                                refreshLaser();
+                                updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
                             }
                         }
                     } else if (dragSource.origin === 'palette' && isEditorMode) {
@@ -1028,9 +1180,7 @@
                             isInventory: isModInvActive, canMove: isModInvActive, 
                             canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                         };
-                        updateCellVisual(dropCell, mapData[r][c]);
-                        refreshLaser();
-                        hasPlacedSinceSelection = true; 
+                        updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); hasPlacedSinceSelection = true; 
                     } else if (dragSource.origin === 'inventory' && !isEditorMode) {
                         if (!(mapData[r][c] && !mapData[r][c].canMove)) {
                             if (mapData[r][c] && mapData[r][c].isInventory) refundToInventory(mapData[r][c]);
@@ -1039,10 +1189,7 @@
                                 canMove: true, canRotate: dragSource.canRotate, isInventory: true 
                             };
                             playerInventory[dragSource.invKey].count--; 
-                            renderInventoryUI();
-                            updateCellVisual(dropCell, mapData[r][c]);
-                            refreshLaser();
-                            hasPlacedSinceSelection = true; 
+                            renderInventoryUI(); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); hasPlacedSinceSelection = true; 
                         }
                     }
                 } else {
@@ -1053,23 +1200,17 @@
                         if (isEditorMode) {
                             mapData[r][c] = null; 
                             const sourceCell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                            updateCellVisual(sourceCell, null);
-                            refreshLaser();
+                            updateCellVisual(sourceCell, null); refreshLaser();
                         } else if (sourceItem && sourceItem.isInventory) {
-                            refundToInventory(sourceItem);
-                            renderInventoryUI();
+                            refundToInventory(sourceItem); renderInventoryUI();
                             mapData[r][c] = null; 
                             const sourceCell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                            updateCellVisual(sourceCell, null);
-                            refreshLaser();
+                            updateCellVisual(sourceCell, null); refreshLaser();
                         }
                     }
                 }
                 
-                if (lastActiveTool) {
-                    restoreTool(lastActiveTool);
-                    lastActiveTool = null;
-                }
+                if (lastActiveTool) { restoreTool(lastActiveTool); lastActiveTool = null; }
             }
             
             if (dragGhost) { dragGhost.remove(); dragGhost = null; }
@@ -1077,8 +1218,7 @@
             
             let stateAfterStr = JSON.stringify({m: mapData, i: playerInventory});
             if (stateBeforeStr !== stateAfterStr) {
-                undoStack.push(stateBeforeObj);
-                if (undoStack.length > 50) undoStack.shift();
+                undoStack.push(stateBeforeObj); if (undoStack.length > 50) undoStack.shift();
             }
         });
 
@@ -1086,9 +1226,7 @@
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const cell = document.createElement('div');
-                cell.className = 'grid-cell';
-                cell.dataset.row = r;
-                cell.dataset.col = c;
+                cell.className = 'grid-cell'; cell.dataset.row = r; cell.dataset.col = c;
                 cell.addEventListener('dragstart', (e) => e.preventDefault());
 
                 cell.addEventListener('contextmenu', (e) => {
@@ -1102,15 +1240,10 @@
                     if (mapData[r][c]) {
                         saveStateDirectly(); 
                         if (isEditorMode) {
-                            mapData[r][c] = null;
-                            updateCellVisual(cell, null);
-                            refreshLaser();
+                            mapData[r][c] = null; updateCellVisual(cell, null); refreshLaser();
                         } else if (mapData[r][c].isInventory) {
-                            refundToInventory(mapData[r][c]);
-                            renderInventoryUI();
-                            mapData[r][c] = null;
-                            updateCellVisual(cell, null);
-                            refreshLaser();
+                            refundToInventory(mapData[r][c]); renderInventoryUI();
+                            mapData[r][c] = null; updateCellVisual(cell, null); refreshLaser();
                         }
                     }
                 });
@@ -1121,10 +1254,7 @@
                     if (mapData[r][c]) {
                         if (!isEditorMode && !mapData[r][c].canMove && !mapData[r][c].canRotate) return; 
                         
-                        if (selectedTool) {
-                            lastActiveTool = JSON.parse(JSON.stringify(selectedTool));
-                            deselectAllTools();
-                        }
+                        if (selectedTool) { lastActiveTool = JSON.parse(JSON.stringify(selectedTool)); deselectAllTools(); }
                         dragSource = { origin: 'grid', r: r, c: c };
                     } 
                     else if (selectedTool) {
@@ -1135,11 +1265,8 @@
                                     canMove: true, canRotate: selectedTool.canRotate, isInventory: true 
                                 };
                                 playerInventory[selectedTool.invKey].count--; 
-                                renderInventoryUI();
-                                updateCellVisual(cell, mapData[r][c]);
-                                refreshLaser();
-                                dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; 
-                                hasPlacedSinceSelection = true; 
+                                renderInventoryUI(); updateCellVisual(cell, mapData[r][c]); refreshLaser();
+                                dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; hasPlacedSinceSelection = true; 
                             }
                         } else {
                             mapData[r][c] = { 
@@ -1147,10 +1274,8 @@
                                 isInventory: isModInvActive, canMove: isModInvActive, 
                                 canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                             };
-                            updateCellVisual(cell, mapData[r][c]);
-                            refreshLaser();
-                            dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; 
-                            hasPlacedSinceSelection = true; 
+                            updateCellVisual(cell, mapData[r][c]); refreshLaser();
+                            dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; hasPlacedSinceSelection = true; 
                         }
                     }
                 });
@@ -1167,14 +1292,9 @@
             } else if (data.canRotate) {
                 badges += '<span class="badge-rot" title="회전 가능 기물">🔄</span>';
             }
-
-            let svgHtml = SVG_ART[data.type] || '';
-            let rot = data.rotation || 0;
-            
+            let svgHtml = SVG_ART[data.type] || ''; let rot = data.rotation || 0;
             cell.innerHTML = `
-                <div class="item" style="transform: rotate(${rot}deg);">
-                    ${svgHtml}
-                </div>
+                <div class="item" style="transform: rotate(${rot}deg);">${svgHtml}</div>
                 <div class="modifier-icons">${badges}</div>
             `;
         }
@@ -1183,42 +1303,32 @@
             const msg = isEditorMode ? "맵의 모든 기물을 삭제하시겠습니까?" : "배치한 모든 기물을 인벤토리로 회수하시겠습니까?";
             if(confirm(msg)) {
                 saveStateDirectly(); 
-                
                 if (isEditorMode) {
                     mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
                     document.querySelectorAll('.grid-cell').forEach(cell => updateCellVisual(cell, null));
                     showNotification("맵이 전체 초기화되었습니다.");
-                    document.getElementById('loadedMapInfo').style.display = 'none'; // 새 맵 작성 시 정보 창 숨김
+                    document.getElementById('loadedMapInfo').style.display = 'none'; 
                 } else {
                     let recovered = false;
                     for (let r = 0; r < GRID_SIZE; r++) {
                         for (let c = 0; c < GRID_SIZE; c++) {
                             let item = mapData[r][c];
                             if (item && item.isInventory) {
-                                refundToInventory(item);
-                                mapData[r][c] = null;
+                                refundToInventory(item); mapData[r][c] = null;
                                 const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                                updateCellVisual(cell, null);
-                                recovered = true;
+                                updateCellVisual(cell, null); recovered = true;
                             }
                         }
                     }
-                    if (recovered) {
-                        renderInventoryUI();
-                        showNotification("배치한 기물을 모두 회수했습니다.");
-                    } else {
-                        showNotification("회수할 기물이 없습니다.", "#e74c3c");
-                    }
+                    if (recovered) { renderInventoryUI(); showNotification("배치한 기물을 모두 회수했습니다."); } 
+                    else { showNotification("회수할 기물이 없습니다.", "#e74c3c"); }
                 }
                 refreshLaser();
             }
         }
         
         function clearLaser() { 
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            ctx.restore();
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
         }
 
         function exportData() {
@@ -1244,8 +1354,7 @@
             importedArray.forEach(item => {
                 if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
                     mapData[item.y][item.x] = {
-                        type: item.type,
-                        rotation: item.rotation || 0,
+                        type: item.type, rotation: item.rotation || 0,
                         canMove: item.canMove !== undefined ? item.canMove : false,
                         canRotate: item.canRotate !== undefined ? item.canRotate : false,
                         isInventory: item.isInventory || false
@@ -1259,63 +1368,45 @@
                     updateCellVisual(cell, mapData[r][c]);
                 }
             }
-            
             refreshLaser();
         }
 
         function importData() {
             const jsonString = document.getElementById('output').value;
-            if (!jsonString.trim()) {
-                alert("불러올 JSON 데이터를 입력해주세요.");
-                return;
-            }
+            if (!jsonString.trim()) { alert("불러올 JSON 데이터를 입력해주세요."); return; }
             try {
                 const parsedData = JSON.parse(jsonString);
-                
-                if (!isEditorMode) {
-                    toggleMode(); 
-                }
+                if (!isEditorMode) toggleMode(); 
 
                 const mapArray = Array.isArray(parsedData) ? parsedData : parsedData.mapData;
                 if (!mapArray) throw new Error("맵 데이터(배열)를 찾을 수 없습니다.");
 
                 applyMapData(mapArray);
                 
-                // 만약 텍스트 상자에 복사한 내용이 JSON 포장지(title 등 메타데이터 포함)라면 UI 업데이트
                 if (!Array.isArray(parsedData) && parsedData.title) {
                     document.getElementById('loadedMapInfo').style.display = 'flex';
                     document.getElementById('infoTitle').innerText = `🗺️ ${parsedData.title}`;
                     document.getElementById('infoAuthor').innerText = parsedData.author || '알 수 없음';
-                    
                     const diffSpan = document.getElementById('infoDifficulty');
                     const diff = parsedData.difficulty || 'Normal';
-                    diffSpan.innerText = diff;
-                    diffSpan.className = `difficulty-badge diff-${diff}`;
+                    diffSpan.innerText = diff; diffSpan.className = `difficulty-badge diff-${diff}`;
                 } else {
-                    document.getElementById('loadedMapInfo').style.display = 'none'; // 순수 배열만 넣으면 숨김
+                    document.getElementById('loadedMapInfo').style.display = 'none';
                 }
-
                 showNotification("맵을 성공적으로 불러왔습니다!");
-            } catch (error) {
-                alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message);
-            }
+            } catch (error) { alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message); }
         }
 
         const DIRS = { 
-            0: {dx: 1, dy: 0}, 45: {dx: 1, dy: 1}, 
-            90: {dx: 0, dy: 1}, 135: {dx: -1, dy: 1}, 
-            180: {dx: -1, dy: 0}, 225: {dx: -1, dy: -1}, 
-            270: {dx: 0, dy: -1}, 315: {dx: 1, dy: -1} 
+            0: {dx: 1, dy: 0}, 45: {dx: 1, dy: 1}, 90: {dx: 0, dy: 1}, 135: {dx: -1, dy: 1}, 
+            180: {dx: -1, dy: 0}, 225: {dx: -1, dy: -1}, 270: {dx: 0, dy: -1}, 315: {dx: 1, dy: -1} 
         };
 
-        function calculateReflection(inDir, surfaceAngle) {
-            return (2 * surfaceAngle - inDir + 720) % 360;
-        }
+        function calculateReflection(inDir, surfaceAngle) { return (2 * surfaceAngle - inDir + 720) % 360; }
 
         function simulateLaser() {
             clearLaser();
-            let beams = []; 
-            let visited = new Set(); 
+            let beams = []; let visited = new Set(); 
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (mapData[r][c] && mapData[r][c].type === 'ray') beams.push({ x: c, y: r, dir: mapData[r][c].rotation });
@@ -1323,11 +1414,8 @@
             }
             if(beams.length === 0) return;
 
-            ctx.lineWidth = 4; 
-            ctx.strokeStyle = "#ff3333"; 
-            ctx.lineCap = "round";
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "red";
+            ctx.lineWidth = 4; ctx.strokeStyle = "#ff3333"; ctx.lineCap = "round";
+            ctx.shadowBlur = 10; ctx.shadowColor = "red";
             
             while(beams.length > 0) {
                 let currentBeam = beams.shift(); 
@@ -1335,28 +1423,20 @@
                 let nextX = cx + DIRS[cDir].dx, nextY = cy + DIRS[cDir].dy;
                 
                 if(nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) { 
-                    drawLine(cx, cy, nextX, nextY, true); 
-                    continue; 
+                    drawLine(cx, cy, nextX, nextY, true); continue; 
                 }
                 
                 let stateKey = `${nextX},${nextY},${cDir}`;
-                if(visited.has(stateKey)) {
-                    continue;
-                }
+                if(visited.has(stateKey)) continue;
                 visited.add(stateKey);
                 
                 let item = mapData[nextY][nextX];
                 
                 if (!item) { 
-                    drawLine(cx, cy, nextX, nextY, false);
-                    beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir}); 
                 }
-                else if (item.type === 'block') {
-                    drawLine(cx, cy, nextX, nextY, true);
-                }
-                else if (item.type === 'ray' || item.type === 'target') {
-                    drawLine(cx, cy, nextX, nextY, false); 
-                }
+                else if (item.type === 'block') { drawLine(cx, cy, nextX, nextY, true); }
+                else if (item.type === 'ray' || item.type === 'target') { drawLine(cx, cy, nextX, nextY, false); }
                 else if(item.type === 'mirror_45') { 
                     drawLine(cx, cy, nextX, nextY, false);
                     let surfaceAngle = (337.5 + item.rotation) % 360;
@@ -1369,59 +1449,34 @@
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 }
                 else if (['single_mirror', 'target_mirror_a', 'target_mirror_b', 'target_mirror'].includes(item.type)) {
-                    let normal = (225 + item.rotation) % 360; 
-                    let surfaceAngle = (135 + item.rotation) % 360;
+                    let normal = (225 + item.rotation) % 360; let surfaceAngle = (135 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) {
-                        drawLine(cx, cy, nextX, nextY, false);
-                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true); 
-                    }
+                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); }
+                    else { drawLine(cx, cy, nextX, nextY, true); }
                 }
                 else if (['diag_single_mirror_a'].includes(item.type)) {
-                    let normal = (112.5 + item.rotation) % 360;
-                    let surfaceAngle = (202.5 + item.rotation) % 360;
+                    let normal = (112.5 + item.rotation) % 360; let surfaceAngle = (202.5 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) {
-                        drawLine(cx, cy, nextX, nextY, false);
-                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true);
-                    }
+                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
+                    else { drawLine(cx, cy, nextX, nextY, true); }
                 }
                 else if (['diag_single_mirror_b'].includes(item.type)) {
-                    let normal = (67.5 + item.rotation) % 360;
-                    let surfaceAngle = (157.5 + item.rotation) % 360;
+                    let normal = (67.5 + item.rotation) % 360; let surfaceAngle = (157.5 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) {
-                        drawLine(cx, cy, nextX, nextY, false);
-                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true);
-                    }
+                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
+                    else { drawLine(cx, cy, nextX, nextY, true); }
                 }
                 else if (item.type === 'v_target_mirror' || ['v_target_mirror_a', 'v_target_mirror_b'].includes(item.type)) {
-                    let normal = (270 + item.rotation) % 360;
-                    let surfaceAngle = (0 + item.rotation) % 360;
+                    let normal = (270 + item.rotation) % 360; let surfaceAngle = (0 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) {
-                        drawLine(cx, cy, nextX, nextY, false);
-                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true);
-                    }
+                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
+                    else { drawLine(cx, cy, nextX, nextY, true); }
                 }
                 else if (['v_single_mirror'].includes(item.type)) {
-                    let normal = (90 + item.rotation) % 360;
-                    let surfaceAngle = (0 + item.rotation) % 360;
+                    let normal = (90 + item.rotation) % 360; let surfaceAngle = (0 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) {
-                        drawLine(cx, cy, nextX, nextY, false);
-                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true);
-                    }
+                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
+                    else { drawLine(cx, cy, nextX, nextY, true); }
                 }
                 else if(item.type === 'mirror') { 
                     drawLine(cx, cy, nextX, nextY, false);
@@ -1429,30 +1484,22 @@
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 }
                 else if(item.type === 'half_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false);
-                    let surfaceAngle = (135 + item.rotation) % 360;
-                    beams.push({x: nextX, y: nextY, dir: cDir}); 
-                    beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (135 + item.rotation) % 360;
+                    beams.push({x: nextX, y: nextY, dir: cDir}); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 } 
                 else if(item.type === 'v_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false);
-                    let surfaceAngle = (0 + item.rotation) % 360;
+                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (0 + item.rotation) % 360;
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
                 }
                 else if(item.type === 'v_half_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false);
-                    let surfaceAngle = (0 + item.rotation) % 360;
-                    beams.push({x: nextX, y: nextY, dir: cDir}); 
-                    beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
+                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (0 + item.rotation) % 360;
+                    beams.push({x: nextX, y: nextY, dir: cDir}); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
                 }
                 else if(item.type === 'tunnel') {
                     let tunnelRot = item.rotation % 180;
                     if ((tunnelRot === 0 && (cDir === 180 || cDir === 0)) || (tunnelRot === 90 && (cDir === 90 || cDir === 270))) {
-                        drawLine(cx, cy, nextX, nextY, false); 
-                        beams.push({x: nextX, y: nextY, dir: cDir});
-                    } else {
-                        drawLine(cx, cy, nextX, nextY, true); 
-                    }
+                        drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir});
+                    } else { drawLine(cx, cy, nextX, nextY, true); }
                 }
             }
         }
@@ -1463,10 +1510,8 @@
             let x2 = endX * CELL_SIZE + offset, y2 = endY * CELL_SIZE + offset;
 
             if (stopAtEdge) {
-                x2 = (startX + endX) / 2 * CELL_SIZE + offset;
-                y2 = (startY + endY) / 2 * CELL_SIZE + offset;
+                x2 = (startX + endX) / 2 * CELL_SIZE + offset; y2 = (startY + endY) / 2 * CELL_SIZE + offset;
             }
-
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
         }
     </script>
