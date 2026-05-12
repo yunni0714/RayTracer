@@ -351,7 +351,6 @@
         <div id="suggestionBoardContainer" class="suggestion-board-container">
             <div class="suggestion-header">
                 <h3 id="suggestionHeaderTitle">💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
-                <!-- 버튼 ID 추가 및 함수 변경 -->
                 <button id="sugHeaderBtn" class="sug-btn" onclick="handleSugHeaderBtnAction()">내 풀이 제안하기</button>
             </div>
             <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;">
@@ -460,7 +459,6 @@
             </select>
             <div class="modal-actions">
                 <button onclick="closeUploadModal()">취소</button>
-                <!-- 제출 버튼 ID 부여 -->
                 <button id="uploadSubmitBtn" onclick="packAndUploadMap()">서버에 업로드</button>
             </div>
         </div>
@@ -513,7 +511,7 @@
         onAuthStateChanged(auth, (user) => {
             if (user) { 
                 window.currentUserUid = user.uid; 
-                if(typeof updateSugHeaderBtnUI === 'function') updateSugHeaderBtnUI(); // 늦게 발급되었을 때 버튼 업데이트
+                if(typeof updateSugHeaderBtnUI === 'function') updateSugHeaderBtnUI(); 
             } 
             else {
                 signInAnonymously(auth).catch((error) => {
@@ -566,7 +564,6 @@
             await updateDoc(docRef, updates);
         };
 
-        // 기존 맵 데이터 덮어쓰기 업데이트 로직
         window.updateMapInDB = async function(id, data) {
             const docRef = doc(db, "maps", id);
             await updateDoc(docRef, data);
@@ -595,8 +592,8 @@
         window.currentUserUid = null;
         let currentLoadedMapId = null;
         let currentLoadedMapAuthorUid = null;
-        let currentLoadedMapObj = null; // 불러온 맵 객체 캐싱
-        let isEditingMap = false; // 현재 덮어쓰기 수정 모드인지 체크
+        let currentLoadedMapObj = null; 
+        let isEditingMap = false; 
 
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
@@ -678,7 +675,7 @@
 
         function closeUploadModal() { 
             document.getElementById('uploadModal').style.display = 'none'; 
-            isEditingMap = false; // 모달 닫을 때 상태 초기화
+            isEditingMap = false; 
             document.getElementById('uploadModal').querySelector('h3').innerText = "맵 공유하기";
             document.getElementById('uploadSubmitBtn').innerText = "서버에 업로드";
         }
@@ -709,19 +706,16 @@
 
             try {
                 if (isEditingMap && currentLoadedMapId) {
-                    // 수정 모드: 기존 맵 데이터를 업데이트
                     const updateData = {
                         title: title, 
                         author: author, 
                         difficulty: difficulty,
                         mapData: mapItems
-                        // createdAt, likes, authorUid 등은 덮어쓰지 않음
                     };
                     if (window.updateMapInDB) {
                         await window.updateMapInDB(currentLoadedMapId, updateData);
                         showNotification("맵이 성공적으로 수정되었습니다!", "#27ae60");
                         
-                        // 로컬 객체 업데이트 및 UI 갱신
                         currentLoadedMapObj.title = title;
                         currentLoadedMapObj.author = author;
                         currentLoadedMapObj.difficulty = difficulty;
@@ -729,7 +723,6 @@
                         playMapFromLibrary(currentLoadedMapObj);
                     }
                 } else {
-                    // 신규 업로드 모드
                     const packedData = {
                         title: title, 
                         author: author, 
@@ -789,9 +782,6 @@
             }
         }
 
-        // ==========================================
-        // 라이브러리 및 맵 반응(투표) 로직
-        // ==========================================
         function toggleLibraryScreen() {
             isLibraryMode = !isLibraryMode;
             const btn = document.getElementById('libraryToggleBtn');
@@ -832,7 +822,8 @@
             renderLibraryCards(filtered);
         }
 
-        function createMiniGridDOM(mapDataArray) {
+        // 스포일러 방지 스위치 추가: hideInventory
+        function createMiniGridDOM(mapDataArray, hideInventory = false) {
             const miniGrid = document.createElement('div');
             miniGrid.className = 'mini-grid';
             for(let i=0; i<25; i++) {
@@ -842,6 +833,8 @@
             }
             if (mapDataArray && Array.isArray(mapDataArray)) {
                 mapDataArray.forEach(item => {
+                    if(hideInventory && item.isInventory) return;
+
                     if(item.x >= 0 && item.x < 5 && item.y >= 0 && item.y < 5) {
                         const index = item.y * 5 + item.x;
                         const cell = miniGrid.children[index];
@@ -877,7 +870,7 @@
                 card.className = 'map-card';
                 card.onclick = () => playMapFromLibrary(mapObj);
 
-                const miniGrid = createMiniGridDOM(mapObj.mapData);
+                const miniGrid = createMiniGridDOM(mapObj.mapData, true);
 
                 const okCount = mapObj.reactionOk || 0;
                 const godCount = mapObj.reactionGod || 0;
@@ -928,7 +921,7 @@
 
             currentLoadedMapId = mapObj.id;
             currentLoadedMapAuthorUid = mapObj.authorUid;
-            currentLoadedMapObj = mapObj; // 객체 캐싱 (수정용)
+            currentLoadedMapObj = mapObj; 
             currentMapReactions.ok = mapObj.reactionOk || 0;
             currentMapReactions.god = mapObj.reactionGod || 0;
 
@@ -954,7 +947,7 @@
             updateReactionUI(mapObj.id);
 
             document.getElementById('suggestionBoardContainer').style.display = 'block';
-            updateSugHeaderBtnUI(); // 제안/수정 버튼 권한 반영
+            updateSugHeaderBtnUI(); 
             loadSuggestionsForCurrentMap();
 
             showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
@@ -1030,16 +1023,11 @@
             }
         }
 
-
-        // ==========================================
-        // 💡 맵 소유권 및 제안 게시판(미니 갤러리)
-        // ==========================================
         function updateSugHeaderBtnUI() {
             const btn = document.getElementById('sugHeaderBtn');
             const headerTitle = document.getElementById('suggestionHeaderTitle');
             if (!btn || !headerTitle) return;
             
-            // 내 맵인지 판단하여 버튼 및 타이틀 동적 변경
             if (currentLoadedMapAuthorUid && window.currentUserUid === currentLoadedMapAuthorUid) {
                 btn.innerHTML = "✏️ 맵 수정하기";
                 btn.style.backgroundColor = "#27ae60"; 
@@ -1058,7 +1046,6 @@
             }
 
             if (currentLoadedMapAuthorUid && window.currentUserUid === currentLoadedMapAuthorUid) {
-                // 내 맵인 경우 -> 맵 수정 모달 띄우기
                 isEditingMap = true;
                 document.getElementById('mapTitle').value = currentLoadedMapObj.title || "";
                 document.getElementById('mapAuthor').value = currentLoadedMapObj.author || "";
@@ -1068,7 +1055,6 @@
                 document.getElementById('uploadSubmitBtn').innerText = "수정 반영하기";
                 document.getElementById('uploadModal').style.display = 'flex';
             } else {
-                // 남의 맵인 경우 -> 제안 작성 모달 띄우기
                 openSuggestionModal();
             }
         }
@@ -1134,7 +1120,7 @@
                         const item = document.createElement('div');
                         item.className = 'suggestion-item';
                         
-                        const miniGrid = createMiniGridDOM(sug.mapData);
+                        const miniGrid = createMiniGridDOM(sug.mapData, false);
 
                         const content = document.createElement('div');
                         content.style.flex = "1";
