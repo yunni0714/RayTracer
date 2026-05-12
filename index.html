@@ -45,7 +45,7 @@
         .screen { display: none; }
         .screen.active { display: flex; }
         
-        /* 맵 정보 패널 */
+        /* 맵 정보 패널 (확장됨) */
         .loaded-map-info {
             background-color: #fff;
             padding: 15px 25px;
@@ -54,17 +54,17 @@
             margin-bottom: 20px;
             border-left: 6px solid #27ae60;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column; /* 세로 배치로 변경 */
             width: 100%;
             box-sizing: border-box;
         }
+        .info-top-row { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
         .loaded-map-info .info-text h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 20px; }
-        .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 15px; font-weight: bold; }
+        .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 14px; font-weight: bold; }
         
         .difficulty-badge { 
             padding: 4px 10px; border-radius: 6px; color: white; 
-            font-size: 13px; font-weight: bold; margin-left: 5px; 
+            font-size: 12px; font-weight: bold; margin-left: 5px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: inline-block;
         }
@@ -72,6 +72,34 @@
         .diff-Normal { background-color: #f39c12; color: #fff; }
         .diff-Hard { background-color: #e67e22; }
         .diff-Insane { background-color: #e74c3c; }
+        .diff-None { background-color: #bdc3c7; color: #333; }
+
+        /* 반응 및 투표 영역 */
+        .map-reaction-area {
+            margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ddd;
+            display: flex; justify-content: space-between; align-items: center; width: 100%;
+        }
+        .reaction-group { display: flex; gap: 10px; }
+        .reaction-btn {
+            padding: 6px 12px; border: 2px solid #ddd; background: #fff; color: #555;
+            border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 13px;
+            transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+        }
+        .reaction-btn:hover { background: #f1f1f1; border-color: #ccc; }
+        .reaction-btn.active.ok { border-color: #27ae60; background: #eafaf1; color: #27ae60; }
+        .reaction-btn.active.god { border-color: #e74c3c; background: #fadbd8; color: #e74c3c; }
+
+        .diff-vote-group { display: flex; align-items: center; gap: 5px; }
+        .diff-vote-label { font-size: 13px; font-weight: bold; color: #555; margin-right: 5px; }
+        .diff-vote-btn {
+            padding: 4px 8px; border: 2px solid #ddd; background: #fff; color: #555;
+            border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;
+        }
+        .diff-vote-btn:hover { filter: brightness(0.9); }
+        .diff-vote-btn.active.diff-Easy { border-color: #2ecc71; background: #2ecc71; color: white; }
+        .diff-vote-btn.active.diff-Normal { border-color: #f39c12; background: #f39c12; color: white; }
+        .diff-vote-btn.active.diff-Hard { border-color: #e67e22; background: #e67e22; color: white; }
+        .diff-vote-btn.active.diff-Insane { border-color: #e74c3c; background: #e74c3c; color: white; }
 
         /* 제안 갤러리 패널 */
         .suggestion-board-container {
@@ -83,15 +111,11 @@
             border-left: 6px solid #f39c12;
             width: 100%;
             box-sizing: border-box;
-            display: none; /* 기본 숨김 */
+            display: none;
         }
         .suggestion-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;
         }
         .suggestion-header h3 { margin: 0; color: #2c3e50; font-size: 18px; }
         .sug-btn {
@@ -127,13 +151,15 @@
         .card-meta { width: 100%; margin-top: 15px; }
         .card-meta h4 { margin: 0 0 5px 0; font-size: 18px; color: #2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-meta p { margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; }
-        .card-actions { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
-        
-        .like-btn { 
-            background: none; border: none; font-size: 16px; color: #e74c3c; cursor: pointer; 
-            display: flex; align-items: center; gap: 5px; font-weight: bold; padding: 5px 10px; border-radius: 20px; transition: background 0.2s;
+        .card-actions { 
+            display: flex; justify-content: space-between; align-items: center; 
+            width: 100%; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; 
         }
-        .like-btn:hover { background: #fadbd8; }
+        
+        .static-stats {
+            display: flex; gap: 10px; font-size: 14px; font-weight: bold; color: #7f8c8d;
+        }
+        .static-stats span { display: flex; align-items: center; gap: 4px; }
         
         .mini-grid {
             display: grid; grid-template-columns: repeat(5, 30px); grid-template-rows: repeat(5, 30px);
@@ -273,7 +299,6 @@
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <div class="header-actions">
-            <!-- 기본적으로 숨김 처리 (스타일 추가) -->
             <button id="newMapBtn" class="mode-toggle-btn" style="background-color: #e67e22; display: none;" onclick="createNewMap()">✨ 새 맵 만들기</button>
             <button id="libraryToggleBtn" class="mode-toggle-btn library-btn" onclick="toggleLibraryScreen()">📚 맵 라이브러리 열기</button>
             <button id="modeToggleBtn" class="mode-toggle-btn" onclick="toggleMode()">🛠️ 현재: 에디터 모드</button>
@@ -286,7 +311,7 @@
             <input type="text" id="searchInput" placeholder="맵 제목, 제작자 이름으로 검색..." oninput="applyFilters()">
             <select id="sortSelect" onchange="loadLibraryMaps()">
                 <option value="createdAt">최신 등록순</option>
-                <option value="likes">추천(따봉)순</option>
+                <option value="reactionGod">갓맵(👍)순</option>
             </select>
         </div>
         
@@ -300,9 +325,25 @@
         
         <!-- 맵 정보 패널 (라이브러리에서 로드 시 표시) -->
         <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
-            <div class="info-text">
-                <h3 id="infoTitle">맵 제목</h3>
-                <p>제작자: <span id="infoAuthor"></span> <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span></p>
+            <div class="info-top-row">
+                <div class="info-text">
+                    <h3 id="infoTitle">맵 제목</h3>
+                    <p>제작자: <span id="infoAuthor"></span> | 공식 난이도: <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span> | 유저 체감: <span id="infoUserDifficulty" class="difficulty-badge diff-None">평가 부족</span></p>
+                </div>
+            </div>
+            <!-- 평가 영역 (테스트 시에만 조작 가능) -->
+            <div id="mapReactionArea" class="map-reaction-area">
+                <div class="reaction-group">
+                    <button id="btnReactOk" class="reaction-btn" onclick="toggleReaction('ok')">✅ 문제없음 <span id="countOk">0</span></button>
+                    <button id="btnReactGod" class="reaction-btn" onclick="toggleReaction('god')">👍 갓맵임 <span id="countGod">0</span></button>
+                </div>
+                <div class="diff-vote-group">
+                    <span class="diff-vote-label">체감 난이도 투표:</span>
+                    <button id="btnVoteEasy" class="diff-vote-btn diff-Easy" onclick="voteDifficulty('Easy')">Easy</button>
+                    <button id="btnVoteNormal" class="diff-vote-btn diff-Normal" onclick="voteDifficulty('Normal')">Normal</button>
+                    <button id="btnVoteHard" class="diff-vote-btn diff-Hard" onclick="voteDifficulty('Hard')">Hard</button>
+                    <button id="btnVoteInsane" class="diff-vote-btn diff-Insane" onclick="voteDifficulty('Insane')">Insane</button>
+                </div>
             </div>
         </div>
 
@@ -446,8 +487,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
         import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, orderBy, limit, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-        
-        // 익명 로그인을 위한 Auth 모듈 임포트
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -463,38 +502,25 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // 로컬 임시 UID 발급 함수 (Auth 실패 대비용)
         function getFallbackUid() {
             let uid = localStorage.getItem('ray_fallback_uid');
-            if (!uid) {
-                uid = 'anon_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('ray_fallback_uid', uid);
-            }
+            if (!uid) { uid = 'anon_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('ray_fallback_uid', uid); }
             return uid;
         }
 
-        // 익명 로그인 감지 및 UID 발급 에러 핸들링 보강
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUserUid = user.uid;
-                console.log("투명 신분증 발급 완료 UID:", window.currentUserUid);
-            } else {
+            if (user) { window.currentUserUid = user.uid; } 
+            else {
                 signInAnonymously(auth).catch((error) => {
-                    console.error("익명 로그인 에러", error);
-                    window.currentUserUid = getFallbackUid(); // 에러 시 로컬 ID로 임시 대체
-                    
+                    window.currentUserUid = getFallbackUid();
                     if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
-                        setTimeout(() => {
-                            alert("🚨 [개발자 설정 안내]\nFirebase 콘솔에서 익명 로그인이 활성화되지 않아 에러가 발생했습니다.\n\n해결방법: 파이어베이스 콘솔 -> [Authentication] -> [Sign-in method] 메뉴에서 '익명(Anonymous)'을 [사용 설정] 해주세요!\n\n현재는 임시 ID로 동작합니다.");
-                        }, 1000);
+                        setTimeout(() => { alert("🚨 [안내] 파이어베이스 익명 로그인이 꺼져있어 임시 ID로 동작합니다."); }, 1000);
                     }
                 });
             }
         });
         
-        signInAnonymously(auth).catch((e) => {
-            if(!window.currentUserUid) window.currentUserUid = getFallbackUid();
-        });
+        signInAnonymously(auth).catch((e) => { if(!window.currentUserUid) window.currentUserUid = getFallbackUid(); });
 
         window.uploadToDB = async function(data) {
             const docRef = await addDoc(collection(db, "maps"), data);
@@ -504,9 +530,7 @@
         window.fetchFromDB = async function(id) {
             const docRef = doc(db, "maps", id);
             const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                return { id: docSnap.id, ...docSnap.data() };
-            }
+            if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() };
             return null;
         };
 
@@ -514,18 +538,25 @@
             const q = query(collection(db, "maps"), orderBy(sortBy, "desc"), limit(50));
             const querySnapshot = await getDocs(q);
             let maps = [];
-            querySnapshot.forEach((doc) => {
-                maps.push({ id: doc.id, ...doc.data() });
-            });
+            querySnapshot.forEach((doc) => { maps.push({ id: doc.id, ...doc.data() }); });
             return maps;
         };
 
-        window.toggleLikeInDB = async function(id, isLiking) {
+        // 새로운 반응 업데이트 로직 (likes -> reactionOk, reactionGod)
+        window.updateMapReactionsInDB = async function(id, type, change) {
             const docRef = doc(db, "maps", id);
-            await updateDoc(docRef, { likes: increment(isLiking ? 1 : -1) });
+            await updateDoc(docRef, { [type]: increment(change) });
         };
 
-        // 제안하기 백엔드 로직
+        // 난이도 투표 업데이트 로직
+        window.updateMapDifficultyVoteInDB = async function(id, oldVote, newVote) {
+            const docRef = doc(db, "maps", id);
+            const updates = {};
+            if (oldVote) updates[`diffVotes.${oldVote}`] = increment(-1);
+            if (newVote) updates[`diffVotes.${newVote}`] = increment(1);
+            await updateDoc(docRef, updates);
+        };
+
         window.uploadSuggestionToDB = async function(mapId, data) {
             const sugRef = collection(db, "maps", mapId, "suggestions");
             await addDoc(sugRef, data);
@@ -546,7 +577,6 @@
     </script>
 
     <script>
-        // 전역 변수: 현재 접속한 유저, 로드된 맵 정보
         window.currentUserUid = null;
         let currentLoadedMapId = null;
         let currentLoadedMapAuthorUid = null;
@@ -600,14 +630,9 @@
                         try {
                             showNotification("서버에서 맵을 불러오는 중...", "#f39c12");
                             const mapDoc = await window.fetchFromDB(mapId);
-                            if (mapDoc) {
-                                playMapFromLibrary(mapDoc);
-                            } else {
-                                alert("존재하지 않거나 삭제된 맵입니다.");
-                            }
-                        } catch(e) {
-                            alert("맵 불러오기 실패: " + e.message);
-                        }
+                            if (mapDoc) playMapFromLibrary(mapDoc);
+                            else alert("존재하지 않거나 삭제된 맵입니다.");
+                        } catch(e) { alert("맵 불러오기 실패: " + e.message); }
                     }
                 }, 500);
             }
@@ -660,7 +685,10 @@
                 author: author, 
                 difficulty: difficulty,
                 createdAt: new Date().toISOString(), 
-                likes: 0, 
+                // DB 필드 확장: 반응 2종 및 난이도 투표함 추가
+                reactionOk: 0, 
+                reactionGod: 0,
+                diffVotes: { Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
                 authorUid: window.currentUserUid,
                 mapData: mapItems
             };
@@ -678,21 +706,15 @@
                     
                     document.getElementById('output').value = "🚀 맵 공유 링크가 생성되었습니다!\n아래 주소를 복사해서 친구들에게 공유하세요.\n\n" + shareUrl;
                     showNotification("서버 업로드 완료! 텍스트 상자의 링크를 확인하세요.", "#8e44ad");
-                } else {
-                    alert("데이터베이스 연결을 준비 중입니다. 잠시 후 다시 시도해주세요.");
-                }
-            } catch (error) {
-                alert("업로드 중 오류가 발생했습니다: " + error.message);
-            } finally {
+                } else { alert("데이터베이스 연결을 준비 중입니다."); }
+            } catch (error) { alert("업로드 중 오류가 발생했습니다: " + error.message); } 
+            finally {
                 closeUploadModal();
                 uploadBtn.innerText = originalText; uploadBtn.disabled = false;
                 document.getElementById('mapTitle').value = ""; document.getElementById('mapAuthor').value = "";
             }
         }
 
-        // ==========================================
-        // 💡 새 맵 만들기 로직 (UX 개선)
-        // ==========================================
         function createNewMap() {
             if(confirm("진행 중인 맵이 모두 초기화되고 빈 에디터로 돌아갑니다. 새로 만드시겠습니까?")) {
                 if (isLibraryMode) toggleLibraryScreen();
@@ -710,17 +732,15 @@
                 currentLoadedMapId = null;
                 currentLoadedMapAuthorUid = null;
 
-                // URL 파라미터 클리어
                 const url = new URL(window.location);
                 url.searchParams.delete('mapId');
                 window.history.pushState({}, '', url);
-
                 showNotification("새로운 맵이 생성되었습니다!", "#e67e22");
             }
         }
 
         // ==========================================
-        // 라이브러리 및 미니 그리드 (공용) 로직
+        // 라이브러리 및 맵 반응(투표) 로직
         // ==========================================
         function toggleLibraryScreen() {
             isLibraryMode = !isLibraryMode;
@@ -728,23 +748,17 @@
             const editorScreen = document.getElementById('editorScreen');
             const libScreen = document.getElementById('libraryScreen');
             const modeBtn = document.getElementById('modeToggleBtn');
-            const newMapBtn = document.getElementById('newMapBtn'); // 추가됨
+            const newMapBtn = document.getElementById('newMapBtn'); 
 
             if (isLibraryMode) {
-                btn.innerHTML = "🔙 돌아가기";
-                btn.classList.add('active');
-                editorScreen.classList.remove('active');
-                libScreen.classList.add('active');
-                modeBtn.style.display = 'none'; 
-                newMapBtn.style.display = 'inline-block'; // 라이브러리에서만 새 맵 버튼 노출
+                btn.innerHTML = "🔙 돌아가기"; btn.classList.add('active');
+                editorScreen.classList.remove('active'); libScreen.classList.add('active');
+                modeBtn.style.display = 'none'; newMapBtn.style.display = 'inline-block'; 
                 loadLibraryMaps(); 
             } else {
-                btn.innerHTML = "📚 맵 라이브러리 열기";
-                btn.classList.remove('active');
-                libScreen.classList.remove('active');
-                editorScreen.classList.add('active');
-                modeBtn.style.display = 'inline-block'; 
-                newMapBtn.style.display = 'none'; // 에디터 화면에서는 새 맵 버튼 숨김
+                btn.innerHTML = "📚 맵 라이브러리 열기"; btn.classList.remove('active');
+                libScreen.classList.remove('active'); editorScreen.classList.add('active');
+                modeBtn.style.display = 'inline-block'; newMapBtn.style.display = 'none'; 
             }
         }
 
@@ -752,22 +766,18 @@
             const sortBy = document.getElementById('sortSelect').value;
             const grid = document.getElementById('libraryGrid');
             grid.innerHTML = '<p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold;">맵 데이터를 불러오는 중입니다...</p>';
-
             try {
                 if (window.fetchLibraryList) {
                     allLibraryMaps = await window.fetchLibraryList(sortBy);
                     renderLibraryCards(allLibraryMaps);
                 }
-            } catch(e) {
-                grid.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다: ${e.message}</p>`;
-            }
+            } catch(e) { grid.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다: ${e.message}</p>`; }
         }
 
         function applyFilters() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const filtered = allLibraryMaps.filter(map => 
-                (map.title && map.title.toLowerCase().includes(q)) || 
-                (map.author && map.author.toLowerCase().includes(q))
+                (map.title && map.title.toLowerCase().includes(q)) || (map.author && map.author.toLowerCase().includes(q))
             );
             renderLibraryCards(filtered);
         }
@@ -794,6 +804,14 @@
             return miniGrid;
         }
 
+        // 유저 체감 난이도 계산 (가장 투표가 많은 항목)
+        function calculateUserDifficulty(diffVotes) {
+            if (!diffVotes) return null;
+            let total = diffVotes.Easy + diffVotes.Normal + diffVotes.Hard + diffVotes.Insane;
+            if (total === 0) return null;
+            return Object.keys(diffVotes).reduce((a, b) => diffVotes[a] > diffVotes[b] ? a : b);
+        }
+
         function renderLibraryCards(mapsList) {
             const grid = document.getElementById('libraryGrid');
             grid.innerHTML = '';
@@ -803,24 +821,20 @@
                 return;
             }
 
-            const likedMaps = JSON.parse(localStorage.getItem('ray_liked_maps') || '[]');
-
             mapsList.forEach(mapObj => {
                 const card = document.createElement('div');
                 card.className = 'map-card';
-                card.onclick = (e) => {
-                    if (e.target.closest('.like-btn')) return;
-                    playMapFromLibrary(mapObj);
-                };
+                card.onclick = () => playMapFromLibrary(mapObj);
 
                 const miniGrid = createMiniGridDOM(mapObj.mapData);
 
-                const likes = mapObj.likes || 0;
-                const diff = mapObj.difficulty || 'Normal';
+                const okCount = mapObj.reactionOk || 0;
+                const godCount = mapObj.reactionGod || 0;
+                const creatorDiff = mapObj.difficulty || 'Normal';
+                const userDiff = calculateUserDifficulty(mapObj.diffVotes);
                 const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
-                const isLiked = likedMaps.includes(mapObj.id);
-                const btnStyle = isLiked ? 'color: #c0392b; background: #fadbd8;' : '';
 
+                // 카드의 기능 변경: 버튼이 아니라 단순 집계 수치만 노출 (평가는 테스트 진입 후 가능)
                 card.innerHTML = `
                     <div class="card-meta">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -828,11 +842,15 @@
                         </div>
                         <p>${mapObj.author || '알 수 없음'} • ${dateStr}</p>
                     </div>
-                    <div class="card-actions">
-                        <span class="difficulty-badge diff-${diff}">${diff}</span>
-                        <button class="like-btn" style="${btnStyle}" onclick="handleLike('${mapObj.id}', this)">
-                            👍 <span>${likes}</span>
-                        </button>
+                    <div class="card-actions" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <div style="display: flex; gap: 5px;">
+                            <span class="difficulty-badge diff-${creatorDiff}">공식: ${creatorDiff}</span>
+                            ${userDiff ? `<span class="difficulty-badge diff-${userDiff}" style="border: 1px dashed #fff;">유저: ${userDiff}</span>` : ''}
+                        </div>
+                        <div class="static-stats" style="width: 100%; justify-content: flex-end;">
+                            <span style="color:#27ae60;">✅ ${okCount}</span>
+                            <span style="color:#e74c3c;">👍 ${godCount}</span>
+                        </div>
                     </div>
                 `;
                 card.insertBefore(miniGrid, card.firstChild);
@@ -840,85 +858,141 @@
             });
         }
 
-        async function handleLike(mapId, btnElement) {
-            if(btnElement.disabled) return;
-            btnElement.disabled = true;
-            
-            let likedMaps = JSON.parse(localStorage.getItem('ray_liked_maps') || '[]');
-            const isLiking = !likedMaps.includes(mapId); 
-
-            try {
-                if(window.toggleLikeInDB) {
-                    await window.toggleLikeInDB(mapId, isLiking);
-                    if (isLiking) likedMaps.push(mapId);
-                    else likedMaps = likedMaps.filter(id => id !== mapId);
-                    localStorage.setItem('ray_liked_maps', JSON.stringify(likedMaps));
-
-                    const span = btnElement.querySelector('span');
-                    let currentLikes = parseInt(span.innerText);
-                    span.innerText = isLiking ? currentLikes + 1 : currentLikes - 1;
-                    
-                    if (isLiking) {
-                        btnElement.style.color = '#c0392b';
-                        btnElement.style.background = '#fadbd8';
-                        showNotification("추천(따봉)을 눌렀습니다!", "#e74c3c");
-                    } else {
-                        btnElement.style.color = '';
-                        btnElement.style.background = '';
-                        showNotification("추천을 취소했습니다.", "#7f8c8d");
-                    }
-                }
-            } catch(e) {
-                alert("추천 처리 실패: " + e.message);
-            } finally {
-                btnElement.disabled = false;
-            }
+        // --- 로컬 평가 상태 저장/불러오기 ---
+        function getMapLocalState(mapId) {
+            const state = JSON.parse(localStorage.getItem('ray_map_states') || '{}');
+            return state[mapId] || { ok: false, god: false, diff: null };
+        }
+        function saveMapLocalState(mapId, stateData) {
+            const state = JSON.parse(localStorage.getItem('ray_map_states') || '{}');
+            state[mapId] = stateData;
+            localStorage.setItem('ray_map_states', JSON.stringify(state));
         }
 
-        // ==========================================
-        // 💡 갤러리 및 제안 관련 로직 추가
-        // ==========================================
+        let currentMapReactions = { ok: 0, god: 0 };
+
         function playMapFromLibrary(mapObj) {
-            if(isLibraryMode) {
-                toggleLibraryScreen(); 
-            }
-            
-            // 핵심 버그 수정: 테스트 모드에서 다른 맵 로드 시 에디터 모드로 강제 초기화 후 적용
+            if(isLibraryMode) toggleLibraryScreen(); 
             if (!isEditorMode) toggleMode(); 
 
             if(mapObj.mapData) applyMapData(mapObj.mapData);
 
             currentLoadedMapId = mapObj.id;
             currentLoadedMapAuthorUid = mapObj.authorUid;
+            currentMapReactions.ok = mapObj.reactionOk || 0;
+            currentMapReactions.god = mapObj.reactionGod || 0;
 
             document.getElementById('loadedMapInfo').style.display = 'flex';
             document.getElementById('infoTitle').innerText = `🗺️ ${mapObj.title}`;
             document.getElementById('infoAuthor').innerText = mapObj.author;
+            
             const diffSpan = document.getElementById('infoDifficulty');
             const diff = mapObj.difficulty || 'Normal';
             diffSpan.innerText = diff;
             diffSpan.className = `difficulty-badge diff-${diff}`;
+
+            // 유저 평가 난이도 뱃지 업데이트
+            const userDiffSpan = document.getElementById('infoUserDifficulty');
+            const userDiff = calculateUserDifficulty(mapObj.diffVotes);
+            if (userDiff) {
+                userDiffSpan.innerText = userDiff;
+                userDiffSpan.className = `difficulty-badge diff-${userDiff}`;
+            } else {
+                userDiffSpan.innerText = "평가 부족";
+                userDiffSpan.className = `difficulty-badge diff-None`;
+            }
+
+            // 반응 영역 UI 동기화
+            updateReactionUI(mapObj.id);
 
             document.getElementById('suggestionBoardContainer').style.display = 'block';
             loadSuggestionsForCurrentMap();
 
             showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
             
-            // 데이터가 완벽하게 세팅된 후 다시 테스트 모드로 전환하여 인벤토리 등 정상 처리
             if (isEditorMode) toggleMode();
         }
 
-        function openSuggestionModal() {
-            if (!window.currentUserUid) {
-                alert("서버 연결 및 로그인 정보를 확인 중입니다. 잠시 후 다시 시도해주세요.");
-                return;
-            }
-            document.getElementById('suggestionModal').style.display = 'flex';
+        // 반응(✅, 👍) 토글 로직
+        async function toggleReaction(type) {
+            if (!currentLoadedMapId) return;
+            const btn = type === 'ok' ? document.getElementById('btnReactOk') : document.getElementById('btnReactGod');
+            if (btn.disabled) return;
+            btn.disabled = true;
+
+            const state = getMapLocalState(currentLoadedMapId);
+            const isAdding = !state[type];
+            const dbType = type === 'ok' ? 'reactionOk' : 'reactionGod';
+
+            try {
+                if (window.updateMapReactionsInDB) {
+                    await window.updateMapReactionsInDB(currentLoadedMapId, dbType, isAdding ? 1 : -1);
+                    state[type] = isAdding;
+                    saveMapLocalState(currentLoadedMapId, state);
+                    
+                    if (isAdding) currentMapReactions[type]++;
+                    else currentMapReactions[type]--;
+                    
+                    updateReactionUI(currentLoadedMapId);
+                    showNotification(isAdding ? "평가를 반영했습니다." : "평가를 취소했습니다.");
+                }
+            } catch(e) { alert("서버 통신 실패: " + e.message); } 
+            finally { btn.disabled = false; }
         }
 
-        function closeSuggestionModal() {
-            document.getElementById('suggestionModal').style.display = 'none';
+        // 난이도 투표 로직
+        async function voteDifficulty(diffLevel) {
+            if (!currentLoadedMapId) return;
+            const state = getMapLocalState(currentLoadedMapId);
+            if (state.diff === diffLevel) return; // 이미 누른 항목
+            
+            const oldVote = state.diff;
+            // 모든 난이도 버튼 잠금 처리
+            document.querySelectorAll('.diff-vote-btn').forEach(b => b.disabled = true);
+
+            try {
+                if (window.updateMapDifficultyVoteInDB) {
+                    await window.updateMapDifficultyVoteInDB(currentLoadedMapId, oldVote, diffLevel);
+                    state.diff = diffLevel;
+                    saveMapLocalState(currentLoadedMapId, state);
+                    updateReactionUI(currentLoadedMapId);
+                    showNotification("체감 난이도 투표가 완료되었습니다!");
+                }
+            } catch(e) { alert("투표 실패: " + e.message); }
+            finally { document.querySelectorAll('.diff-vote-btn').forEach(b => b.disabled = false); }
         }
+
+        function updateReactionUI(mapId) {
+            const state = getMapLocalState(mapId);
+            
+            const btnOk = document.getElementById('btnReactOk');
+            const btnGod = document.getElementById('btnReactGod');
+            document.getElementById('countOk').innerText = currentMapReactions.ok;
+            document.getElementById('countGod').innerText = currentMapReactions.god;
+            
+            btnOk.classList.toggle('active', state.ok);
+            btnOk.classList.toggle('ok', state.ok);
+            btnGod.classList.toggle('active', state.god);
+            btnGod.classList.toggle('god', state.god);
+
+            document.querySelectorAll('.diff-vote-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (state.diff) {
+                const activeBtn = document.querySelector(`.diff-vote-btn.diff-${state.diff}`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+        }
+
+
+        // ==========================================
+        // 제안 게시판(미니 갤러리) 로직
+        // ==========================================
+        function openSuggestionModal() {
+            if (!window.currentUserUid) { alert("로그인 정보를 확인 중입니다. 잠시 후 시도해주세요."); return; }
+            document.getElementById('suggestionModal').style.display = 'flex';
+        }
+        function closeSuggestionModal() { document.getElementById('suggestionModal').style.display = 'none'; }
 
         async function submitSuggestion() {
             const category = document.getElementById('sugCategory').value;
@@ -938,11 +1012,8 @@
             }
 
             const sugData = {
-                category: category,
-                comment: comment,
-                suggesterUid: window.currentUserUid,
-                createdAt: new Date().toISOString(),
-                mapData: mapItems
+                category: category, comment: comment, suggesterUid: window.currentUserUid,
+                createdAt: new Date().toISOString(), mapData: mapItems
             };
 
             const btn = document.getElementById('sugSubmitBtn');
@@ -953,14 +1024,10 @@
                     await window.uploadSuggestionToDB(currentLoadedMapId, sugData);
                     showNotification("새로운 풀이 제안이 등록되었습니다!", "#f39c12");
                     closeSuggestionModal();
-                    loadSuggestionsForCurrentMap(); // 즉시 리프레시
+                    loadSuggestionsForCurrentMap(); 
                 }
-            } catch (error) {
-                alert("제안 등록 실패: " + error.message);
-            } finally {
-                btn.innerText = "제안 등록"; btn.disabled = false;
-                document.getElementById('sugComment').value = "";
-            }
+            } catch (error) { alert("제안 등록 실패: " + error.message); } 
+            finally { btn.innerText = "제안 등록"; btn.disabled = false; document.getElementById('sugComment').value = ""; }
         }
 
         async function loadSuggestionsForCurrentMap() {
@@ -1017,29 +1084,21 @@
                                     try {
                                         await window.deleteSuggestionFromDB(currentLoadedMapId, sug.id);
                                         showNotification("제안이 삭제되었습니다.", "#e74c3c");
-                                        loadSuggestionsForCurrentMap(); // 삭제 후 새로고침
-                                    } catch(e) {
-                                        alert("삭제 권한이 없거나 오류가 발생했습니다.");
-                                    }
+                                        loadSuggestionsForCurrentMap(); 
+                                    } catch(e) { alert("삭제 권한이 없거나 오류가 발생했습니다."); }
                                 }
                             };
                             actions.appendChild(delBtn);
                         }
 
-                        item.appendChild(miniGrid);
-                        item.appendChild(content);
-                        item.appendChild(actions);
-                        listDiv.appendChild(item);
+                        item.appendChild(miniGrid); item.appendChild(content); item.appendChild(actions); listDiv.appendChild(item);
                     });
                 }
-            } catch(e) {
-                listDiv.innerHTML = `<p style="color:red;">게시판을 불러오는 데 실패했습니다.</p>`;
-            }
+            } catch(e) { listDiv.innerHTML = `<p style="color:red;">게시판을 불러오는 데 실패했습니다.</p>`; }
         }
 
-
         // ==========================================
-        // 에디터 핵심 로직 (Undo, Drag & Drop 등)
+        // 에디터 핵심 로직
         // ==========================================
         let undoStack = [];
 
@@ -1073,25 +1132,17 @@
 
         document.addEventListener('keydown', function(e) {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
         });
 
-        let selectedTool = null; 
-        let lastActiveTool = null; 
+        let selectedTool = null; let lastActiveTool = null; 
         let mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
         let editorMapDataBackup = null; 
-        
         let playerInventory = {}; 
         let isEditorMode = true; 
         let isLaserOn = false; 
 
-        let isModRotatableActive = false; 
-        let isModLockActive = false;      
-        let isModInvActive = false;        
-
+        let isModRotatableActive = false; let isModLockActive = false; let isModInvActive = false;        
         let hasPlacedSinceSelection = false;
 
         const canvas = document.getElementById('laserCanvas');
@@ -1099,11 +1150,9 @@
         
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = (CELL_SIZE * GRID_SIZE) * dpr;
-            canvas.height = (CELL_SIZE * GRID_SIZE) * dpr;
+            canvas.width = (CELL_SIZE * GRID_SIZE) * dpr; canvas.height = (CELL_SIZE * GRID_SIZE) * dpr;
             ctx.scale(dpr, dpr);
-            canvas.style.width = `${CELL_SIZE * GRID_SIZE}px`;
-            canvas.style.height = `${CELL_SIZE * GRID_SIZE}px`;
+            canvas.style.width = `${CELL_SIZE * GRID_SIZE}px`; canvas.style.height = `${CELL_SIZE * GRID_SIZE}px`;
         }
         resizeCanvas();
 
@@ -1111,27 +1160,20 @@
             isLaserOn = !isLaserOn;
             const btn = document.getElementById('laserToggleBtn');
             if (isLaserOn) {
-                btn.innerHTML = "🟢 실시간 레이저 끄기 (ON)";
-                btn.style.backgroundColor = "#27ae60"; 
-                simulateLaser();
+                btn.innerHTML = "🟢 실시간 레이저 끄기 (ON)"; btn.style.backgroundColor = "#27ae60"; simulateLaser();
             } else {
-                btn.innerHTML = "🔴 실시간 레이저 켜기 (OFF)";
-                btn.style.backgroundColor = "#e74c3c"; 
-                clearLaser();
+                btn.innerHTML = "🔴 실시간 레이저 켜기 (OFF)"; btn.style.backgroundColor = "#e74c3c"; clearLaser();
             }
         }
 
         function refreshLaser() {
-            if (isLaserOn) simulateLaser();
-            else clearLaser();
+            if (isLaserOn) simulateLaser(); else clearLaser();
         }
 
         function isAdvancedMap() {
             const advancedTypes = [
-                'mirror_45', 'half_mirror_45', 
-                'diag_single_mirror_a', 'v_target_mirror_a', 
-                'diag_single_mirror_b', 'v_target_mirror_b',
-                'v_mirror', 'v_half_mirror', 'v_single_mirror'
+                'mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'v_target_mirror_a', 
+                'diag_single_mirror_b', 'v_target_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror'
             ];
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
@@ -1153,14 +1195,10 @@
         function executeRotation(r, c) {
             let item = mapData[r][c];
             if (!item) return;
-            if (item.type === 'block') return; // 에디터 버그 1 수정: 블록은 절대 회전하지 않음
+            if (item.type === 'block') return; 
             let step = getRotationStep(item.type);
-            
-            if (step === 90 && item.rotation % 90 !== 0) {
-                item.rotation = (Math.floor(item.rotation / 90) * 90 + 90) % 360;
-            } else {
-                item.rotation = (item.rotation + step) % 360;
-            }
+            if (step === 90 && item.rotation % 90 !== 0) item.rotation = (Math.floor(item.rotation / 90) * 90 + 90) % 360;
+            else item.rotation = (item.rotation + step) % 360;
         }
 
         function deselectAllTools() {
@@ -1172,10 +1210,8 @@
             if (!toolData) return;
             deselectAllTools();
             selectedTool = toolData;
-            
             const paletteItem = document.querySelector(`.tool-item[data-tool="${toolData.type}"]`);
             if (paletteItem) paletteItem.classList.add('selected');
-            
             if (toolData.invKey) {
                 const invItem = Array.from(document.querySelectorAll('#inventoryGrid .tool-item')).find(item => item.innerHTML.includes(SVG_ART[toolData.type]));
                 if (invItem) invItem.classList.add('selected');
@@ -1184,9 +1220,8 @@
 
         function refundToInventory(data) {
             if(!data) return;
-            // 에디터 버그 1 수정: 특성 없는(회전 가능한) 기물은 인벤토리에서 회전값 무시하고 하나로 합치기
             let rot = data.canRotate ? 0 : (data.rotation || 0);
-            if (data.type === 'block') rot = 0; // 블록은 무조건 0
+            if (data.type === 'block') rot = 0; 
 
             let key = `${data.type}_${data.canRotate}_${rot}`;
             if (!playerInventory[key]) {
@@ -1202,10 +1237,7 @@
             undoStack = []; 
 
             if (isEditorMode) {
-                btn.innerHTML = "🛠️ 현재: 에디터 모드";
-                btn.classList.remove('test-mode');
-                body.classList.remove('is-test-mode');
-                
+                btn.innerHTML = "🛠️ 현재: 에디터 모드"; btn.classList.remove('test-mode'); body.classList.remove('is-test-mode');
                 document.getElementById('editorPaletteGroup').style.display = 'block';
                 document.getElementById('testModeInventory').style.display = 'none';
                 
@@ -1220,10 +1252,7 @@
                     mapData = JSON.parse(JSON.stringify(editorMapDataBackup)); 
                 }
             } else {
-                btn.innerHTML = "🎮 현재: 테스트 모드";
-                btn.classList.add('test-mode');
-                body.classList.add('is-test-mode');
-                
+                btn.innerHTML = "🎮 현재: 테스트 모드"; btn.classList.add('test-mode'); body.classList.add('is-test-mode');
                 document.getElementById('editorPaletteGroup').style.display = 'none';
                 document.getElementById('testModeInventory').style.display = 'block';
                 
@@ -1233,10 +1262,7 @@
                 for (let r = 0; r < GRID_SIZE; r++) {
                     for (let c = 0; c < GRID_SIZE; c++) {
                         let cellData = mapData[r][c];
-                        if (cellData && cellData.isInventory) {
-                            refundToInventory(cellData);
-                            mapData[r][c] = null; 
-                        }
+                        if (cellData && cellData.isInventory) { refundToInventory(cellData); mapData[r][c] = null; }
                     }
                 }
                 renderInventoryUI(); 
@@ -1280,8 +1306,7 @@
                         if (e.button !== 0) return;
                         let wasSelected = this.classList.contains('selected');
                         if (!wasSelected) {
-                            deselectAllTools();
-                            this.classList.add('selected');
+                            deselectAllTools(); this.classList.add('selected');
                             selectedTool = { type: data.type, isInvTool: true, invKey: key, canRotate: data.canRotate, rotation: data.rotation };
                         }
                         dragSource = { origin: 'inventory', type: data.type, invKey: key, canRotate: data.canRotate, rotation: data.rotation, wasSelected: wasSelected };
@@ -1313,16 +1338,12 @@
                 if (!wasSelected) {
                     deselectAllTools();
                     document.querySelectorAll('.mod-tool').forEach(mod => mod.classList.remove('selected'));
-                    isModRotatableActive = false;
-                    isModLockActive = false;
-                    isModInvActive = false;
+                    isModRotatableActive = false; isModLockActive = false; isModInvActive = false;
                     this.classList.add('selected');
                     selectedTool = { type: this.dataset.tool };
                     hasPlacedSinceSelection = false; 
                 }
-                if (isEditorMode) {
-                    dragSource = { origin: 'palette', type: selectedTool.type, wasSelected: wasSelected };
-                }
+                if (isEditorMode) dragSource = { origin: 'palette', type: selectedTool.type, wasSelected: wasSelected };
             });
         });
 
@@ -1341,8 +1362,7 @@
                     if (modType === 'inv') isModInvActive = isSelected;
                     if (modType === 'lock') isModLockActive = isSelected;
                     if (isSelected) {
-                        isModRotatableActive = false;
-                        document.querySelector('[data-mod="rotatable"]').classList.remove('selected');
+                        isModRotatableActive = false; document.querySelector('[data-mod="rotatable"]').classList.remove('selected');
                     }
                 }
                 this.classList.toggle('selected', isSelected);
@@ -1384,9 +1404,8 @@
                         if (cellData) { type = cellData.type; rot = cellData.rotation || 0; }
                     } else if (dragSource.origin === 'inventory') {
                         type = dragSource.type; rot = dragSource.rotation || 0; 
-                    } else {
-                        type = dragSource.type; rot = 0;
-                    }
+                    } else { type = dragSource.type; rot = 0; }
+                    
                     if (type && SVG_ART[type]) {
                         dragGhost.innerHTML = `<div style="transform: rotate(${rot}deg); width: 100%; height: 100%;">${SVG_ART[type]}</div>`;
                         document.body.appendChild(dragGhost);
@@ -1401,12 +1420,8 @@
 
         document.addEventListener('mouseup', (e) => {
             if (e.button !== 0) return; 
-            
             let stateBeforeStr = JSON.stringify({m: mapData, i: playerInventory});
-            let stateBeforeObj = {
-                map: JSON.parse(JSON.stringify(mapData)),
-                inv: JSON.parse(JSON.stringify(playerInventory))
-            };
+            let stateBeforeObj = { map: JSON.parse(JSON.stringify(mapData)), inv: JSON.parse(JSON.stringify(playerInventory)) };
             
             if (dragSource) {
                 let dropTarget = document.elementFromPoint(e.clientX, e.clientY);
@@ -1423,15 +1438,12 @@
                                 if (lastActiveTool) {
                                     if (lastActiveTool.type === mapData[r][c].type) {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {
-                                        } else {
-                                            executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); 
-                                        }
+                                        } else { executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); }
                                     } 
                                     else { 
                                         if (isEditorMode) {
                                             mapData[r][c] = { 
-                                                type: lastActiveTool.type, rotation: 0, 
-                                                isInventory: isModInvActive, canMove: isModInvActive, 
+                                                type: lastActiveTool.type, rotation: 0, isInventory: isModInvActive, canMove: isModInvActive, 
                                                 canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                                             };
                                             updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
@@ -1466,9 +1478,7 @@
                                         updateCellVisual(dropCell, data);
                                     } else {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {}
-                                        else {
-                                            executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
-                                        }
+                                        else { executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); }
                                     }
                                 }
                             }
@@ -1487,8 +1497,7 @@
                         }
                     } else if (dragSource.origin === 'palette' && isEditorMode) {
                         mapData[r][c] = { 
-                            type: dragSource.type, rotation: 0, 
-                            isInventory: isModInvActive, canMove: isModInvActive, 
+                            type: dragSource.type, rotation: 0, isInventory: isModInvActive, canMove: isModInvActive, 
                             canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                         };
                         updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); hasPlacedSinceSelection = true; 
@@ -1564,7 +1573,6 @@
                     
                     if (mapData[r][c]) {
                         if (!isEditorMode && !mapData[r][c].canMove && !mapData[r][c].canRotate) return; 
-                        
                         if (selectedTool) { lastActiveTool = JSON.parse(JSON.stringify(selectedTool)); deselectAllTools(); }
                         dragSource = { origin: 'grid', r: r, c: c };
                     } 
@@ -1603,9 +1611,7 @@
             } else if (data.canRotate) {
                 badges += '<span class="badge-rot" title="회전 가능 기물">🔄</span>';
             }
-            // 누락되었던 이미지 불러오기 복구
             let svgHtml = SVG_ART[data.type] || ''; 
-            // 에디터 버그 1 수정: 블록일 경우 회전값을 무조건 0으로 시각화
             let rot = (data.type === 'block') ? 0 : (data.rotation || 0);
             cell.innerHTML = `
                 <div class="item" style="transform: rotate(${rot}deg);">${svgHtml}</div>
@@ -1756,10 +1762,8 @@
                 if (!item) { 
                     drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir}); 
                 }
-                // 에디터 버그 2 수정: X 블록은 레이저를 막지 않음
                 else if (item.type === 'block') { 
-                    drawLine(cx, cy, nextX, nextY, false); 
-                    beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir}); 
                 }
                 else if (item.type === 'ray' || item.type === 'target') { drawLine(cx, cy, nextX, nextY, false); }
                 else if(item.type === 'mirror_45') { 
