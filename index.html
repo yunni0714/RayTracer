@@ -1505,7 +1505,13 @@
                         if (dragSource.r === r && dragSource.c === c) {
                             if (dragSource.justPlaced) {
                             } else if (mapData[r][c]) {
-                                if (lastActiveTool) {
+                                // 🛠️ 버그 수정: 테스트 모드에서 고정 기물 클릭 시, 손에 든 도구와 무관하게 무조건 회전 우선 처리
+                                if (!isEditorMode && !mapData[r][c].canMove) {
+                                    if (mapData[r][c].canRotate) {
+                                        executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); 
+                                    }
+                                }
+                                else if (lastActiveTool) {
                                     if (lastActiveTool.type === mapData[r][c].type) {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {
                                         } else { executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); }
