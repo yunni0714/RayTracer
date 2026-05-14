@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Ray Level Editor</title>
     <style>
         body { 
@@ -45,7 +46,6 @@
         .screen { display: none; }
         .screen.active { display: flex; }
         
-        /* 맵 정보 패널 (확장됨) */
         .loaded-map-info {
             background-color: #fff;
             padding: 15px 25px;
@@ -54,13 +54,13 @@
             margin-bottom: 20px;
             border-left: 6px solid #27ae60;
             display: flex;
-            flex-direction: column; /* 세로 배치로 변경 */
+            flex-direction: column;
             width: 100%;
             box-sizing: border-box;
         }
         .info-top-row { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
         .loaded-map-info .info-text h3 { margin: 0 0 8px 0; color: #2c3e50; font-size: 20px; }
-        .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 14px; font-weight: bold; }
+        .loaded-map-info .info-text p { margin: 0; color: #7f8c8d; font-size: 15px; font-weight: bold; }
         
         .difficulty-badge { 
             padding: 4px 10px; border-radius: 6px; color: white; 
@@ -74,7 +74,6 @@
         .diff-Insane { background-color: #e74c3c; }
         .diff-None { background-color: #bdc3c7; color: #333; }
 
-        /* 반응 및 투표 영역 */
         .map-reaction-area {
             margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ddd;
             display: flex; justify-content: space-between; align-items: center; width: 100%;
@@ -101,7 +100,6 @@
         .diff-vote-btn.active.diff-Hard { border-color: #e67e22; background: #e67e22; color: white; }
         .diff-vote-btn.active.diff-Insane { border-color: #e74c3c; background: #e74c3c; color: white; }
 
-        /* 제안 갤러리 패널 */
         .suggestion-board-container {
             background-color: #fff;
             padding: 15px 25px;
@@ -113,6 +111,7 @@
             box-sizing: border-box;
             display: none;
         }
+        
         .suggestion-header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;
@@ -129,7 +128,6 @@
             border-radius: 8px; align-items: center; background: #fafafa;
         }
 
-        /* 라이브러리 화면 전용 스타일 */
         #libraryScreen { flex-direction: column; width: 100%; }
         .library-controls {
             display: flex; justify-content: space-between; margin-bottom: 20px;
@@ -140,6 +138,7 @@
         .library-grid-layout {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;
         }
+        
         .map-card {
             background: white; border-radius: 12px; padding: 20px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;
@@ -295,7 +294,6 @@
     </style>
 </head>
 <body>
-
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <div class="header-actions">
@@ -323,7 +321,7 @@
     <!-- 2. 에디터 스크린 -->
     <div id="editorScreen" class="screen active" style="flex-direction: column; width: 100%;">
         
-        <!-- 맵 정보 패널 (라이브러리에서 로드 시 표시) -->
+        <!-- 맵 정보 패널 -->
         <div id="loadedMapInfo" class="loaded-map-info" style="display: none;">
             <div class="info-top-row">
                 <div class="info-text">
@@ -331,7 +329,6 @@
                     <p>제작자: <span id="infoAuthor"></span> | 공식 난이도: <span id="infoDifficulty" class="difficulty-badge diff-Normal">Normal</span> | 유저 체감: <span id="infoUserDifficulty" class="difficulty-badge diff-None">평가 부족</span></p>
                 </div>
             </div>
-            <!-- 평가 영역 (테스트 시에만 조작 가능) -->
             <div id="mapReactionArea" class="map-reaction-area">
                 <div class="reaction-group">
                     <button id="btnReactOk" class="reaction-btn" onclick="toggleReaction('ok')">✅ 문제없음 <span id="countOk">0</span></button>
@@ -347,11 +344,15 @@
             </div>
         </div>
 
-        <!-- 다른 풀이 제안 & 맵 수정 영역 (미니 갤러리) -->
+        <!-- 다른 풀이 제안 & 맵 삭제 영역 -->
         <div id="suggestionBoardContainer" class="suggestion-board-container">
             <div class="suggestion-header">
                 <h3 id="suggestionHeaderTitle">💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
-                <button id="sugHeaderBtn" class="sug-btn" onclick="handleSugHeaderBtnAction()">내 풀이 제안하기</button>
+                <!-- 삭제 버튼 추가 -->
+                <div style="display: flex; gap: 10px;">
+                    <button id="sugHeaderBtn" class="sug-btn" onclick="handleSugHeaderBtnAction()">내 풀이 제안하기</button>
+                    <button id="deleteMapBtn" class="sug-btn" style="background-color: #e74c3c; display: none;" onclick="deleteCurrentMap()">🗑️ 맵 삭제</button>
+                </div>
             </div>
             <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;">
                 <!-- 제안 목록이 렌더링 됩니다 -->
@@ -504,7 +505,10 @@
 
         function getFallbackUid() {
             let uid = localStorage.getItem('ray_fallback_uid');
-            if (!uid) { uid = 'anon_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('ray_fallback_uid', uid); }
+            if (!uid) { 
+                uid = 'anon_' + Math.random().toString(36).substr(2, 9); 
+                localStorage.setItem('ray_fallback_uid', uid); 
+            }
             return uid;
         }
 
@@ -569,6 +573,12 @@
             await updateDoc(docRef, data);
         };
 
+        // 맵 전체 삭제 통신 로직 추가
+        window.deleteMapFromDB = async function(id) {
+            const docRef = doc(db, "maps", id);
+            await deleteDoc(docRef);
+        };
+
         window.uploadSuggestionToDB = async function(mapId, data) {
             const sugRef = collection(db, "maps", mapId, "suggestions");
             await addDoc(sugRef, data);
@@ -620,7 +630,7 @@
             v_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
             v_half_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="8" stroke-dasharray="15 10" stroke-linecap="square"/></svg>`,
             v_single_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
-            v_target_mirror_a: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+            v_target_mirror_a: `<svg viewBox="0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
             v_target_mirror_b: `<svg viewBox="0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`
         };
 
@@ -644,9 +654,14 @@
                         try {
                             showNotification("서버에서 맵을 불러오는 중...", "#f39c12");
                             const mapDoc = await window.fetchFromDB(mapId);
-                            if (mapDoc) playMapFromLibrary(mapDoc);
-                            else alert("존재하지 않거나 삭제된 맵입니다.");
-                        } catch(e) { alert("맵 불러오기 실패: " + e.message); }
+                            if (mapDoc) {
+                                playMapFromLibrary(mapDoc);
+                            } else {
+                                alert("존재하지 않거나 삭제된 맵입니다.");
+                            }
+                        } catch(e) {
+                            alert("맵 불러오기 실패: " + e.message);
+                        }
                     }
                 }, 500);
             }
@@ -742,7 +757,9 @@
                         
                         document.getElementById('output').value = "🚀 맵 공유 링크가 생성되었습니다!\n아래 주소를 복사해서 친구들에게 공유하세요.\n\n" + shareUrl;
                         showNotification("서버 업로드 완료! 텍스트 상자의 링크를 확인하세요.", "#8e44ad");
-                    } else { alert("데이터베이스 연결을 준비 중입니다."); }
+                    } else {
+                        alert("데이터베이스 연결을 준비 중입니다. 잠시 후 다시 시도해주세요.");
+                    }
                 }
             } catch (error) { 
                 alert("처리 중 오류가 발생했습니다: " + error.message); 
@@ -752,6 +769,27 @@
                 if (!isEditingMap) {
                     document.getElementById('mapTitle').value = ""; 
                     document.getElementById('mapAuthor').value = "";
+                }
+            }
+        }
+
+        async function deleteCurrentMap() {
+            if (!currentLoadedMapId) return;
+            if (confirm("정말로 이 맵을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 제안과 평가도 함께 삭제됩니다.")) {
+                const btn = document.getElementById('deleteMapBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "삭제 중...";
+                btn.disabled = true;
+                try {
+                    if (window.deleteMapFromDB) {
+                        await window.deleteMapFromDB(currentLoadedMapId);
+                        showNotification("맵이 성공적으로 삭제되었습니다.", "#e74c3c");
+                        createNewMap(); 
+                    }
+                } catch (error) {
+                    alert("맵 삭제 권한이 없거나 오류가 발생했습니다: " + error.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
                 }
             }
         }
@@ -791,14 +829,20 @@
             const newMapBtn = document.getElementById('newMapBtn'); 
 
             if (isLibraryMode) {
-                btn.innerHTML = "🔙 돌아가기"; btn.classList.add('active');
-                editorScreen.classList.remove('active'); libScreen.classList.add('active');
-                modeBtn.style.display = 'none'; newMapBtn.style.display = 'inline-block'; 
+                btn.innerHTML = "🔙 돌아가기";
+                btn.classList.add('active');
+                editorScreen.classList.remove('active');
+                libScreen.classList.add('active');
+                modeBtn.style.display = 'none'; 
+                newMapBtn.style.display = 'inline-block'; 
                 loadLibraryMaps(); 
             } else {
-                btn.innerHTML = "📚 맵 라이브러리 열기"; btn.classList.remove('active');
-                libScreen.classList.remove('active'); editorScreen.classList.add('active');
-                modeBtn.style.display = 'inline-block'; newMapBtn.style.display = 'none'; 
+                btn.innerHTML = "📚 맵 라이브러리 열기";
+                btn.classList.remove('active');
+                libScreen.classList.remove('active');
+                editorScreen.classList.add('active');
+                modeBtn.style.display = 'inline-block'; 
+                newMapBtn.style.display = 'none'; 
             }
         }
 
@@ -811,18 +855,20 @@
                     allLibraryMaps = await window.fetchLibraryList(sortBy);
                     renderLibraryCards(allLibraryMaps);
                 }
-            } catch(e) { grid.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다: ${e.message}</p>`; }
+            } catch(e) {
+                grid.innerHTML = `<p style="color:red; text-align:center;">오류가 발생했습니다: ${e.message}</p>`;
+            }
         }
 
         function applyFilters() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const filtered = allLibraryMaps.filter(map => 
-                (map.title && map.title.toLowerCase().includes(q)) || (map.author && map.author.toLowerCase().includes(q))
+                (map.title && map.title.toLowerCase().includes(q)) || 
+                (map.author && map.author.toLowerCase().includes(q))
             );
             renderLibraryCards(filtered);
         }
 
-        // 스포일러 방지 스위치 추가: hideInventory
         function createMiniGridDOM(mapDataArray, hideInventory = false) {
             const miniGrid = document.createElement('div');
             miniGrid.className = 'mini-grid';
@@ -977,8 +1023,11 @@
                     updateReactionUI(currentLoadedMapId);
                     showNotification(isAdding ? "평가를 반영했습니다." : "평가를 취소했습니다.");
                 }
-            } catch(e) { alert("서버 통신 실패: " + e.message); } 
-            finally { btn.disabled = false; }
+            } catch(e) {
+                alert("서버 통신 실패: " + e.message);
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         async function voteDifficulty(diffLevel) {
@@ -997,8 +1046,11 @@
                     updateReactionUI(currentLoadedMapId);
                     showNotification("체감 난이도 투표가 완료되었습니다!");
                 }
-            } catch(e) { alert("투표 실패: " + e.message); }
-            finally { document.querySelectorAll('.diff-vote-btn').forEach(b => b.disabled = false); }
+            } catch(e) {
+                alert("투표 실패: " + e.message);
+            } finally {
+                document.querySelectorAll('.diff-vote-btn').forEach(b => b.disabled = false);
+            }
         }
 
         function updateReactionUI(mapId) {
@@ -1025,16 +1077,19 @@
 
         function updateSugHeaderBtnUI() {
             const btn = document.getElementById('sugHeaderBtn');
+            const delBtn = document.getElementById('deleteMapBtn');
             const headerTitle = document.getElementById('suggestionHeaderTitle');
             if (!btn || !headerTitle) return;
             
             if (currentLoadedMapAuthorUid && window.currentUserUid === currentLoadedMapAuthorUid) {
                 btn.innerHTML = "✏️ 맵 수정하기";
                 btn.style.backgroundColor = "#27ae60"; 
+                if (delBtn) delBtn.style.display = 'inline-block';
                 headerTitle.innerHTML = `💡 제안 관리 및 맵 수정 (<span id="sugCount">0</span>건)`;
             } else {
                 btn.innerHTML = "내 풀이 제안하기";
                 btn.style.backgroundColor = "#f39c12"; 
+                if (delBtn) delBtn.style.display = 'none';
                 headerTitle.innerHTML = `💡 다른 풀이 제안 (<span id="sugCount">0</span>건)`;
             }
         }
@@ -1094,8 +1149,12 @@
                     closeSuggestionModal();
                     loadSuggestionsForCurrentMap(); 
                 }
-            } catch (error) { alert("제안 등록 실패: " + error.message); } 
-            finally { btn.innerText = "제안 등록"; btn.disabled = false; document.getElementById('sugComment').value = ""; }
+            } catch (error) {
+                alert("제안 등록 실패: " + error.message);
+            } finally {
+                btn.innerText = "제안 등록"; btn.disabled = false;
+                document.getElementById('sugComment').value = "";
+            }
         }
 
         async function loadSuggestionsForCurrentMap() {
@@ -1155,21 +1214,25 @@
                                         await window.deleteSuggestionFromDB(currentLoadedMapId, sug.id);
                                         showNotification("제안이 삭제되었습니다.", "#e74c3c");
                                         loadSuggestionsForCurrentMap(); 
-                                    } catch(e) { alert("삭제 권한이 없거나 오류가 발생했습니다."); }
+                                    } catch(e) {
+                                        alert("삭제 권한이 없거나 오류가 발생했습니다.");
+                                    }
                                 }
                             };
                             actions.appendChild(delBtn);
                         }
 
-                        item.appendChild(miniGrid); item.appendChild(content); item.appendChild(actions); listDiv.appendChild(item);
+                        item.appendChild(miniGrid);
+                        item.appendChild(content);
+                        item.appendChild(actions);
+                        listDiv.appendChild(item);
                     });
                 }
-            } catch(e) { listDiv.innerHTML = `<p style="color:red;">게시판을 불러오는 데 실패했습니다.</p>`; }
+            } catch(e) {
+                listDiv.innerHTML = `<p style="color:red;">게시판을 불러오는 데 실패했습니다.</p>`;
+            }
         }
 
-        // ==========================================
-        // 에디터 핵심 로직
-        // ==========================================
         let undoStack = [];
 
         function saveStateDirectly() {
@@ -1202,17 +1265,23 @@
 
         document.addEventListener('keydown', function(e) {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
         });
 
-        let selectedTool = null; let lastActiveTool = null; 
+        let selectedTool = null; 
+        let lastActiveTool = null; 
         let mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
         let editorMapDataBackup = null; 
         let playerInventory = {}; 
         let isEditorMode = true; 
         let isLaserOn = false; 
 
-        let isModRotatableActive = false; let isModLockActive = false; let isModInvActive = false;        
+        let isModRotatableActive = false; 
+        let isModLockActive = false; 
+        let isModInvActive = false;        
         let hasPlacedSinceSelection = false;
 
         const canvas = document.getElementById('laserCanvas');
@@ -1220,9 +1289,11 @@
         
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = (CELL_SIZE * GRID_SIZE) * dpr; canvas.height = (CELL_SIZE * GRID_SIZE) * dpr;
+            canvas.width = (CELL_SIZE * GRID_SIZE) * dpr;
+            canvas.height = (CELL_SIZE * GRID_SIZE) * dpr;
             ctx.scale(dpr, dpr);
-            canvas.style.width = `${CELL_SIZE * GRID_SIZE}px`; canvas.style.height = `${CELL_SIZE * GRID_SIZE}px`;
+            canvas.style.width = `${CELL_SIZE * GRID_SIZE}px`;
+            canvas.style.height = `${CELL_SIZE * GRID_SIZE}px`;
         }
         resizeCanvas();
 
@@ -1230,14 +1301,19 @@
             isLaserOn = !isLaserOn;
             const btn = document.getElementById('laserToggleBtn');
             if (isLaserOn) {
-                btn.innerHTML = "🟢 실시간 레이저 끄기 (ON)"; btn.style.backgroundColor = "#27ae60"; simulateLaser();
+                btn.innerHTML = "🟢 실시간 레이저 끄기 (ON)";
+                btn.style.backgroundColor = "#27ae60"; 
+                simulateLaser();
             } else {
-                btn.innerHTML = "🔴 실시간 레이저 켜기 (OFF)"; btn.style.backgroundColor = "#e74c3c"; clearLaser();
+                btn.innerHTML = "🔴 실시간 레이저 켜기 (OFF)";
+                btn.style.backgroundColor = "#e74c3c"; 
+                clearLaser();
             }
         }
 
         function refreshLaser() {
-            if (isLaserOn) simulateLaser(); else clearLaser();
+            if (isLaserOn) simulateLaser();
+            else clearLaser();
         }
 
         function isAdvancedMap() {
@@ -1267,8 +1343,12 @@
             if (!item) return;
             if (item.type === 'block') return; 
             let step = getRotationStep(item.type);
-            if (step === 90 && item.rotation % 90 !== 0) item.rotation = (Math.floor(item.rotation / 90) * 90 + 90) % 360;
-            else item.rotation = (item.rotation + step) % 360;
+            
+            if (step === 90 && item.rotation % 90 !== 0) {
+                item.rotation = (Math.floor(item.rotation / 90) * 90 + 90) % 360;
+            } else {
+                item.rotation = (item.rotation + step) % 360;
+            }
         }
 
         function deselectAllTools() {
@@ -1307,7 +1387,10 @@
             undoStack = []; 
 
             if (isEditorMode) {
-                btn.innerHTML = "🛠️ 현재: 에디터 모드"; btn.classList.remove('test-mode'); body.classList.remove('is-test-mode');
+                btn.innerHTML = "🛠️ 현재: 에디터 모드";
+                btn.classList.remove('test-mode');
+                body.classList.remove('is-test-mode');
+                
                 document.getElementById('editorPaletteGroup').style.display = 'block';
                 document.getElementById('testModeInventory').style.display = 'none';
                 
@@ -1322,7 +1405,10 @@
                     mapData = JSON.parse(JSON.stringify(editorMapDataBackup)); 
                 }
             } else {
-                btn.innerHTML = "🎮 현재: 테스트 모드"; btn.classList.add('test-mode'); body.classList.add('is-test-mode');
+                btn.innerHTML = "🎮 현재: 테스트 모드";
+                btn.classList.add('test-mode');
+                body.classList.add('is-test-mode');
+                
                 document.getElementById('editorPaletteGroup').style.display = 'none';
                 document.getElementById('testModeInventory').style.display = 'block';
                 
@@ -1332,7 +1418,10 @@
                 for (let r = 0; r < GRID_SIZE; r++) {
                     for (let c = 0; c < GRID_SIZE; c++) {
                         let cellData = mapData[r][c];
-                        if (cellData && cellData.isInventory) { refundToInventory(cellData); mapData[r][c] = null; }
+                        if (cellData && cellData.isInventory) {
+                            refundToInventory(cellData);
+                            mapData[r][c] = null; 
+                        }
                     }
                 }
                 renderInventoryUI(); 
@@ -1376,7 +1465,8 @@
                         if (e.button !== 0) return;
                         let wasSelected = this.classList.contains('selected');
                         if (!wasSelected) {
-                            deselectAllTools(); this.classList.add('selected');
+                            deselectAllTools();
+                            this.classList.add('selected');
                             selectedTool = { type: data.type, isInvTool: true, invKey: key, canRotate: data.canRotate, rotation: data.rotation };
                         }
                         dragSource = { origin: 'inventory', type: data.type, invKey: key, canRotate: data.canRotate, rotation: data.rotation, wasSelected: wasSelected };
@@ -1408,12 +1498,16 @@
                 if (!wasSelected) {
                     deselectAllTools();
                     document.querySelectorAll('.mod-tool').forEach(mod => mod.classList.remove('selected'));
-                    isModRotatableActive = false; isModLockActive = false; isModInvActive = false;
+                    isModRotatableActive = false;
+                    isModLockActive = false;
+                    isModInvActive = false;
                     this.classList.add('selected');
                     selectedTool = { type: this.dataset.tool };
                     hasPlacedSinceSelection = false; 
                 }
-                if (isEditorMode) dragSource = { origin: 'palette', type: selectedTool.type, wasSelected: wasSelected };
+                if (isEditorMode) {
+                    dragSource = { origin: 'palette', type: selectedTool.type, wasSelected: wasSelected };
+                }
             });
         });
 
@@ -1424,7 +1518,8 @@
                 if (modType === 'rotatable') {
                     isModRotatableActive = isSelected;
                     if (isSelected) {
-                        isModInvActive = false; isModLockActive = false;
+                        isModInvActive = false;
+                        isModLockActive = false;
                         document.querySelector('[data-mod="inv"]').classList.remove('selected');
                         document.querySelector('[data-mod="lock"]').classList.remove('selected');
                     }
@@ -1432,15 +1527,19 @@
                     if (modType === 'inv') isModInvActive = isSelected;
                     if (modType === 'lock') isModLockActive = isSelected;
                     if (isSelected) {
-                        isModRotatableActive = false; document.querySelector('[data-mod="rotatable"]').classList.remove('selected');
+                        isModRotatableActive = false;
+                        document.querySelector('[data-mod="rotatable"]').classList.remove('selected');
                     }
                 }
                 this.classList.toggle('selected', isSelected);
-                if (selectedTool !== null && hasPlacedSinceSelection) deselectAllTools();
+                if (selectedTool !== null && hasPlacedSinceSelection) {
+                    deselectAllTools();
+                }
             });
         });
 
-        let dragSource = null; let dragGhost = null;
+        let dragSource = null; 
+        let dragGhost = null;
 
         document.addEventListener('contextmenu', (e) => {
             if (dragSource) {
@@ -1471,11 +1570,17 @@
                     let type, rot;
                     if (dragSource.origin === 'grid') {
                         let cellData = mapData[dragSource.r][dragSource.c];
-                        if (cellData) { type = cellData.type; rot = cellData.rotation || 0; }
+                        if (cellData) {
+                            type = cellData.type;
+                            rot = cellData.rotation || 0;
+                        }
                     } else if (dragSource.origin === 'inventory') {
-                        type = dragSource.type; rot = dragSource.rotation || 0; 
-                    } else { type = dragSource.type; rot = 0; }
-                    
+                        type = dragSource.type;
+                        rot = dragSource.rotation || 0; 
+                    } else {
+                        type = dragSource.type;
+                        rot = 0;
+                    }
                     if (type && SVG_ART[type]) {
                         dragGhost.innerHTML = `<div style="transform: rotate(${rot}deg); width: 100%; height: 100%;">${SVG_ART[type]}</div>`;
                         document.body.appendChild(dragGhost);
@@ -1490,8 +1595,12 @@
 
         document.addEventListener('mouseup', (e) => {
             if (e.button !== 0) return; 
+            
             let stateBeforeStr = JSON.stringify({m: mapData, i: playerInventory});
-            let stateBeforeObj = { map: JSON.parse(JSON.stringify(mapData)), inv: JSON.parse(JSON.stringify(playerInventory)) };
+            let stateBeforeObj = {
+                map: JSON.parse(JSON.stringify(mapData)),
+                inv: JSON.parse(JSON.stringify(playerInventory))
+            };
             
             if (dragSource) {
                 let dropTarget = document.elementFromPoint(e.clientX, e.clientY);
@@ -1499,30 +1608,32 @@
                 let isToolItem = dropTarget ? dropTarget.closest('.tool-item') : null;
                 
                 if (dropCell) {
-                    let r = parseInt(dropCell.dataset.row); let c = parseInt(dropCell.dataset.col);
+                    let r = parseInt(dropCell.dataset.row);
+                    let c = parseInt(dropCell.dataset.col);
                     
                     if (dragSource.origin === 'grid') {
                         if (dragSource.r === r && dragSource.c === c) {
                             if (dragSource.justPlaced) {
                             } else if (mapData[r][c]) {
-                                // 🛠️ 버그 수정: 테스트 모드에서 고정 기물 클릭 시, 손에 든 도구와 무관하게 무조건 회전 우선 처리
-                                if (!isEditorMode && !mapData[r][c].canMove) {
-                                    if (mapData[r][c].canRotate) {
-                                        executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); 
-                                    }
-                                }
-                                else if (lastActiveTool) {
+                                if (lastActiveTool) {
                                     if (lastActiveTool.type === mapData[r][c].type) {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {
-                                        } else { executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); }
+                                        } else {
+                                            executeRotation(r, c);
+                                            updateCellVisual(dropCell, mapData[r][c]);
+                                            refreshLaser(); 
+                                        }
                                     } 
                                     else { 
                                         if (isEditorMode) {
                                             mapData[r][c] = { 
-                                                type: lastActiveTool.type, rotation: 0, isInventory: isModInvActive, canMove: isModInvActive, 
+                                                type: lastActiveTool.type, rotation: 0, 
+                                                isInventory: isModInvActive,
+                                                canMove: isModInvActive, 
                                                 canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                                             };
-                                            updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
+                                            updateCellVisual(dropCell, mapData[r][c]);
+                                            refreshLaser();
                                         } else {
                                             if (!mapData[r][c].isInventory) {
                                             } else if (lastActiveTool.isInvTool && playerInventory[lastActiveTool.invKey] && playerInventory[lastActiveTool.invKey].count > 0) {
@@ -1532,14 +1643,17 @@
                                                     canMove: true, canRotate: lastActiveTool.canRotate, isInventory: true 
                                                 };
                                                 playerInventory[lastActiveTool.invKey].count--;
-                                                renderInventoryUI(); updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
+                                                renderInventoryUI();
+                                                updateCellVisual(dropCell, mapData[r][c]);
+                                                refreshLaser();
                                             }
                                         }
                                     }
                                 } 
                                 else { 
                                     if (isEditorMode && (isModRotatableActive || isModLockActive || isModInvActive)) {
-                                        let data = mapData[r][c]; let toggledOff = false;
+                                        let data = mapData[r][c];
+                                        let toggledOff = false;
                                         if (isModInvActive && !isModLockActive) { 
                                             if (data.isInventory && data.canRotate) toggledOff = true;
                                             else { data.isInventory = true; data.canMove = true; data.canRotate = true; }
@@ -1554,7 +1668,11 @@
                                         updateCellVisual(dropCell, data);
                                     } else {
                                         if (!isEditorMode && !mapData[r][c].canRotate) {}
-                                        else { executeRotation(r, c); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); }
+                                        else {
+                                            executeRotation(r, c);
+                                            updateCellVisual(dropCell, mapData[r][c]);
+                                            refreshLaser();
+                                        }
                                     }
                                 }
                             }
@@ -1568,15 +1686,19 @@
                                 mapData[dragSource.r][dragSource.c] = temp;
                                 const sourceCell = document.querySelector(`.grid-cell[data-row='${dragSource.r}'][data-col='${dragSource.c}']`);
                                 updateCellVisual(sourceCell, mapData[dragSource.r][dragSource.c]);
-                                updateCellVisual(dropCell, mapData[r][c]); refreshLaser();
+                                updateCellVisual(dropCell, mapData[r][c]);
+                                refreshLaser();
                             }
                         }
                     } else if (dragSource.origin === 'palette' && isEditorMode) {
                         mapData[r][c] = { 
-                            type: dragSource.type, rotation: 0, isInventory: isModInvActive, canMove: isModInvActive, 
+                            type: dragSource.type, rotation: 0, 
+                            isInventory: isModInvActive, canMove: isModInvActive, 
                             canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                         };
-                        updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); hasPlacedSinceSelection = true; 
+                        updateCellVisual(dropCell, mapData[r][c]);
+                        refreshLaser();
+                        hasPlacedSinceSelection = true; 
                     } else if (dragSource.origin === 'inventory' && !isEditorMode) {
                         if (!(mapData[r][c] && !mapData[r][c].canMove)) {
                             if (mapData[r][c] && mapData[r][c].isInventory) refundToInventory(mapData[r][c]);
@@ -1585,7 +1707,10 @@
                                 canMove: true, canRotate: dragSource.canRotate, isInventory: true 
                             };
                             playerInventory[dragSource.invKey].count--; 
-                            renderInventoryUI(); updateCellVisual(dropCell, mapData[r][c]); refreshLaser(); hasPlacedSinceSelection = true; 
+                            renderInventoryUI();
+                            updateCellVisual(dropCell, mapData[r][c]);
+                            refreshLaser();
+                            hasPlacedSinceSelection = true; 
                         }
                     }
                 } else {
@@ -1596,17 +1721,23 @@
                         if (isEditorMode) {
                             mapData[r][c] = null; 
                             const sourceCell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                            updateCellVisual(sourceCell, null); refreshLaser();
+                            updateCellVisual(sourceCell, null);
+                            refreshLaser();
                         } else if (sourceItem && sourceItem.isInventory) {
-                            refundToInventory(sourceItem); renderInventoryUI();
+                            refundToInventory(sourceItem);
+                            renderInventoryUI();
                             mapData[r][c] = null; 
                             const sourceCell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                            updateCellVisual(sourceCell, null); refreshLaser();
+                            updateCellVisual(sourceCell, null);
+                            refreshLaser();
                         }
                     }
                 }
                 
-                if (lastActiveTool) { restoreTool(lastActiveTool); lastActiveTool = null; }
+                if (lastActiveTool) {
+                    restoreTool(lastActiveTool);
+                    lastActiveTool = null;
+                }
             }
             
             if (dragGhost) { dragGhost.remove(); dragGhost = null; }
@@ -1614,7 +1745,8 @@
             
             let stateAfterStr = JSON.stringify({m: mapData, i: playerInventory});
             if (stateBeforeStr !== stateAfterStr) {
-                undoStack.push(stateBeforeObj); if (undoStack.length > 50) undoStack.shift();
+                undoStack.push(stateBeforeObj);
+                if (undoStack.length > 50) undoStack.shift();
             }
         });
 
@@ -1622,7 +1754,9 @@
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE; c++) {
                 const cell = document.createElement('div');
-                cell.className = 'grid-cell'; cell.dataset.row = r; cell.dataset.col = c;
+                cell.className = 'grid-cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
                 cell.addEventListener('dragstart', (e) => e.preventDefault());
 
                 cell.addEventListener('contextmenu', (e) => {
@@ -1636,10 +1770,15 @@
                     if (mapData[r][c]) {
                         saveStateDirectly(); 
                         if (isEditorMode) {
-                            mapData[r][c] = null; updateCellVisual(cell, null); refreshLaser();
+                            mapData[r][c] = null;
+                            updateCellVisual(cell, null);
+                            refreshLaser();
                         } else if (mapData[r][c].isInventory) {
-                            refundToInventory(mapData[r][c]); renderInventoryUI();
-                            mapData[r][c] = null; updateCellVisual(cell, null); refreshLaser();
+                            refundToInventory(mapData[r][c]);
+                            renderInventoryUI();
+                            mapData[r][c] = null;
+                            updateCellVisual(cell, null);
+                            refreshLaser();
                         }
                     }
                 });
@@ -1649,7 +1788,11 @@
                     
                     if (mapData[r][c]) {
                         if (!isEditorMode && !mapData[r][c].canMove && !mapData[r][c].canRotate) return; 
-                        if (selectedTool) { lastActiveTool = JSON.parse(JSON.stringify(selectedTool)); deselectAllTools(); }
+                        
+                        if (selectedTool) {
+                            lastActiveTool = JSON.parse(JSON.stringify(selectedTool));
+                            deselectAllTools();
+                        }
                         dragSource = { origin: 'grid', r: r, c: c };
                     } 
                     else if (selectedTool) {
@@ -1660,8 +1803,11 @@
                                     canMove: true, canRotate: selectedTool.canRotate, isInventory: true 
                                 };
                                 playerInventory[selectedTool.invKey].count--; 
-                                renderInventoryUI(); updateCellVisual(cell, mapData[r][c]); refreshLaser();
-                                dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; hasPlacedSinceSelection = true; 
+                                renderInventoryUI();
+                                updateCellVisual(cell, mapData[r][c]);
+                                refreshLaser();
+                                dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; 
+                                hasPlacedSinceSelection = true; 
                             }
                         } else {
                             mapData[r][c] = { 
@@ -1669,8 +1815,10 @@
                                 isInventory: isModInvActive, canMove: isModInvActive, 
                                 canRotate: isModInvActive ? !isModLockActive : isModRotatableActive 
                             };
-                            updateCellVisual(cell, mapData[r][c]); refreshLaser();
-                            dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; hasPlacedSinceSelection = true; 
+                            updateCellVisual(cell, mapData[r][c]);
+                            refreshLaser();
+                            dragSource = { origin: 'grid', r: r, c: c, justPlaced: true }; 
+                            hasPlacedSinceSelection = true; 
                         }
                     }
                 });
@@ -1687,8 +1835,10 @@
             } else if (data.canRotate) {
                 badges += '<span class="badge-rot" title="회전 가능 기물">🔄</span>';
             }
+            
             let svgHtml = SVG_ART[data.type] || ''; 
             let rot = (data.type === 'block') ? 0 : (data.rotation || 0);
+            
             cell.innerHTML = `
                 <div class="item" style="transform: rotate(${rot}deg);">${svgHtml}</div>
                 <div class="modifier-icons">${badges}</div>
@@ -1712,21 +1862,30 @@
                         for (let c = 0; c < GRID_SIZE; c++) {
                             let item = mapData[r][c];
                             if (item && item.isInventory) {
-                                refundToInventory(item); mapData[r][c] = null;
+                                refundToInventory(item);
+                                mapData[r][c] = null;
                                 const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-                                updateCellVisual(cell, null); recovered = true;
+                                updateCellVisual(cell, null);
+                                recovered = true;
                             }
                         }
                     }
-                    if (recovered) { renderInventoryUI(); showNotification("배치한 기물을 모두 회수했습니다."); } 
-                    else { showNotification("회수할 기물이 없습니다.", "#e74c3c"); }
+                    if (recovered) {
+                        renderInventoryUI();
+                        showNotification("배치한 기물을 모두 회수했습니다.");
+                    } else {
+                        showNotification("회수할 기물이 없습니다.", "#e74c3c");
+                    }
                 }
                 refreshLaser();
             }
         }
         
         function clearLaser() { 
-            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            ctx.restore();
         }
 
         function exportData() {
@@ -1752,7 +1911,8 @@
             importedArray.forEach(item => {
                 if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
                     mapData[item.y][item.x] = {
-                        type: item.type, rotation: item.rotation || 0,
+                        type: item.type,
+                        rotation: item.rotation || 0,
                         canMove: item.canMove !== undefined ? item.canMove : false,
                         canRotate: item.canRotate !== undefined ? item.canRotate : false,
                         isInventory: item.isInventory || false
@@ -1797,7 +1957,9 @@
                     currentLoadedMapId = null;
                 }
                 showNotification("맵을 성공적으로 불러왔습니다!");
-            } catch (error) { alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message); }
+            } catch (error) {
+                alert("올바르지 않은 JSON 형식입니다.\n에러: " + error.message);
+            }
         }
 
         const DIRS = { 
@@ -1805,11 +1967,14 @@
             180: {dx: -1, dy: 0}, 225: {dx: -1, dy: -1}, 270: {dx: 0, dy: -1}, 315: {dx: 1, dy: -1} 
         };
 
-        function calculateReflection(inDir, surfaceAngle) { return (2 * surfaceAngle - inDir + 720) % 360; }
+        function calculateReflection(inDir, surfaceAngle) {
+            return (2 * surfaceAngle - inDir + 720) % 360;
+        }
 
         function simulateLaser() {
             clearLaser();
-            let beams = []; let visited = new Set(); 
+            let beams = []; 
+            let visited = new Set(); 
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (mapData[r][c] && mapData[r][c].type === 'ray') beams.push({ x: c, y: r, dir: mapData[r][c].rotation });
@@ -1826,7 +1991,8 @@
                 let nextX = cx + DIRS[cDir].dx, nextY = cy + DIRS[cDir].dy;
                 
                 if(nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) { 
-                    drawLine(cx, cy, nextX, nextY, true); continue; 
+                    drawLine(cx, cy, nextX, nextY, true); 
+                    continue; 
                 }
                 
                 let stateKey = `${nextX},${nextY},${cDir}`;
@@ -1836,12 +2002,16 @@
                 let item = mapData[nextY][nextX];
                 
                 if (!item) { 
-                    drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    drawLine(cx, cy, nextX, nextY, false);
+                    beams.push({x: nextX, y: nextY, dir: cDir}); 
                 }
                 else if (item.type === 'block') { 
-                    drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    drawLine(cx, cy, nextX, nextY, false);
+                    beams.push({x: nextX, y: nextY, dir: cDir}); 
                 }
-                else if (item.type === 'ray' || item.type === 'target') { drawLine(cx, cy, nextX, nextY, false); }
+                else if (item.type === 'ray' || item.type === 'target') { 
+                    drawLine(cx, cy, nextX, nextY, false); 
+                }
                 else if(item.type === 'mirror_45') { 
                     drawLine(cx, cy, nextX, nextY, false);
                     let surfaceAngle = (337.5 + item.rotation) % 360;
@@ -1854,34 +2024,59 @@
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 }
                 else if (['single_mirror', 'target_mirror_a', 'target_mirror_b', 'target_mirror'].includes(item.type)) {
-                    let normal = (225 + item.rotation) % 360; let surfaceAngle = (135 + item.rotation) % 360;
+                    let normal = (225 + item.rotation) % 360; 
+                    let surfaceAngle = (135 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); }
-                    else { drawLine(cx, cy, nextX, nextY, true); }
+                    if (rel > 90 && rel < 270) { 
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
                 else if (['diag_single_mirror_a'].includes(item.type)) {
-                    let normal = (112.5 + item.rotation) % 360; let surfaceAngle = (202.5 + item.rotation) % 360;
+                    let normal = (112.5 + item.rotation) % 360; 
+                    let surfaceAngle = (202.5 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
-                    else { drawLine(cx, cy, nextX, nextY, true); }
+                    if (rel > 90 && rel < 270) { 
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
                 else if (['diag_single_mirror_b'].includes(item.type)) {
-                    let normal = (67.5 + item.rotation) % 360; let surfaceAngle = (157.5 + item.rotation) % 360;
+                    let normal = (67.5 + item.rotation) % 360; 
+                    let surfaceAngle = (157.5 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
-                    else { drawLine(cx, cy, nextX, nextY, true); }
+                    if (rel > 90 && rel < 270) { 
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
                 else if (item.type === 'v_target_mirror' || ['v_target_mirror_a', 'v_target_mirror_b'].includes(item.type)) {
-                    let normal = (270 + item.rotation) % 360; let surfaceAngle = (0 + item.rotation) % 360;
+                    let normal = (270 + item.rotation) % 360; 
+                    let surfaceAngle = (0 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
-                    else { drawLine(cx, cy, nextX, nextY, true); }
+                    if (rel > 90 && rel < 270) { 
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
                 else if (['v_single_mirror'].includes(item.type)) {
-                    let normal = (90 + item.rotation) % 360; let surfaceAngle = (0 + item.rotation) % 360;
+                    let normal = (90 + item.rotation) % 360; 
+                    let surfaceAngle = (0 + item.rotation) % 360;
                     let rel = (cDir - normal + 360) % 360;
-                    if (rel > 90 && rel < 270) { drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); } 
-                    else { drawLine(cx, cy, nextX, nextY, true); }
+                    if (rel > 90 && rel < 270) { 
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
                 else if(item.type === 'mirror') { 
                     drawLine(cx, cy, nextX, nextY, false);
@@ -1889,22 +2084,30 @@
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 }
                 else if(item.type === 'half_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (135 + item.rotation) % 360;
-                    beams.push({x: nextX, y: nextY, dir: cDir}); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
+                    drawLine(cx, cy, nextX, nextY, false); 
+                    let surfaceAngle = (135 + item.rotation) % 360;
+                    beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)}); 
                 } 
                 else if(item.type === 'v_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (0 + item.rotation) % 360;
+                    drawLine(cx, cy, nextX, nextY, false); 
+                    let surfaceAngle = (0 + item.rotation) % 360;
                     beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
                 }
                 else if(item.type === 'v_half_mirror') {
-                    drawLine(cx, cy, nextX, nextY, false); let surfaceAngle = (0 + item.rotation) % 360;
-                    beams.push({x: nextX, y: nextY, dir: cDir}); beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
+                    drawLine(cx, cy, nextX, nextY, false); 
+                    let surfaceAngle = (0 + item.rotation) % 360;
+                    beams.push({x: nextX, y: nextY, dir: cDir}); 
+                    beams.push({x: nextX, y: nextY, dir: calculateReflection(cDir, surfaceAngle)});
                 }
                 else if(item.type === 'tunnel') {
                     let tunnelRot = item.rotation % 180;
                     if ((tunnelRot === 0 && (cDir === 180 || cDir === 0)) || (tunnelRot === 90 && (cDir === 90 || cDir === 270))) {
-                        drawLine(cx, cy, nextX, nextY, false); beams.push({x: nextX, y: nextY, dir: cDir});
-                    } else { drawLine(cx, cy, nextX, nextY, true); }
+                        drawLine(cx, cy, nextX, nextY, false); 
+                        beams.push({x: nextX, y: nextY, dir: cDir});
+                    } else { 
+                        drawLine(cx, cy, nextX, nextY, true); 
+                    }
                 }
             }
         }
@@ -1915,9 +2118,13 @@
             let x2 = endX * CELL_SIZE + offset, y2 = endY * CELL_SIZE + offset;
 
             if (stopAtEdge) {
-                x2 = (startX + endX) / 2 * CELL_SIZE + offset; y2 = (startY + endY) / 2 * CELL_SIZE + offset;
+                x2 = (startX + endX) / 2 * CELL_SIZE + offset; 
+                y2 = (startY + endY) / 2 * CELL_SIZE + offset;
             }
-            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            ctx.beginPath(); 
+            ctx.moveTo(x1, y1); 
+            ctx.lineTo(x2, y2); 
+            ctx.stroke();
         }
     </script>
 </body>
