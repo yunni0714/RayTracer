@@ -700,7 +700,7 @@
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (mapData[r][c]) {
                         mapItems.push({ 
-                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].rotation,
+                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].canRotate ? 0 : mapData[r][c].rotation,
                             canMove: mapData[r][c].canMove, canRotate: mapData[r][c].canRotate, isInventory: mapData[r][c].isInventory || false
                         });
                     }
@@ -1120,7 +1120,7 @@
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (mapData[r][c]) {
                         mapItems.push({ 
-                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].rotation,
+                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].canRotate ? 0 : mapData[r][c].rotation,
                             canMove: mapData[r][c].canMove, canRotate: mapData[r][c].canRotate, isInventory: mapData[r][c].isInventory || false
                         });
                     }
@@ -1942,7 +1942,7 @@
                 for (let c = 0; c < GRID_SIZE; c++) {
                     if (mapData[r][c]) {
                         exportArray.push({ 
-                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].rotation,
+                            x: c, y: r, type: mapData[r][c].type, rotation: mapData[r][c].canRotate ? 0 : mapData[r][c].rotation,
                             canMove: mapData[r][c].canMove, canRotate: mapData[r][c].canRotate, isInventory: mapData[r][c].isInventory || false
                         });
                     }
