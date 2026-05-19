@@ -612,7 +612,7 @@
             mirror: `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
             half_mirror: `<svg viewBox="0 0 100 100"><path d="M10 80 L70 20 M30 90 L90 30" stroke="#333" stroke-width="8" stroke-linecap="square"/></svg>`,
             block: `<svg viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 15 L15 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
-            tunnel: `<svg viewBox="0 0 100 100"><path d="M20 11.75 h60 M20 88.25 h60" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+            tunnel: `<svg viewBox="0 0 100 100"><path d="M11.75 20 v60 M88.25 20 v60" fill="none" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
             single_mirror: `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15 L85 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
             target_mirror_a: `<svg viewBox="0 0 100 100"><path d="M15 85 l70 -70 v70 h-70 Z" fill="none" stroke="#333" stroke-width="10"/><rect x="65" y="50" width="20" height="18" fill="none" stroke="#333" stroke-width="8"/></svg>`,
             target_mirror_b: `<svg viewBox="0 0 100 100"><path d="M15 85 l70 -70 v70 h-70 Z" fill="none" stroke="#333" stroke-width="10"/><rect x="50" y="65" width="18" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
@@ -2150,7 +2150,7 @@
                 }
                 else if(item.type === 'tunnel') {
                     let tunnelRot = item.rotation % 180;
-                    if ((tunnelRot === 0 && (cDir === 180 || cDir === 0)) || (tunnelRot === 90 && (cDir === 90 || cDir === 270))) {
+                    if ((tunnelRot % 180 === 0 && (cDir === 90 || cDir === 270)) || (tunnelRot % 180 === 90 && (cDir === 180 || cDir === 0))) {
                         drawLine(cx, cy, nextX, nextY, false); 
                         beams.push({x: nextX, y: nextY, dir: cDir});
                     } else { 
