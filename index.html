@@ -2025,7 +2025,7 @@
             let visited = new Set(); 
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
-                    if (mapData[r][c] && mapData[r][c].type === 'ray') beams.push({ x: c, y: r, dir: mapData[r][c].rotation });
+                    if (mapData[r][c] && mapData[r][c].type === 'ray') beams.push({ x: c, y: r, dir: (mapData[r][c].rotation+ 270) % 360 });
                 }
             }
             if(beams.length === 0) return;
