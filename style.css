@@ -1,0 +1,43 @@
+/* =========================================
+   개편된 라이브러리 & 제안 게시판 UI 스타일
+========================================= */
+
+/* 1. 가로 스크롤 (넷플릭스 스타일) 스크롤바 숨기기 */
+.horizontal-scroll-container::-webkit-scrollbar {
+    display: none; /* 크롬, 사파리 등에서 못생긴 밑바닥 스크롤바 숨김 */
+}
+
+/* 2. 제안 게시판 서랍(Drawer) 기본 상태 (PC 화면) */
+#suggestionBoardContainer {
+    /* 기존 우측 고정 방식일 때의 디자인을 다듬어 줍니다 */
+    background-color: #f8fafc;
+    border-left: 1px solid #e2e8f0;
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
+    display: none; /* 평소엔 숨김 */
+}
+
+#suggestionBoardContainer.drawer-open {
+    display: block; /* 맵을 누르면 나타남 (PC) */
+}
+
+/* 3. 📱 반응형 서랍 모드 (화면 너비 1024px 이하의 태블릿/모바일) */
+@media (max-width: 1024px) {
+    #suggestionBoardContainer {
+        display: block !important;
+        position: fixed; /* 화면 위로 붕 띄움 */
+        top: 0;
+        right: -100%; /* 평소엔 화면 오른쪽 바깥으로 100% 밀어내서 완전 숨김! */
+        height: 100vh; /* 화면 전체 높이 */
+        width: 340px; /* 서랍 너비 */
+        max-width: 90vw; /* 모바일 화면이 너무 작으면 90%까지만 차지 */
+        z-index: 9999;
+        transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* 스르륵 쫀득하게 열리는 애니메이션 */
+        overflow-y: auto; /* 내용이 길면 서랍 안에서 세로 스크롤 */
+    }
+
+    /* JS에서 .drawer-open 클래스를 붙이는 순간 작동! */
+    #suggestionBoardContainer.drawer-open {
+        right: 0; /* 화면 밖에서 원래 위치(0)로 튀어나옴 */
+        box-shadow: -10px 0 25px rgba(0,0,0,0.15); /* 열렸을 때 그림자를 세게 줘서 입체감 부여 */
+    }
+}
