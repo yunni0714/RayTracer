@@ -19,8 +19,8 @@ export const SVG_ART = {
     v_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
     v_half_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="8" stroke-dasharray="15 10" stroke-linecap="square"/></svg>`,
     v_single_mirror: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
-    v_target_mirror_a: `<svg viewBox="0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
-    v_target_mirror_b: `<svg viewBox="0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`
+    v_target_mirror_a: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+    v_target_mirror_b: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`
 };
 
 export const GRID_SIZE = 5;
