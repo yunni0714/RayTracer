@@ -126,24 +126,32 @@ export function applyFilters() {
     renderLibraryCards(filtered, q !== '');
 }
 
-// 카드 DOM을 생성하는 헬퍼 함수 (디자인 개편 적용)
+// 카드 DOM을 생성하는 헬퍼 함수 (디자인 개편 및 타이포그래피 정렬 적용)
 function createCardElement(mapObj) {
     const card = document.createElement('div');
     card.className = 'map-card';
     card.style.flex = '0 0 auto';
     card.style.width = '220px'; // 고정 너비 지정 (가로 스크롤 용이)
-    card.style.backgroundColor = '#fff';
-    card.style.borderRadius = '12px';
-    card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+    card.style.backgroundColor = '#ffffff';
+    card.style.borderRadius = '14px'; // 둥글기 증가로 트렌디하게
+    card.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
     card.style.overflow = 'hidden';
     card.style.cursor = 'pointer';
-    card.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    card.style.transition = 'all 0.25s ease';
     card.style.scrollSnapAlign = 'start'; // 스크롤 시 딱딱 떨어지게 스냅
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
     card.onclick = () => playMapFromLibrary(mapObj);
 
-    // 호버 효과 추가
-    card.onmouseover = () => { card.style.transform = 'translateY(-4px)'; card.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; };
-    card.onmouseout = () => { card.style.transform = 'translateY(0)'; card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; };
+    // 호버 효과 고급화
+    card.onmouseover = () => {
+        card.style.transform = 'translateY(-6px)';
+        card.style.boxShadow = '0 12px 28px rgba(0,0,0,0.12)';
+    };
+    card.onmouseout = () => {
+        card.style.transform = 'translateY(0)';
+        card.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
+    };
 
     const miniGrid = createMiniGridDOM(mapObj.mapData, true);
 
@@ -154,18 +162,18 @@ function createCardElement(mapObj) {
     const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
 
     card.innerHTML = `
-        <div class="card-meta" style="padding: 12px;">
-            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: bold; color: #2c3e50; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${mapObj.title}">${mapObj.title || '제목 없음'}</h4>
-            <p style="margin: 0; font-size: 12px; color: #7f8c8d;">${mapObj.author || '알 수 없음'} • ${dateStr}</p>
+        <div class="card-meta" style="padding: 16px 16px 12px 16px;">
+            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${mapObj.title}">${mapObj.title || '제목 없음'}</h4>
+            <p style="margin: 0; font-size: 12px; font-weight: 500; color: #64748b;">${mapObj.author || '알 수 없음'} <span style="color: #cbd5e1; margin: 0 4px;">|</span> ${dateStr}</p>
         </div>
-        <div class="card-actions" style="padding: 0 12px 12px 12px; display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; gap: 5px;">
-                <span class="difficulty-badge diff-${creatorDiff}" style="padding: 3px 6px; font-size: 11px; border-radius: 4px; color: white;">공식: ${creatorDiff}</span>
-                ${userDiff ? `<span class="difficulty-badge diff-${userDiff}" style="padding: 3px 6px; font-size: 11px; border-radius: 4px; color: white; border: 1px dashed rgba(255,255,255,0.7);">유저: ${userDiff}</span>` : ''}
+        <div class="card-actions" style="padding: 0 16px 16px 16px; display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
+            <div style="display: flex; gap: 6px;">
+                <span class="difficulty-badge diff-${creatorDiff}" style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; color: white;">공식: ${creatorDiff}</span>
+                ${userDiff ? `<span class="difficulty-badge diff-${userDiff}" style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; color: white; border: 1px dashed rgba(255,255,255,0.7);">유저: ${userDiff}</span>` : ''}
             </div>
-            <div class="static-stats" style="width: 100%; display: flex; justify-content: flex-end; gap: 10px; font-size: 13px; font-weight: bold;">
-                <span style="color:#27ae60;">✅ ${okCount}</span>
-                <span style="color:#e74c3c;">👍 ${godCount}</span>
+            <div class="static-stats" style="width: 100%; display: flex; justify-content: flex-end; gap: 12px; font-size: 13px; font-weight: 700;">
+                <span style="color:#10b981; display:flex; align-items:center; gap:3px;">✅ ${okCount}</span>
+                <span style="color:#f43f5e; display:flex; align-items:center; gap:3px;">👍 ${godCount}</span>
             </div>
         </div>
     `;
@@ -181,7 +189,7 @@ export function renderLibraryCards(mapsList, isSearch = false) {
     grid.style.display = 'block';
 
     if (mapsList.length === 0) {
-        grid.innerHTML = '<p style="text-align: center; width: 100%; color: #7f8c8d; padding: 40px 0;">검색 결과나 등록된 맵이 없습니다.</p>';
+        grid.innerHTML = '<p style="text-align: center; width: 100%; color: #64748b; font-weight: 500; padding: 60px 0;">검색 결과나 등록된 맵이 없습니다.</p>';
         return;
     }
 
@@ -189,22 +197,23 @@ export function renderLibraryCards(mapsList, isSearch = false) {
     const createRow = (title, maps) => {
         const section = document.createElement('div');
         section.className = 'library-section';
-        section.style.marginBottom = '40px';
+        section.style.marginBottom = '45px'; // 섹션 간 간격 확대
 
         const heading = document.createElement('h2');
         heading.innerText = title;
-        // 타이포그래피 정렬 (시선 분산 해결)
-        heading.style = 'font-size: 22px; margin-bottom: 15px; font-weight: 800; color: #2c3e50; text-transform: capitalize; padding-left: 5px;';
+        // 타이포그래피 정렬: 대소문자 규칙 통일, 간격(letter-spacing) 조정으로 세련되게
+        heading.style = 'font-size: 24px; margin-bottom: 16px; font-weight: 800; color: #0f172a; text-transform: capitalize; padding-left: 4px; letter-spacing: -0.5px;';
         section.appendChild(heading);
 
         const scrollContainer = document.createElement('div');
         scrollContainer.className = 'horizontal-scroll-container';
-        // 넷플릭스식 횡스크롤 디자인 (padding-right 50px로 잘리는 느낌 부여)
-        scrollContainer.style = 'display: flex; gap: 16px; overflow-x: auto; padding-bottom: 15px; padding-right: 50px; scroll-snap-type: x mandatory;';
+        // 넷플릭스식 횡스크롤 디자인 (padding-right 50px로 잘리는 느낌 부여 및 부드러운 스크롤)
+        scrollContainer.style = 'display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-right: 50px; scroll-snap-type: x mandatory; scroll-behavior: smooth;';
 
         // 스크롤바 숨기기 (웹킷 기반 브라우저)
         scrollContainer.style.scrollbarWidth = 'none'; // 파이어폭스
         scrollContainer.style.msOverflowStyle = 'none'; // IE/Edge
+        // Note: 크롬 등 웹킷 브라우저를 위해 CSS 파일에 .horizontal-scroll-container::-webkit-scrollbar { display: none; } 추가 권장
 
         maps.forEach(mapObj => {
             const card = createCardElement(mapObj);
@@ -218,7 +227,7 @@ export function renderLibraryCards(mapsList, isSearch = false) {
     if (isSearch) {
         // 검색 중일 때는 일반 그리드처럼 보여주기 (가로 스크롤 대신 래핑)
         const searchContainer = document.createElement('div');
-        searchContainer.style = 'display: flex; flex-wrap: wrap; gap: 16px;';
+        searchContainer.style = 'display: flex; flex-wrap: wrap; gap: 20px;';
         mapsList.forEach(mapObj => searchContainer.appendChild(createCardElement(mapObj)));
         grid.appendChild(searchContainer);
     } else {
@@ -230,6 +239,14 @@ export function renderLibraryCards(mapsList, isSearch = false) {
 
         if (featuredMaps.length > 0) createRow("featured", featuredMaps);
         if (originalMaps.length > 0) createRow("original", originalMaps);
+    }
+}
+
+// ═══════════════ 반응형 제안 패널 (드로어) 제어 ═══════════════
+export function closeSuggestionDrawer() {
+    const sugContainer = document.getElementById('suggestionBoardContainer');
+    if (sugContainer) {
+        sugContainer.classList.remove('drawer-open');
     }
 }
 
@@ -267,10 +284,13 @@ export function playMapFromLibrary(mapObj) {
 
     updateReactionUI(mapObj.id);
 
-    // 데스크톱에서는 보이게 하되, CSS 미디어 쿼리를 통해 모바일에서는
-    // #suggestionBoardContainer 가 드로어 형태로 열리도록 CSS 클래스(open) 추가 로직으로 향후 발전 가능
+    // 하이브리드 UI 로직: 인라인 스타일(display: block)을 제거하고,
+    // 클래스(drawer-open)를 부여하여 CSS 미디어 쿼리가 화면 크기에 따라 알아서 처리하게 만듭니다.
     const sugContainer = document.getElementById('suggestionBoardContainer');
-    if(sugContainer) sugContainer.style.display = 'block';
+    if(sugContainer) {
+        sugContainer.style.display = ''; // 기존의 하드코딩된 block 스타일 제거
+        sugContainer.classList.add('drawer-open'); // 드로어 열림 상태 클래스 부여
+    }
 
     updateSugHeaderBtnUI();
     loadSuggestionsForCurrentMap();
@@ -359,13 +379,13 @@ export function updateSugHeaderBtnUI() {
 
     if (currentLoadedMapAuthorUid && FB.currentUserUid === currentLoadedMapAuthorUid) {
         btn.innerHTML = "✏️ 맵 수정하기";
-        btn.style.backgroundColor = "#27ae60";
+        btn.style.backgroundColor = "#10b981"; // 에메랄드 톤으로 세련되게
         btn.style.border = "none"; btn.style.color = "#fff";
         if (delBtn) delBtn.style.display = 'inline-block';
         headerTitle.innerHTML = `💡 제안 관리 및 맵 수정 (<span id="sugCount">0</span>건)`;
     } else {
         btn.innerHTML = "내 풀이 제안하기";
-        btn.style.backgroundColor = "#f39c12";
+        btn.style.backgroundColor = "#f59e0b"; // 호박색 톤으로 세련되게
         btn.style.border = "none"; btn.style.color = "#fff";
         if (delBtn) delBtn.style.display = 'none';
         headerTitle.innerHTML = `💡 다른 풀이 제안 (<span id="sugCount">0</span>건)`;
@@ -439,7 +459,7 @@ export async function submitSuggestion() {
 export async function loadSuggestionsForCurrentMap() {
     if (!currentLoadedMapId) return;
     const listDiv = document.getElementById('suggestionList');
-    listDiv.innerHTML = '<div style="padding: 20px; text-align: center;"><p style="color:#7f8c8d; font-size:13px;">불러오는 중...</p></div>';
+    listDiv.innerHTML = '<div style="padding: 30px; text-align: center;"><p style="color:#94a3b8; font-size:14px; font-weight: 500;">불러오는 중...</p></div>';
 
     try {
         const sugs = await FB.fetchSuggestionsFromDB(currentLoadedMapId);
@@ -449,35 +469,40 @@ export async function loadSuggestionsForCurrentMap() {
 
         listDiv.innerHTML = '';
         if (sugs.length === 0) {
-            listDiv.innerHTML = '<div style="padding: 30px; text-align: center; background: #fafafa; border-radius: 8px; margin-top: 10px;"><p style="color:#95a5a6; font-size:14px; margin: 0;">아직 등록된 제안이 없습니다.<br>첫 번째로 풀이를 뽐내보세요!</p></div>';
+            listDiv.innerHTML = '<div style="padding: 40px 20px; text-align: center; background: #f8fafc; border-radius: 12px; margin-top: 15px;"><p style="color:#64748b; font-size:14px; font-weight: 500; line-height: 1.6; margin: 0;">아직 등록된 제안이 없습니다.<br>첫 번째로 풀이를 뽐내보세요!</p></div>';
             return;
         }
 
         sugs.forEach(sug => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
-            // 시안에 맞춰 제안 아이템 디자인 깔끔하게 적용
+            // 제안 아이템 디자인: 여백과 색상을 더 부드럽고 트렌디하게
             item.style.display = 'flex';
             item.style.flexDirection = 'column';
-            item.style.gap = '15px';
-            item.style.backgroundColor = '#fff';
-            item.style.border = '1px solid #e0e0e0';
-            item.style.borderRadius = '10px';
-            item.style.padding = '15px';
-            item.style.marginBottom = '15px';
-            item.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+            item.style.gap = '16px';
+            item.style.backgroundColor = '#ffffff';
+            item.style.border = '1px solid #e2e8f0';
+            item.style.borderRadius = '12px';
+            item.style.padding = '18px';
+            item.style.marginBottom = '16px';
+            item.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
+            item.style.transition = 'border-color 0.2s';
+
+            item.onmouseover = () => item.style.borderColor = '#cbd5e1';
+            item.onmouseout = () => item.style.borderColor = '#e2e8f0';
 
             // 미니 그리드와 정보를 감싸는 래퍼
             const topRow = document.createElement('div');
             topRow.style.display = 'flex';
-            topRow.style.gap = '15px';
+            topRow.style.gap = '16px';
 
             const miniGridWrapper = document.createElement('div');
-            miniGridWrapper.style.width = '80px';
+            miniGridWrapper.style.width = '84px';
             miniGridWrapper.style.flexShrink = '0';
             const miniGrid = createMiniGridDOM(sug.mapData, false);
-            miniGrid.style.borderRadius = '6px';
+            miniGrid.style.borderRadius = '8px';
             miniGrid.style.overflow = 'hidden';
+            miniGrid.style.border = '1px solid #f1f5f9';
             miniGridWrapper.appendChild(miniGrid);
 
             const content = document.createElement('div');
@@ -487,28 +512,28 @@ export async function loadSuggestionsForCurrentMap() {
             content.style.justifyContent = "center";
 
             let catBadge = sug.category === 'NG'
-                ? '<span style="background:#e74c3c;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;">🆖 기물 줄임</span>'
-                : '<span style="background:#3498db;color:white;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;">🔠 복수정답</span>';
+                ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:-0.5px;">🆖 기물 줄임</span>'
+                : '<span style="background:#3b82f6;color:white;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:-0.5px;">🔠 복수정답</span>';
 
             content.innerHTML = `
-                <div style="margin-bottom:8px; display: flex; align-items: center; gap: 8px;">
+                <div style="margin-bottom:10px; display: flex; align-items: center; gap: 8px;">
                     ${catBadge} 
-                    <span style="color:#95a5a6;font-size:11px;">${new Date(sug.createdAt).toLocaleDateString()}</span>
+                    <span style="color:#94a3b8;font-size:11px;font-weight:500;">${new Date(sug.createdAt).toLocaleDateString()}</span>
                 </div>
-                <p style="margin:0; font-size: 14px; font-weight:600; color:#2c3e50; line-height: 1.4;">${sug.comment}</p>
+                <p style="margin:0; font-size: 14px; font-weight:700; color:#1e293b; line-height: 1.5; word-break: keep-all;">${sug.comment}</p>
             `;
 
             topRow.appendChild(miniGridWrapper);
             topRow.appendChild(content);
 
             const actions = document.createElement('div');
-            actions.style = "display:flex; gap:10px; width: 100%; border-top: 1px dashed #eee; padding-top: 10px;";
+            actions.style = "display:flex; gap:12px; width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 14px;";
 
             const testBtn = document.createElement('button');
             testBtn.innerHTML = "▶️ 이 풀이로 테스트";
-            testBtn.style = "flex: 1; padding:10px; border:none; background:#2ecc71; color:white; border-radius:6px; cursor:pointer; font-weight:bold; font-size:13px; transition: background 0.2s;";
-            testBtn.onmouseover = () => testBtn.style.background = "#27ae60";
-            testBtn.onmouseout = () => testBtn.style.background = "#2ecc71";
+            testBtn.style = "flex: 1; padding:10px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; transition: background 0.2s;";
+            testBtn.onmouseover = () => testBtn.style.background = "#059669";
+            testBtn.onmouseout = () => testBtn.style.background = "#10b981";
             testBtn.onclick = () => {
                 cancelDragOperation();
 
@@ -548,6 +573,9 @@ export async function loadSuggestionsForCurrentMap() {
                 }
 
                 showNotification("제안된 풀이를 불러왔습니다. 확인해보세요!", "#27ae60");
+
+                // 모바일 환경일 경우, 테스트 버튼을 누르면 맵을 가리지 않도록 드로어를 닫아주는 센스
+                closeSuggestionDrawer();
             };
             actions.appendChild(testBtn);
 
@@ -555,9 +583,9 @@ export async function loadSuggestionsForCurrentMap() {
                 const delBtn = document.createElement('button');
                 delBtn.innerHTML = "🗑️";
                 delBtn.title = "삭제하기";
-                delBtn.style = "padding:10px 15px; border:1px solid #e74c3c; background:transparent; color:#e74c3c; border-radius:6px; cursor:pointer; font-size:13px; transition: all 0.2s;";
-                delBtn.onmouseover = () => { delBtn.style.background = "#e74c3c"; delBtn.style.color = "#fff"; };
-                delBtn.onmouseout = () => { delBtn.style.background = "transparent"; delBtn.style.color = "#e74c3c"; };
+                delBtn.style = "padding:10px 16px; border:1px solid #f87171; background:transparent; color:#ef4444; border-radius:8px; cursor:pointer; font-size:13px; transition: all 0.2s;";
+                delBtn.onmouseover = () => { delBtn.style.background = "#ef4444"; delBtn.style.color = "#fff"; };
+                delBtn.onmouseout = () => { delBtn.style.background = "transparent"; delBtn.style.color = "#ef4444"; };
                 delBtn.onclick = async () => {
                     if (confirm("이 제안을 삭제하시겠습니까?")) {
                         try {
@@ -577,7 +605,7 @@ export async function loadSuggestionsForCurrentMap() {
             listDiv.appendChild(item);
         });
     } catch (e) {
-        listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:red;">게시판을 불러오는 데 실패했습니다.</p></div>`;
+        listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:#ef4444;">게시판을 불러오는 데 실패했습니다.</p></div>`;
     }
 }
 
@@ -619,7 +647,10 @@ export function createNewMap() {
         refreshLaser();
 
         document.getElementById('loadedMapInfo').style.display = 'none';
-        document.getElementById('suggestionBoardContainer').style.display = 'none';
+
+        // 새 맵 생성 시 제안 보드도 숨김(드로어 닫기)
+        closeSuggestionDrawer();
+
         currentLoadedMapId = null;
         currentLoadedMapAuthorUid = null;
         currentLoadedMapObj = null;
