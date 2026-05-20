@@ -45,21 +45,12 @@ export function calculateUserDifficulty(diffVotes) {
 export function createMiniGridDOM(mapDataArray, hideInventory = false) {
     const miniGrid = document.createElement('div');
     miniGrid.className = 'mini-grid';
-    // 스타일 개선: 카드의 상단에 꽉 차고 깔끔하게 보이도록 조정
-    miniGrid.style.width = '100%';
-    miniGrid.style.aspectRatio = '1 / 1';
-    miniGrid.style.display = 'grid';
-    miniGrid.style.gridTemplateColumns = 'repeat(5, 1fr)';
-    miniGrid.style.gridTemplateRows = 'repeat(5, 1fr)';
-    miniGrid.style.borderBottom = '1px solid #f0f0f0';
-    miniGrid.style.backgroundColor = '#fafafa';
-    miniGrid.style.boxSizing = 'border-box';
+    miniGrid.style.cssText = 'width: 100%; aspect-ratio: 1 / 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); border-bottom: 1px solid #f0f0f0; background-color: #fafafa; box-sizing: border-box;';
 
     for (let i = 0; i < 25; i++) {
         const cell = document.createElement('div');
         cell.className = 'mini-cell';
-        cell.style.border = '1px solid #eee';
-        cell.style.boxSizing = 'border-box';
+        cell.style.cssText = 'border: 1px solid #eee; box-sizing: border-box;';
         miniGrid.appendChild(cell);
     }
     if (mapDataArray && Array.isArray(mapDataArray)) {
@@ -87,26 +78,33 @@ export function toggleLibraryScreen() {
     const newMapBtn = document.getElementById('newMapBtn');
 
     if (isLibraryMode) {
-        btn.innerHTML = "🔙 돌아가기";
-        btn.classList.add('active');
-        editorScreen.classList.remove('active');
-        libScreen.classList.add('active');
-        modeBtn.style.display = 'none';
-        newMapBtn.style.display = 'inline-block';
+        if(btn) {
+            btn.innerHTML = "🔙 돌아가기";
+            btn.classList.add('active');
+        }
+        if(editorScreen) editorScreen.classList.remove('active');
+        if(libScreen) libScreen.classList.add('active');
+        if(modeBtn) modeBtn.style.display = 'none';
+        if(newMapBtn) newMapBtn.style.display = 'inline-block';
         loadLibraryMaps();
     } else {
-        btn.innerHTML = "📚 맵 라이브러리 열기";
-        btn.classList.remove('active');
-        libScreen.classList.remove('active');
-        editorScreen.classList.add('active');
-        modeBtn.style.display = 'inline-block';
-        newMapBtn.style.display = 'none';
+        if(btn) {
+            btn.innerHTML = "📚 맵 라이브러리 열기";
+            btn.classList.remove('active');
+        }
+        if(libScreen) libScreen.classList.remove('active');
+        if(editorScreen) editorScreen.classList.add('active');
+        if(modeBtn) modeBtn.style.display = 'inline-block';
+        if(newMapBtn) newMapBtn.style.display = 'none';
     }
 }
 
 export async function loadLibraryMaps() {
-    const sortBy = document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : 'recent';
+    const sortSelect = document.getElementById('sortSelect');
+    const sortBy = sortSelect ? sortSelect.value : 'recent';
     const grid = document.getElementById('libraryGrid');
+    if (!grid) return;
+
     grid.innerHTML = '<p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold; padding: 40px 0;">맵 데이터를 불러오는 중입니다...</p>';
     try {
         allLibraryMaps = await FB.fetchLibraryList(sortBy);
@@ -126,32 +124,21 @@ export function applyFilters() {
     renderLibraryCards(filtered, q !== '');
 }
 
-// 카드 DOM을 생성하는 헬퍼 함수 (디자인 개편 및 타이포그래피 정렬 적용)
+// 카드 DOM을 생성하는 헬퍼 함수
 function createCardElement(mapObj) {
     const card = document.createElement('div');
     card.className = 'map-card';
-    card.style.flex = '0 0 auto';
-    card.style.width = '220px'; // 고정 너비 지정 (가로 스크롤 용이)
-    card.style.backgroundColor = '#ffffff';
-    card.style.borderRadius = '14px'; // 둥글기 증가로 트렌디하게
-    card.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
-    card.style.overflow = 'hidden';
-    card.style.cursor = 'pointer';
-    card.style.transition = 'all 0.25s ease';
-    card.style.scrollSnapAlign = 'start'; // 스크롤 시 딱딱 떨어지게 스냅
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.onclick = () => playMapFromLibrary(mapObj);
+    card.style.cssText = 'background-color: #ffffff; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); overflow: hidden; cursor: pointer; transition: all 0.25s ease; display: flex; flex-direction: column;';
+    card.addEventListener('click', () => playMapFromLibrary(mapObj));
 
-    // 호버 효과 고급화
-    card.onmouseover = () => {
+    card.addEventListener('mouseover', () => {
         card.style.transform = 'translateY(-6px)';
         card.style.boxShadow = '0 12px 28px rgba(0,0,0,0.12)';
-    };
-    card.onmouseout = () => {
+    });
+    card.addEventListener('mouseout', () => {
         card.style.transform = 'translateY(0)';
         card.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
-    };
+    });
 
     const miniGrid = createMiniGridDOM(mapObj.mapData, true);
 
@@ -181,11 +168,11 @@ function createCardElement(mapObj) {
     return card;
 }
 
-// 라이브러리 화면 렌더링 (가로 스크롤 섹션 적용)
+// 라이브러리 화면 렌더링
 export function renderLibraryCards(mapsList, isSearch = false) {
     const grid = document.getElementById('libraryGrid');
+    if (!grid) return;
     grid.innerHTML = '';
-    // 기존 그리드 스타일을 초기화하여 블록 구조로 변경
     grid.style.display = 'block';
 
     if (mapsList.length === 0) {
@@ -193,49 +180,55 @@ export function renderLibraryCards(mapsList, isSearch = false) {
         return;
     }
 
-    // 행(Row)을 렌더링하는 헬퍼 함수
-    const createRow = (title, maps) => {
-        const section = document.createElement('div');
-        section.className = 'library-section';
-        section.style.marginBottom = '45px'; // 섹션 간 간격 확대
+    const mainContainer = document.createElement('div');
+    mainContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-bottom: 50px;';
 
-        const heading = document.createElement('h2');
-        heading.innerText = title;
-        // 타이포그래피 정렬: 대소문자 규칙 통일, 간격(letter-spacing) 조정으로 세련되게
-        heading.style = 'font-size: 24px; margin-bottom: 16px; font-weight: 800; color: #0f172a; text-transform: capitalize; padding-left: 4px; letter-spacing: -0.5px;';
-        section.appendChild(heading);
+    mapsList.forEach(mapObj => {
+        const card = createCardElement(mapObj);
+        card.style.width = '100%';
+        mainContainer.appendChild(card);
+    });
+    grid.appendChild(mainContainer);
 
-        const scrollContainer = document.createElement('div');
-        scrollContainer.className = 'horizontal-scroll-container';
-        // 넷플릭스식 횡스크롤 디자인 (padding-right 50px로 잘리는 느낌 부여 및 부드러운 스크롤)
-        scrollContainer.style = 'display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-right: 50px; scroll-snap-type: x mandatory; scroll-behavior: smooth;';
+    if (!isSearch) {
+        const divider = document.createElement('hr');
+        divider.style.cssText = 'border: 0; height: 1px; background-color: #e2e8f0; margin: 0 0 40px 0;';
+        grid.appendChild(divider);
 
-        // 스크롤바 숨기기 (웹킷 기반 브라우저)
-        scrollContainer.style.scrollbarWidth = 'none'; // 파이어폭스
-        scrollContainer.style.msOverflowStyle = 'none'; // IE/Edge
-        // Note: 크롬 등 웹킷 브라우저를 위해 CSS 파일에 .horizontal-scroll-container::-webkit-scrollbar { display: none; } 추가 권장
+        const createRow = (title, maps) => {
+            const section = document.createElement('div');
+            section.className = 'library-section';
+            section.style.marginBottom = '45px';
 
-        maps.forEach(mapObj => {
-            const card = createCardElement(mapObj);
-            scrollContainer.appendChild(card);
-        });
+            const heading = document.createElement('h2');
+            heading.innerText = title;
+            heading.style.cssText = 'font-size: 24px; margin-bottom: 16px; font-weight: 800; color: #0f172a; text-transform: capitalize; padding-left: 4px; letter-spacing: -0.5px;';
+            section.appendChild(heading);
 
-        section.appendChild(scrollContainer);
-        grid.appendChild(section);
-    };
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'horizontal-scroll-container';
+            scrollContainer.style.cssText = 'display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-right: 50px; scroll-snap-type: x mandatory; scroll-behavior: smooth;';
+            scrollContainer.style.scrollbarWidth = 'none';
+            scrollContainer.style.msOverflowStyle = 'none';
 
-    if (isSearch) {
-        // 검색 중일 때는 일반 그리드처럼 보여주기 (가로 스크롤 대신 래핑)
-        const searchContainer = document.createElement('div');
-        searchContainer.style = 'display: flex; flex-wrap: wrap; gap: 20px;';
-        mapsList.forEach(mapObj => searchContainer.appendChild(createCardElement(mapObj)));
-        grid.appendChild(searchContainer);
-    } else {
-        // 일반 라이브러리 화면일 때: Featured(추천)와 Original(최신) 분리
-        // 추천 기준: 좋아요(god)가 많은 순
+            maps.forEach(mapObj => {
+                const card = createCardElement(mapObj);
+                card.style.width = '220px';
+                card.style.flex = '0 0 auto';
+                card.style.scrollSnapAlign = 'start';
+                scrollContainer.appendChild(card);
+            });
+
+            section.appendChild(scrollContainer);
+            grid.appendChild(section);
+        };
+
         const featuredMaps = [...mapsList].sort((a, b) => (b.reactionGod || 0) - (a.reactionGod || 0)).slice(0, 10);
-        // 최신 기준: 생성 날짜가 최신인 순
-        const originalMaps = [...mapsList].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        const originalMaps = [...mapsList].sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
 
         if (featuredMaps.length > 0) createRow("featured", featuredMaps);
         if (originalMaps.length > 0) createRow("original", originalMaps);
@@ -263,33 +256,40 @@ export function playMapFromLibrary(mapObj) {
     currentMapReactions.ok = mapObj.reactionOk || 0;
     currentMapReactions.god = mapObj.reactionGod || 0;
 
-    document.getElementById('loadedMapInfo').style.display = 'flex';
-    document.getElementById('infoTitle').innerText = `🗺️ ${mapObj.title}`;
-    document.getElementById('infoAuthor').innerText = mapObj.author;
+    const loadedMapInfo = document.getElementById('loadedMapInfo');
+    if(loadedMapInfo) loadedMapInfo.style.display = 'flex';
+
+    const infoTitle = document.getElementById('infoTitle');
+    if(infoTitle) infoTitle.innerText = `🗺️ ${mapObj.title}`;
+
+    const infoAuthor = document.getElementById('infoAuthor');
+    if(infoAuthor) infoAuthor.innerText = mapObj.author;
 
     const diffSpan = document.getElementById('infoDifficulty');
-    const diff = mapObj.difficulty || 'Normal';
-    diffSpan.innerText = diff;
-    diffSpan.className = `difficulty-badge diff-${diff}`;
+    if(diffSpan) {
+        const diff = mapObj.difficulty || 'Normal';
+        diffSpan.innerText = diff;
+        diffSpan.className = `difficulty-badge diff-${diff}`;
+    }
 
     const userDiffSpan = document.getElementById('infoUserDifficulty');
-    const userDiff = calculateUserDifficulty(mapObj.diffVotes);
-    if (userDiff) {
-        userDiffSpan.innerText = userDiff;
-        userDiffSpan.className = `difficulty-badge diff-${userDiff}`;
-    } else {
-        userDiffSpan.innerText = "평가 부족";
-        userDiffSpan.className = `difficulty-badge diff-None`;
+    if(userDiffSpan) {
+        const userDiff = calculateUserDifficulty(mapObj.diffVotes);
+        if (userDiff) {
+            userDiffSpan.innerText = userDiff;
+            userDiffSpan.className = `difficulty-badge diff-${userDiff}`;
+        } else {
+            userDiffSpan.innerText = "평가 부족";
+            userDiffSpan.className = `difficulty-badge diff-None`;
+        }
     }
 
     updateReactionUI(mapObj.id);
 
-    // 하이브리드 UI 로직: 인라인 스타일(display: block)을 제거하고,
-    // 클래스(drawer-open)를 부여하여 CSS 미디어 쿼리가 화면 크기에 따라 알아서 처리하게 만듭니다.
     const sugContainer = document.getElementById('suggestionBoardContainer');
     if(sugContainer) {
-        sugContainer.style.display = ''; // 기존의 하드코딩된 block 스타일 제거
-        sugContainer.classList.add('drawer-open'); // 드로어 열림 상태 클래스 부여
+        sugContainer.style.display = '';
+        sugContainer.classList.add('drawer-open');
     }
 
     updateSugHeaderBtnUI();
@@ -304,7 +304,7 @@ export function playMapFromLibrary(mapObj) {
 export async function toggleReaction(type) {
     if (!currentLoadedMapId) return;
     const btn = type === 'ok' ? document.getElementById('btnReactOk') : document.getElementById('btnReactGod');
-    if (btn.disabled) return;
+    if (!btn || btn.disabled) return;
     btn.disabled = true;
 
     const state = getMapLocalState(currentLoadedMapId);
@@ -353,13 +353,21 @@ export function updateReactionUI(mapId) {
     const state = getMapLocalState(mapId);
     const btnOk = document.getElementById('btnReactOk');
     const btnGod = document.getElementById('btnReactGod');
-    document.getElementById('countOk').innerText = currentMapReactions.ok;
-    document.getElementById('countGod').innerText = currentMapReactions.god;
 
-    btnOk.classList.toggle('active', state.ok);
-    btnOk.classList.toggle('ok', state.ok);
-    btnGod.classList.toggle('active', state.god);
-    btnGod.classList.toggle('god', state.god);
+    const countOk = document.getElementById('countOk');
+    if(countOk) countOk.innerText = currentMapReactions.ok;
+
+    const countGod = document.getElementById('countGod');
+    if(countGod) countGod.innerText = currentMapReactions.god;
+
+    if(btnOk) {
+        btnOk.classList.toggle('active', state.ok);
+        btnOk.classList.toggle('ok', state.ok);
+    }
+    if(btnGod) {
+        btnGod.classList.toggle('active', state.god);
+        btnGod.classList.toggle('god', state.god);
+    }
 
     document.querySelectorAll('.diff-vote-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -379,14 +387,12 @@ export function updateSugHeaderBtnUI() {
 
     if (currentLoadedMapAuthorUid && FB.currentUserUid === currentLoadedMapAuthorUid) {
         btn.innerHTML = "✏️ 맵 수정하기";
-        btn.style.backgroundColor = "#10b981"; // 에메랄드 톤으로 세련되게
-        btn.style.border = "none"; btn.style.color = "#fff";
+        btn.style.cssText = "background-color: #10b981; border: none; color: #fff;";
         if (delBtn) delBtn.style.display = 'inline-block';
         headerTitle.innerHTML = `💡 제안 관리 및 맵 수정 (<span id="sugCount">0</span>건)`;
     } else {
         btn.innerHTML = "내 풀이 제안하기";
-        btn.style.backgroundColor = "#f59e0b"; // 호박색 톤으로 세련되게
-        btn.style.border = "none"; btn.style.color = "#fff";
+        btn.style.cssText = "background-color: #f59e0b; border: none; color: #fff;";
         if (delBtn) delBtn.style.display = 'none';
         headerTitle.innerHTML = `💡 다른 풀이 제안 (<span id="sugCount">0</span>건)`;
     }
@@ -399,7 +405,6 @@ export function handleSugHeaderBtnAction() {
     }
 
     if (currentLoadedMapAuthorUid && FB.currentUserUid === currentLoadedMapAuthorUid) {
-        // 맵 수정 모드 → uiController의 openUploadForEdit 호출
         if (typeof window._openUploadForEdit === 'function') {
             window._openUploadForEdit(currentLoadedMapObj);
         }
@@ -410,15 +415,21 @@ export function handleSugHeaderBtnAction() {
 
 // ═══════════════ 제안 모달 ═══════════════
 export function openSuggestionModal() {
-    document.getElementById('suggestionModal').style.display = 'flex';
+    const modal = document.getElementById('suggestionModal');
+    if(modal) modal.style.display = 'flex';
 }
 export function closeSuggestionModal() {
-    document.getElementById('suggestionModal').style.display = 'none';
+    const modal = document.getElementById('suggestionModal');
+    if(modal) modal.style.display = 'none';
 }
 
 export async function submitSuggestion() {
-    const category = document.getElementById('sugCategory').value;
-    const comment = document.getElementById('sugComment').value.trim();
+    const catSelect = document.getElementById('sugCategory');
+    const commentInput = document.getElementById('sugComment');
+    if(!catSelect || !commentInput) return;
+
+    const category = catSelect.value;
+    const comment = commentInput.value.trim();
     if (!comment) { alert("코멘트(설명)를 입력해주세요."); return; }
 
     const mapItems = [];
@@ -441,7 +452,10 @@ export async function submitSuggestion() {
     };
 
     const btn = document.getElementById('sugSubmitBtn');
-    btn.innerText = "등록 중..."; btn.disabled = true;
+    if(btn) {
+        btn.innerText = "등록 중...";
+        btn.disabled = true;
+    }
 
     try {
         await FB.uploadSuggestionToDB(currentLoadedMapId, sugData);
@@ -451,14 +465,19 @@ export async function submitSuggestion() {
     } catch (error) {
         alert("제안 등록 실패: " + error.message);
     } finally {
-        btn.innerText = "제안 등록"; btn.disabled = false;
-        document.getElementById('sugComment').value = "";
+        if(btn) {
+            btn.innerText = "제안 등록";
+            btn.disabled = false;
+        }
+        commentInput.value = "";
     }
 }
 
 export async function loadSuggestionsForCurrentMap() {
     if (!currentLoadedMapId) return;
     const listDiv = document.getElementById('suggestionList');
+    if(!listDiv) return;
+
     listDiv.innerHTML = '<div style="padding: 30px; text-align: center;"><p style="color:#94a3b8; font-size:14px; font-weight: 500;">불러오는 중...</p></div>';
 
     try {
@@ -476,29 +495,16 @@ export async function loadSuggestionsForCurrentMap() {
         sugs.forEach(sug => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
-            // 제안 아이템 디자인: 여백과 색상을 더 부드럽고 트렌디하게
-            item.style.display = 'flex';
-            item.style.flexDirection = 'column';
-            item.style.gap = '16px';
-            item.style.backgroundColor = '#ffffff';
-            item.style.border = '1px solid #e2e8f0';
-            item.style.borderRadius = '12px';
-            item.style.padding = '18px';
-            item.style.marginBottom = '16px';
-            item.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)';
-            item.style.transition = 'border-color 0.2s';
+            item.style.cssText = 'display: flex; flex-direction: column; gap: 16px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: border-color 0.2s;';
 
-            item.onmouseover = () => item.style.borderColor = '#cbd5e1';
-            item.onmouseout = () => item.style.borderColor = '#e2e8f0';
+            item.addEventListener('mouseover', () => item.style.borderColor = '#cbd5e1');
+            item.addEventListener('mouseout', () => item.style.borderColor = '#e2e8f0');
 
-            // 미니 그리드와 정보를 감싸는 래퍼
             const topRow = document.createElement('div');
-            topRow.style.display = 'flex';
-            topRow.style.gap = '16px';
+            topRow.style.cssText = 'display: flex; gap: 16px;';
 
             const miniGridWrapper = document.createElement('div');
-            miniGridWrapper.style.width = '84px';
-            miniGridWrapper.style.flexShrink = '0';
+            miniGridWrapper.style.cssText = 'width: 84px; flex-shrink: 0;';
             const miniGrid = createMiniGridDOM(sug.mapData, false);
             miniGrid.style.borderRadius = '8px';
             miniGrid.style.overflow = 'hidden';
@@ -506,10 +512,7 @@ export async function loadSuggestionsForCurrentMap() {
             miniGridWrapper.appendChild(miniGrid);
 
             const content = document.createElement('div');
-            content.style.flex = "1";
-            content.style.display = "flex";
-            content.style.flexDirection = "column";
-            content.style.justifyContent = "center";
+            content.style.cssText = "flex: 1; display: flex; flex-direction: column; justify-content: center;";
 
             let catBadge = sug.category === 'NG'
                 ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:-0.5px;">🆖 기물 줄임</span>'
@@ -527,21 +530,19 @@ export async function loadSuggestionsForCurrentMap() {
             topRow.appendChild(content);
 
             const actions = document.createElement('div');
-            actions.style = "display:flex; gap:12px; width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 14px;";
+            actions.style.cssText = "display:flex; gap:12px; width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 14px;";
 
             const testBtn = document.createElement('button');
             testBtn.innerHTML = "▶️ 이 풀이로 테스트";
-            testBtn.style = "flex: 1; padding:10px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; transition: background 0.2s;";
-            testBtn.onmouseover = () => testBtn.style.background = "#059669";
-            testBtn.onmouseout = () => testBtn.style.background = "#10b981";
-            testBtn.onclick = () => {
+            testBtn.style.cssText = "flex: 1; padding:10px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; transition: background 0.2s;";
+            testBtn.addEventListener('mouseover', () => testBtn.style.background = "#059669");
+            testBtn.addEventListener('mouseout', () => testBtn.style.background = "#10b981");
+            testBtn.addEventListener('click', () => {
                 cancelDragOperation();
-
                 applyMapData(sug.mapData);
 
                 if (!isEditorMode && editorMapDataBackup) {
                     playerInventory = {};
-
                     for (let r = 0; r < GRID_SIZE; r++) {
                         for (let c = 0; c < GRID_SIZE; c++) {
                             if (editorMapDataBackup[r][c] && editorMapDataBackup[r][c].isInventory) {
@@ -571,22 +572,19 @@ export async function loadSuggestionsForCurrentMap() {
                     renderInventoryUI();
                     refreshLaser();
                 }
-
                 showNotification("제안된 풀이를 불러왔습니다. 확인해보세요!", "#27ae60");
-
-                // 모바일 환경일 경우, 테스트 버튼을 누르면 맵을 가리지 않도록 드로어를 닫아주는 센스
                 closeSuggestionDrawer();
-            };
+            });
             actions.appendChild(testBtn);
 
             if (FB.currentUserUid === currentLoadedMapAuthorUid || FB.currentUserUid === sug.suggesterUid) {
                 const delBtn = document.createElement('button');
                 delBtn.innerHTML = "🗑️";
                 delBtn.title = "삭제하기";
-                delBtn.style = "padding:10px 16px; border:1px solid #f87171; background:transparent; color:#ef4444; border-radius:8px; cursor:pointer; font-size:13px; transition: all 0.2s;";
-                delBtn.onmouseover = () => { delBtn.style.background = "#ef4444"; delBtn.style.color = "#fff"; };
-                delBtn.onmouseout = () => { delBtn.style.background = "transparent"; delBtn.style.color = "#ef4444"; };
-                delBtn.onclick = async () => {
+                delBtn.style.cssText = "padding:10px 16px; border:1px solid #f87171; background:transparent; color:#ef4444; border-radius:8px; cursor:pointer; font-size:13px; transition: all 0.2s;";
+                delBtn.addEventListener('mouseover', () => { delBtn.style.background = "#ef4444"; delBtn.style.color = "#fff"; });
+                delBtn.addEventListener('mouseout', () => { delBtn.style.background = "transparent"; delBtn.style.color = "#ef4444"; });
+                delBtn.addEventListener('click', async () => {
                     if (confirm("이 제안을 삭제하시겠습니까?")) {
                         try {
                             await FB.deleteSuggestionFromDB(currentLoadedMapId, sug.id);
@@ -596,7 +594,7 @@ export async function loadSuggestionsForCurrentMap() {
                             alert("삭제 권한이 없거나 오류가 발생했습니다.");
                         }
                     }
-                };
+                });
                 actions.appendChild(delBtn);
             }
 
@@ -605,7 +603,7 @@ export async function loadSuggestionsForCurrentMap() {
             listDiv.appendChild(item);
         });
     } catch (e) {
-        listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:#ef4444;">게시판을 불러오는 데 실패했습니다.</p></div>`;
+        if(listDiv) listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:#ef4444;">게시판을 불러오는 데 실패했습니다.</p></div>`;
     }
 }
 
@@ -614,6 +612,8 @@ export async function deleteCurrentMap() {
     if (!currentLoadedMapId) return;
     if (confirm("정말로 이 맵을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 제안과 평가도 함께 삭제됩니다.")) {
         const btn = document.getElementById('deleteMapBtn');
+        if(!btn) return;
+
         const originalText = btn.innerHTML;
         btn.innerHTML = "삭제 중...";
         btn.disabled = true;
@@ -642,13 +642,11 @@ export function createNewMap() {
         editorMapDataBackup = null;
 
         document.querySelectorAll('.grid-cell').forEach(cell => updateCellVisual(cell, null));
-        // clearLaser from laserEngine; we import refreshLaser which calls clearLaser indirectly
-        // just call refreshLaser which handles both cases
         refreshLaser();
 
-        document.getElementById('loadedMapInfo').style.display = 'none';
+        const loadedMapInfo = document.getElementById('loadedMapInfo');
+        if(loadedMapInfo) loadedMapInfo.style.display = 'none';
 
-        // 새 맵 생성 시 제안 보드도 숨김(드로어 닫기)
         closeSuggestionDrawer();
 
         currentLoadedMapId = null;
@@ -683,3 +681,47 @@ export function initUrlParamLoader() {
         }, 500);
     }
 }
+
+// ═══════════════ HTML 버튼 자동 연결 (Event Listeners) ═══════════════
+// HTML에서 onclick 속성을 제거했기 때문에, JS 파일이 알아서 화면의 버튼을 찾아 연결해주는 핵심 로직입니다.
+export function initLibraryEventListeners() {
+    // 버튼을 찾아 안전하게 이벤트를 달아주는 헬퍼 함수
+    const bindBtn = (id, eventType, fn) => {
+        const el = document.getElementById(id);
+        if (el) {
+            // 중복 실행 방지를 위해 기존 이벤트 리스너를 제거하는 로직은 현 구조상 생략해도 안전합니다.
+            el.addEventListener(eventType, fn);
+        }
+    };
+
+    // 1. 주요 버튼들 연결
+    bindBtn('libraryToggleBtn', 'click', toggleLibraryScreen);
+    bindBtn('newMapBtn', 'click', createNewMap);
+    bindBtn('sortSelect', 'change', loadLibraryMaps);
+    bindBtn('searchInput', 'input', applyFilters);
+
+    // 2. 투표 및 액션 버튼들 연결
+    bindBtn('btnReactOk', 'click', () => toggleReaction('ok'));
+    bindBtn('btnReactGod', 'click', () => toggleReaction('god'));
+    bindBtn('sugHeaderBtn', 'click', handleSugHeaderBtnAction);
+    bindBtn('deleteMapBtn', 'click', deleteCurrentMap);
+
+    // 3. 모달 관련 버튼들 연결
+    bindBtn('sugSubmitBtn', 'click', submitSuggestion);
+    // 모달 닫기 버튼은 id가 무엇인지 불확실하여 일반적으로 쓰일만한 id를 모두 방어적으로 적어둡니다.
+    bindBtn('closeSugModalBtn', 'click', closeSuggestionModal);
+
+    // 4. 난이도 투표 버튼들 연결 (id가 아닌 클래스로 여러 개를 찾아냅니다)
+    document.querySelectorAll('.diff-vote-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const diffClass = Array.from(e.currentTarget.classList).find(c => c.startsWith('diff-'));
+            if (diffClass) {
+                const diffLevel = diffClass.replace('diff-', '');
+                voteDifficulty(diffLevel);
+            }
+        });
+    });
+}
+
+// 모듈이 로드되는 순간 자동으로 위의 이벤트 리스너들을 전부 연결합니다.
+initLibraryEventListeners();
