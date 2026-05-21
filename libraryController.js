@@ -262,14 +262,19 @@ export function renderLibraryCards(mapsList, isSearch = false) {
 
     if (mapsList.length > 0) {
         const featured = [...mapsList]
+            .filter(m => (m.reactionGod || 0) >= 3)
             .sort((a, b) => (b.reactionGod || 0) - (a.reactionGod || 0))
             .slice(0, 10);
-        renderHorizontalSection(grid, "featured", featured);
+        if (featured.length > 0) {
+            renderHorizontalSection(grid, "featured", featured);
+        }
 
-        const original = [...mapsList].sort((a, b) =>
-            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
-        renderHorizontalSection(grid, "original", original);
+        const original = [...mapsList]
+            .filter(m => m.author === 'RayOriginal')
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        if (original.length > 0) {
+            renderHorizontalSection(grid, "original", original);
+        }
     }
 
     renderRecentMapsSection(grid, mapsList);
