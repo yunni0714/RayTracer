@@ -4,7 +4,7 @@ import { SVG_ART, GRID_SIZE, CELL_SIZE, mapData, playerInventory, isEditorMode,
     editorMapDataBackup, selectedTool, lastActiveTool, undoStack,
     showNotification, cancelDragOperation, deselectAllTools, restoreTool,
     refundToInventory, updateCellVisual, applyMapData, saveStateDirectly,
-    renderInventoryUI, toggleMode } from './dragAndDrop.js';
+    renderInventoryUI, toggleMode, resetAnswerState } from './dragAndDrop.js';
 import { refreshLaser } from './laserEngine.js';
 
 // ═══════════════ 전역 상태 ═══════════════
@@ -348,6 +348,7 @@ export function closeSuggestionDrawer() {
 
 // ═══════════════ 맵 플레이 ═══════════════
 export function playMapFromLibrary(mapObj) {
+    resetAnswerState();
     if (isLibraryMode) toggleLibraryScreen();
     if (!isEditorMode) toggleMode();
 
@@ -586,53 +587,42 @@ export async function loadSuggestionsForCurrentMap() {
             return;
         }
 
+        const isMapOwner = !!FB.currentUserUid && FB.currentUserUid === currentLoadedMapAuthorUid;
+
         sugs.forEach(sug => {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
-            item.style.cssText = 'display: flex; flex-direction: column; gap: 16px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); transition: border-color 0.2s;';
 
-            item.addEventListener('mouseover', () => item.style.borderColor = '#cbd5e1');
-            item.addEventListener('mouseout', () => item.style.borderColor = '#e2e8f0');
+            // 미니 그리드 (createMiniGridV2 사용 — CSS 클래스 기반, 1:1 비율 보장)
+            const gridArea = document.createElement('div');
+            gridArea.className = 'sug-grid-area';
+            gridArea.appendChild(createMiniGridV2(sug.mapData));
+            item.appendChild(gridArea);
 
-            const topRow = document.createElement('div');
-            topRow.style.cssText = 'display: flex; gap: 16px;';
-
-            const miniGridWrapper = document.createElement('div');
-            miniGridWrapper.style.cssText = 'width: 84px; flex-shrink: 0;';
-            const miniGrid = createMiniGridDOM(sug.mapData, false);
-            miniGrid.style.borderRadius = '8px';
-            miniGrid.style.overflow = 'hidden';
-            miniGrid.style.border = '1px solid #f1f5f9';
-            miniGridWrapper.appendChild(miniGrid);
+            // 카테고리 배지 + 날짜 + 코멘트
+            const catBadge = sug.category === 'NG'
+                ? '<span style="background:#ef4444;color:white;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🆖 기물 줄임</span>'
+                : '<span style="background:#3b82f6;color:white;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🔠 복수정답</span>';
+            const dateStr = new Date(sug.createdAt).toLocaleDateString();
 
             const content = document.createElement('div');
-            content.style.cssText = "flex: 1; display: flex; flex-direction: column; justify-content: center;";
-
-            let catBadge = sug.category === 'NG'
-                ? '<span style="background:#ef4444;color:white;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:-0.5px;">🆖 기물 줄임</span>'
-                : '<span style="background:#3b82f6;color:white;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:-0.5px;">🔠 복수정답</span>';
-
+            content.className = 'sug-content';
             content.innerHTML = `
-                <div style="margin-bottom:10px; display: flex; align-items: center; gap: 8px;">
-                    ${catBadge}
-                    <span style="color:#94a3b8;font-size:11px;font-weight:500;">${new Date(sug.createdAt).toLocaleDateString()}</span>
-                </div>
-                <p style="margin:0; font-size: 14px; font-weight:700; color:#1e293b; line-height: 1.5; word-break: keep-all;">${sug.comment}</p>
+                <div class="sug-cat-row">${catBadge}<span style="color:#94a3b8;font-size:11px;">${dateStr}</span></div>
+                <p class="sug-comment">${sug.comment}</p>
             `;
+            item.appendChild(content);
 
-            topRow.appendChild(miniGridWrapper);
-            topRow.appendChild(content);
-
+            // 액션 버튼 (우측 세로 배열)
             const actions = document.createElement('div');
-            actions.style.cssText = "display:flex; gap:12px; width: 100%; border-top: 1px dashed #e2e8f0; padding-top: 14px;";
+            actions.className = 'sug-actions';
 
             const testBtn = document.createElement('button');
-            testBtn.innerHTML = "▶️ 이 풀이로 테스트";
-            testBtn.style.cssText = "flex: 1; padding:10px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; transition: background 0.2s;";
-            testBtn.addEventListener('mouseover', () => testBtn.style.background = "#059669");
-            testBtn.addEventListener('mouseout', () => testBtn.style.background = "#10b981");
+            testBtn.className = 'sug-test-btn';
+            testBtn.innerHTML = "▶ 이 풀이로 테스트";
             testBtn.addEventListener('click', () => {
                 cancelDragOperation();
+                resetAnswerState();
                 applyMapData(sug.mapData);
 
                 if (!isEditorMode && editorMapDataBackup) {
@@ -668,13 +658,11 @@ export async function loadSuggestionsForCurrentMap() {
             });
             actions.appendChild(testBtn);
 
-            if (FB.currentUserUid === currentLoadedMapAuthorUid || FB.currentUserUid === sug.suggesterUid) {
+            const canDelete = isMapOwner || FB.currentUserUid === sug.suggesterUid;
+            if (canDelete) {
                 const delBtn = document.createElement('button');
-                delBtn.innerHTML = "🗑️";
-                delBtn.title = "삭제하기";
-                delBtn.style.cssText = "padding:10px 16px; border:1px solid #f87171; background:transparent; color:#ef4444; border-radius:8px; cursor:pointer; font-size:13px; transition: all 0.2s;";
-                delBtn.addEventListener('mouseover', () => { delBtn.style.background = "#ef4444"; delBtn.style.color = "#fff"; });
-                delBtn.addEventListener('mouseout', () => { delBtn.style.background = "transparent"; delBtn.style.color = "#ef4444"; });
+                delBtn.className = 'sug-del-btn';
+                delBtn.innerHTML = "🗑️ 삭제";
                 delBtn.addEventListener('click', async () => {
                     if (confirm("이 제안을 삭제하시겠습니까?")) {
                         try {
@@ -689,7 +677,6 @@ export async function loadSuggestionsForCurrentMap() {
                 actions.appendChild(delBtn);
             }
 
-            item.appendChild(topRow);
             item.appendChild(actions);
             listDiv.appendChild(item);
         });
@@ -722,6 +709,7 @@ export async function deleteCurrentMap() {
 
 export function createNewMap() {
     if (confirm("진행 중인 맵이 모두 초기화되고 빈 에디터로 돌아갑니다. 새로 만드시겠습니까?")) {
+        resetAnswerState();
         if (isLibraryMode) toggleLibraryScreen();
         if (!isEditorMode) toggleMode();
 
