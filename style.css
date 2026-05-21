@@ -1,43 +1,407 @@
 /* =========================================
-   개편된 라이브러리 & 제안 게시판 UI 스타일
+   Project Ray — 우측 패널 & 카드 디자인 스타일
 ========================================= */
 
-/* 1. 가로 스크롤 (넷플릭스 스타일) 스크롤바 숨기기 */
+/* ──────────────────────────────────────────
+   1) 가로 스크롤 스크롤바 숨기기
+────────────────────────────────────────── */
 .horizontal-scroll-container::-webkit-scrollbar {
-    display: none; /* 크롬, 사파리 등에서 못생긴 밑바닥 스크롤바 숨김 */
+    display: none;
 }
 
-/* 2. 제안 게시판 서랍(Drawer) 기본 상태 (PC 화면) */
-#suggestionBoardContainer {
-    /* 기존 우측 고정 방식일 때의 디자인을 다듬어 줍니다 */
+/* ──────────────────────────────────────────
+   2) 라이브러리 화면 — Recent Maps 섹션 헤더
+────────────────────────────────────────── */
+.recent-maps-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 40px 0 20px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    flex-wrap: wrap;
+}
+.recent-maps-header h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    flex-shrink: 0;
+    text-transform: capitalize;
+    letter-spacing: -0.5px;
+}
+.recent-maps-header input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+.recent-maps-header input[type="text"]:focus {
+    outline: none;
+    border-color: #2980b9;
+}
+.recent-maps-header select {
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    background: white;
+}
+.recent-maps-header .new-map-btn {
+    padding: 10px 18px;
+    background: #e67e22;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: filter 0.2s;
+}
+.recent-maps-header .new-map-btn:hover { filter: brightness(1.1); }
+
+/* ──────────────────────────────────────────
+   3) Recent Maps 그리드 — 화면 크기에 따라 카드 갯수 자동 조정
+────────────────────────────────────────── */
+.recent-maps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+    margin-bottom: 60px;
+}
+
+/* ──────────────────────────────────────────
+   4) 새 카드 디자인 (.map-card-v2)
+────────────────────────────────────────── */
+.map-card-v2 {
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #f1f5f9;
+}
+.map-card-v2:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.1);
+    border-color: #cbd5e1;
+}
+
+/* 미니 그리드 래퍼 (카드 상단) */
+.map-card-v2 .mini-wrapper {
+    padding: 18px 18px 0 18px;
+}
+.map-card-v2 .mini-grid-v2 {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
     background-color: #f8fafc;
-    border-left: 1px solid #e2e8f0;
-    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
-    display: none; /* 평소엔 숨김 */
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px;
+    box-sizing: border-box;
+}
+.map-card-v2 .mini-cell-v2 {
+    box-shadow: inset 0 0 0 1px #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.map-card-v2 .mini-cell-v2 svg {
+    width: 75%;
+    height: 75%;
 }
 
-#suggestionBoardContainer.drawer-open {
-    display: block; /* 맵을 누르면 나타남 (PC) */
+/* 카드 메타 (제목, 작성자) */
+.map-card-v2 .card-meta {
+    padding: 14px 20px 10px 20px;
+}
+.map-card-v2 .card-meta h4 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.map-card-v2 .card-meta .sub {
+    margin: 0;
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
-/* 3. 📱 반응형 서랍 모드 (화면 너비 1024px 이하의 태블릿/모바일) */
-@media (max-width: 1024px) {
-    #suggestionBoardContainer {
-        display: block !important;
-        position: fixed; /* 화면 위로 붕 띄움 */
-        top: 0;
-        right: -100%; /* 평소엔 화면 오른쪽 바깥으로 100% 밀어내서 완전 숨김! */
-        height: 100vh; /* 화면 전체 높이 */
-        width: 340px; /* 서랍 너비 */
-        max-width: 90vw; /* 모바일 화면이 너무 작으면 90%까지만 차지 */
-        z-index: 9999;
-        transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1); /* 스르륵 쫀득하게 열리는 애니메이션 */
-        overflow-y: auto; /* 내용이 길면 서랍 안에서 세로 스크롤 */
-    }
+/* 구분선 */
+.map-card-v2 .card-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 0 20px;
+}
 
-    /* JS에서 .drawer-open 클래스를 붙이는 순간 작동! */
-    #suggestionBoardContainer.drawer-open {
-        right: 0; /* 화면 밖에서 원래 위치(0)로 튀어나옴 */
-        box-shadow: -10px 0 25px rgba(0,0,0,0.15); /* 열렸을 때 그림자를 세게 줘서 입체감 부여 */
+/* 카드 액션 (난이도 배지 + 통계) */
+.map-card-v2 .card-bottom {
+    padding: 14px 20px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+}
+.map-card-v2 .badge-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.map-card-v2 .diff-pill {
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 800;
+    border-radius: 8px;
+    color: white;
+    letter-spacing: -0.3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+.map-card-v2 .diff-pill.diff-None {
+    background: #cbd5e1;
+    color: #475569;
+}
+.map-card-v2 .stat-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    font-size: 15px;
+    font-weight: 700;
+}
+.map-card-v2 .stat-row .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.map-card-v2 .stat-row .stat-ok { color: #27ae60; }
+.map-card-v2 .stat-row .stat-god { color: #ef4444; }
+
+/* ──────────────────────────────────────────
+   5) Featured / Original 수평 스크롤 섹션
+────────────────────────────────────────── */
+.library-section {
+    margin-bottom: 45px;
+}
+.library-section .section-heading {
+    font-size: 24px;
+    margin: 0 0 16px 0;
+    font-weight: 800;
+    color: #0f172a;
+    text-transform: capitalize;
+    padding-left: 4px;
+    letter-spacing: -0.5px;
+}
+.horizontal-scroll-container {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    padding-right: 50px;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.horizontal-scroll-container .map-card-v2 {
+    width: 260px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+}
+
+/* ──────────────────────────────────────────
+   6) 우측 사이드 패널 (#rightSidePanel)
+────────────────────────────────────────── */
+#rightSidePanel {
+    display: flex;
+    flex-direction: row;
+    width: 340px;
+    flex-shrink: 0;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    align-self: stretch;
+    max-height: 700px;
+}
+
+/* 수직 탭 버튼 */
+.right-tab-buttons {
+    display: flex;
+    flex-direction: column;
+    width: 40px;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+.right-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    color: #94a3b8;
+    padding: 14px 4px;
+    transition: background 0.2s, color 0.2s;
+    border-bottom: 1px solid #e2e8f0;
+    line-height: 1.3;
+    text-align: center;
+    font-family: inherit;
+}
+.right-tab:last-child { border-bottom: none; }
+.right-tab.active {
+    background: #2980b9;
+    color: white;
+}
+.right-tab:hover:not(.active) {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+/* 패널 내용 영역 */
+.right-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    min-width: 0;
+}
+.right-panel-content .panel-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 16px 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+/* 풀이 제안 헤더 (우측 패널 내부용) */
+#panelSuggestion .suggestion-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+#panelSuggestion .suggestion-header h3 {
+    font-size: 15px;
+    margin: 0;
+}
+#panelSuggestion .sug-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    flex: 1;
+}
+
+/* ──────────────────────────────────────────
+   7) "다음 문제" 패널 — 미니 맵 카드 리스트
+────────────────────────────────────────── */
+#nextMapList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.next-map-card {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    background: #fafafa;
+}
+.next-map-card:hover {
+    border-color: #2980b9;
+    box-shadow: 0 2px 8px rgba(41,128,185,0.12);
+    transform: translateX(2px);
+}
+.next-map-card .next-mini {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+}
+.next-map-card .next-info {
+    flex: 1;
+    min-width: 0;
+}
+.next-map-card .next-info h4 {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.next-map-card .next-info p {
+    font-size: 11px;
+    color: #64748b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.next-map-card .next-info .diff-mini {
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    color: white;
+}
+
+/* ──────────────────────────────────────────
+   8) "정답 보기" 버튼 스타일
+────────────────────────────────────────── */
+.answer-btn {
+    background: #27ae60 !important;
+    width: 100%;
+    margin-bottom: 15px;
+    font-size: 16px;
+    padding: 15px;
+    transition: background-color 0.3s;
+}
+.answer-btn:hover { background: #1e8449 !important; }
+
+/* ──────────────────────────────────────────
+   9) 반응형 — 우측 패널이 화면 좁을 때 아래로 (모바일/태블릿)
+────────────────────────────────────────── */
+@media (max-width: 1280px) {
+    .main-content {
+        flex-wrap: wrap;
     }
+    #rightSidePanel {
+        width: 100%;
+        max-height: 500px;
+    }
+}
+
+@media (max-width: 640px) {
+    .recent-maps-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+    }
+    .recent-maps-header {
+        gap: 8px;
+        padding: 12px;
+    }
+    .recent-maps-header h2 { font-size: 18px; }
 }

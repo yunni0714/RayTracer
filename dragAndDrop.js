@@ -234,13 +234,14 @@ export function renderInventoryUI() {
 export function toggleMode() {
     isEditorMode = !isEditorMode;
     const btn = document.getElementById('modeToggleBtn');
+    const answerBtn = document.getElementById('answerBtn');
     const body = document.body;
     undoStack = [];
 
     if (isEditorMode) {
-        btn.innerHTML = "🛠️ 현재: 에디터 모드";
-        btn.classList.remove('test-mode');
+        if (btn) { btn.innerHTML = "🛠️ 현재: 에디터 모드"; btn.classList.remove('test-mode'); }
         body.classList.remove('is-test-mode');
+        if (answerBtn) answerBtn.style.display = 'none';
 
         document.getElementById('editorPaletteGroup').style.display = 'block';
         document.getElementById('testModeInventory').style.display = 'none';
@@ -256,9 +257,9 @@ export function toggleMode() {
             mapData = JSON.parse(JSON.stringify(editorMapDataBackup));
         }
     } else {
-        btn.innerHTML = "🎮 현재: 테스트 모드";
-        btn.classList.add('test-mode');
+        if (btn) { btn.innerHTML = "🎮 현재: 테스트 모드"; btn.classList.add('test-mode'); }
         body.classList.add('is-test-mode');
+        if (answerBtn) answerBtn.style.display = 'block';
 
         document.getElementById('editorPaletteGroup').style.display = 'none';
         document.getElementById('testModeInventory').style.display = 'block';
@@ -286,6 +287,36 @@ export function toggleMode() {
         }
     }
     refreshLaser();
+}
+
+export function showAnswer() {
+    const mapObj = typeof window._getCurrentMapObj === 'function' ? window._getCurrentMapObj() : null;
+    if (!mapObj || !mapObj.mapData) {
+        showNotification("원본 맵 데이터가 없습니다.", "#e74c3c");
+        return;
+    }
+
+    const cells = document.querySelectorAll('.grid-cell');
+    const originalHTML = Array.from(cells).map(c => c.innerHTML);
+
+    const tempData = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+    mapObj.mapData.forEach(item => {
+        if (item.y < GRID_SIZE && item.x < GRID_SIZE && !item.isInventory) {
+            tempData[item.y][item.x] = item;
+        }
+    });
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
+            if (cell) updateCellVisual(cell, tempData[r][c]);
+        }
+    }
+    showNotification("📖 정답입니다! 3초 후 복원됩니다.", "#8e44ad");
+
+    setTimeout(() => {
+        cells.forEach((cell, i) => { cell.innerHTML = originalHTML[i]; });
+        showNotification("플레이 화면으로 돌아왔습니다.", "#27ae60");
+    }, 3000);
 }
 
 // ═══════════════ 클리어 / 익스포트 / 임포트 ═══════════════

@@ -15,7 +15,6 @@ export let currentLoadedMapAuthorUid = null;
 export let currentLoadedMapObj = null;
 export let currentMapReactions = { ok: 0, god: 0 };
 
-// clearGrid에서 호출할 리셋 함수 (window._setCurrentMapNull 우회용)
 export function resetCurrentMap() {
     currentLoadedMapId = null;
     currentLoadedMapAuthorUid = null;
@@ -41,7 +40,7 @@ export function calculateUserDifficulty(diffVotes) {
     return Object.keys(diffVotes).reduce((a, b) => diffVotes[a] > diffVotes[b] ? a : b);
 }
 
-// ═══════════════ 미니 그리드 DOM 생성 ═══════════════
+// ═══════════════ 미니 그리드 DOM 생성 (제안 게시판용) ═══════════════
 export function createMiniGridDOM(mapDataArray, hideInventory = false) {
     const miniGrid = document.createElement('div');
     miniGrid.className = 'mini-grid';
@@ -68,40 +67,122 @@ export function createMiniGridDOM(mapDataArray, hideInventory = false) {
     return miniGrid;
 }
 
+// ═══════════════ 미니 그리드 V2 (카드 디자인용, CSS 클래스 사용) ═══════════════
+function createMiniGridV2(mapDataArray) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mini-wrapper';
+
+    const grid = document.createElement('div');
+    grid.className = 'mini-grid-v2';
+
+    for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'mini-cell-v2';
+        grid.appendChild(cell);
+    }
+
+    if (mapDataArray && Array.isArray(mapDataArray)) {
+        mapDataArray.forEach(item => {
+            if (item.isInventory) return;
+            if (item.x >= 0 && item.x < 5 && item.y >= 0 && item.y < 5) {
+                const index = item.y * 5 + item.x;
+                const cell = grid.children[index];
+                if (SVG_ART[item.type]) {
+                    cell.innerHTML = `<div style="transform: rotate(${item.rotation || 0}deg); width:100%; height:100%; display:flex; justify-content:center; align-items:center;">${SVG_ART[item.type]}</div>`;
+                }
+            }
+        });
+    }
+
+    wrapper.appendChild(grid);
+    return wrapper;
+}
+
+// ═══════════════ 카드 엘리먼트 생성 (.map-card-v2) ═══════════════
+function createCardElement(mapObj) {
+    const card = document.createElement('div');
+    card.className = 'map-card-v2';
+    card.addEventListener('click', () => playMapFromLibrary(mapObj));
+
+    // 상단 미니 그리드
+    card.appendChild(createMiniGridV2(mapObj.mapData));
+
+    // 메타 정보 (제목, 제작자 • 날짜)
+    const creatorDiff = mapObj.difficulty || 'Normal';
+    const userDiff = calculateUserDifficulty(mapObj.diffVotes);
+    const dateStr = mapObj.createdAt
+        ? new Date(mapObj.createdAt).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
+        : '';
+    const okCount = mapObj.reactionOk || 0;
+    const godCount = mapObj.reactionGod || 0;
+
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+    meta.innerHTML = `
+        <h4 title="${mapObj.title || ''}">${mapObj.title || '제목 없음'}</h4>
+        <p class="sub">${mapObj.author || '알 수 없음'} &bull; ${dateStr}</p>
+    `;
+    card.appendChild(meta);
+
+    // 구분선
+    const divider = document.createElement('div');
+    divider.className = 'card-divider';
+    card.appendChild(divider);
+
+    // 하단: 난이도 배지 + 통계
+    const bottom = document.createElement('div');
+    bottom.className = 'card-bottom';
+
+    const badgeRow = document.createElement('div');
+    badgeRow.className = 'badge-row';
+
+    const officialPill = document.createElement('span');
+    officialPill.className = `diff-pill diff-${creatorDiff}`;
+    officialPill.textContent = `공식: ${creatorDiff}`;
+    badgeRow.appendChild(officialPill);
+
+    const evalLabel = userDiff || 'None';
+    const evalPill = document.createElement('span');
+    evalPill.className = `diff-pill diff-${evalLabel}`;
+    evalPill.textContent = `평가: ${evalLabel}`;
+    badgeRow.appendChild(evalPill);
+
+    bottom.appendChild(badgeRow);
+
+    const statRow = document.createElement('div');
+    statRow.className = 'stat-row';
+    statRow.innerHTML = `
+        <span class="stat stat-ok">✅ ${okCount}</span>
+        <span class="stat stat-god">👍 ${godCount}</span>
+    `;
+    bottom.appendChild(statRow);
+
+    card.appendChild(bottom);
+    return card;
+}
+
 // ═══════════════ 라이브러리 화면 ═══════════════
 export function toggleLibraryScreen() {
     isLibraryMode = !isLibraryMode;
     const btn = document.getElementById('libraryToggleBtn');
     const editorScreen = document.getElementById('editorScreen');
     const libScreen = document.getElementById('libraryScreen');
-    const modeBtn = document.getElementById('modeToggleBtn');
-    const newMapBtn = document.getElementById('newMapBtn');
 
     if (isLibraryMode) {
-        if(btn) {
-            btn.innerHTML = "🔙 돌아가기";
-            btn.classList.add('active');
-        }
-        if(editorScreen) editorScreen.classList.remove('active');
-        if(libScreen) libScreen.classList.add('active');
-        if(modeBtn) modeBtn.style.display = 'none';
-        if(newMapBtn) newMapBtn.style.display = 'inline-block';
+        if (btn) { btn.innerHTML = "🔙 돌아가기"; btn.classList.add('active'); }
+        if (editorScreen) editorScreen.classList.remove('active');
+        if (libScreen) libScreen.classList.add('active');
         loadLibraryMaps();
     } else {
-        if(btn) {
-            btn.innerHTML = "📚 맵 라이브러리 열기";
-            btn.classList.remove('active');
-        }
-        if(libScreen) libScreen.classList.remove('active');
-        if(editorScreen) editorScreen.classList.add('active');
-        if(modeBtn) modeBtn.style.display = 'inline-block';
-        if(newMapBtn) newMapBtn.style.display = 'none';
+        if (btn) { btn.innerHTML = "📚 맵 라이브러리 열기"; btn.classList.remove('active'); }
+        if (libScreen) libScreen.classList.remove('active');
+        if (editorScreen) editorScreen.classList.add('active');
     }
 }
 
 export async function loadLibraryMaps() {
     const sortSelect = document.getElementById('sortSelect');
-    const sortBy = sortSelect ? sortSelect.value : 'recent';
+    const sortBy = sortSelect ? sortSelect.value : 'createdAt';
     const grid = document.getElementById('libraryGrid');
     if (!grid) return;
 
@@ -124,123 +205,132 @@ export function applyFilters() {
     renderLibraryCards(filtered, q !== '');
 }
 
-// 카드 DOM을 생성하는 헬퍼 함수
-function createCardElement(mapObj) {
-    const card = document.createElement('div');
-    card.className = 'map-card';
-    card.style.cssText = 'background-color: #ffffff; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); overflow: hidden; cursor: pointer; transition: all 0.25s ease; display: flex; flex-direction: column;';
-    card.addEventListener('click', () => playMapFromLibrary(mapObj));
+// ── 수평 스크롤 섹션 ──
+function renderHorizontalSection(container, title, maps) {
+    const section = document.createElement('div');
+    section.className = 'library-section';
 
-    card.addEventListener('mouseover', () => {
-        card.style.transform = 'translateY(-6px)';
-        card.style.boxShadow = '0 12px 28px rgba(0,0,0,0.12)';
-    });
-    card.addEventListener('mouseout', () => {
-        card.style.transform = 'translateY(0)';
-        card.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
-    });
+    const heading = document.createElement('h2');
+    heading.className = 'section-heading';
+    heading.innerText = title;
+    section.appendChild(heading);
 
-    const miniGrid = createMiniGridDOM(mapObj.mapData, true);
-
-    const okCount = mapObj.reactionOk || 0;
-    const godCount = mapObj.reactionGod || 0;
-    const creatorDiff = mapObj.difficulty || 'Normal';
-    const userDiff = calculateUserDifficulty(mapObj.diffVotes);
-    const dateStr = mapObj.createdAt ? new Date(mapObj.createdAt).toLocaleDateString() : '';
-
-    card.innerHTML = `
-        <div class="card-meta" style="padding: 16px 16px 12px 16px;">
-            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #1e293b; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${mapObj.title}">${mapObj.title || '제목 없음'}</h4>
-            <p style="margin: 0; font-size: 12px; font-weight: 500; color: #64748b;">${mapObj.author || '알 수 없음'} <span style="color: #cbd5e1; margin: 0 4px;">|</span> ${dateStr}</p>
-        </div>
-        <div class="card-actions" style="padding: 0 16px 16px 16px; display: flex; flex-direction: column; gap: 10px; margin-top: auto;">
-            <div style="display: flex; gap: 6px;">
-                <span class="difficulty-badge diff-${creatorDiff}" style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; color: white;">공식: ${creatorDiff}</span>
-                ${userDiff ? `<span class="difficulty-badge diff-${userDiff}" style="padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 6px; color: white; border: 1px dashed rgba(255,255,255,0.7);">유저: ${userDiff}</span>` : ''}
-            </div>
-            <div class="static-stats" style="width: 100%; display: flex; justify-content: flex-end; gap: 12px; font-size: 13px; font-weight: 700;">
-                <span style="color:#10b981; display:flex; align-items:center; gap:3px;">✅ ${okCount}</span>
-                <span style="color:#f43f5e; display:flex; align-items:center; gap:3px;">👍 ${godCount}</span>
-            </div>
-        </div>
-    `;
-    card.insertBefore(miniGrid, card.firstChild);
-    return card;
+    const scrollContainer = document.createElement('div');
+    scrollContainer.className = 'horizontal-scroll-container';
+    maps.forEach(mapObj => scrollContainer.appendChild(createCardElement(mapObj)));
+    section.appendChild(scrollContainer);
+    container.appendChild(section);
 }
 
-// 라이브러리 화면 렌더링
+// ── Recent Maps 섹션 (인라인 검색/정렬/새맵 버튼 포함) ──
+function renderRecentMapsSection(container, maps) {
+    const header = document.createElement('div');
+    header.className = 'recent-maps-header';
+    header.innerHTML = `
+        <h2>recent maps</h2>
+        <input id="searchInput" type="text" placeholder="맵 제목, 제작자 이름으로 검색...">
+        <select id="sortSelect">
+            <option value="createdAt">최신 등록순</option>
+            <option value="reactionGod">갓맵(👍)순</option>
+        </select>
+        <button class="new-map-btn" id="newMapBtnLibrary">✨ 새 맵 만들기</button>
+    `;
+    container.appendChild(header);
+
+    header.querySelector('#searchInput').addEventListener('input', applyFilters);
+    header.querySelector('#sortSelect').addEventListener('change', loadLibraryMaps);
+    header.querySelector('#newMapBtnLibrary').addEventListener('click', createNewMap);
+
+    const mainGrid = document.createElement('div');
+    mainGrid.className = 'recent-maps-grid';
+    maps.forEach(mapObj => mainGrid.appendChild(createCardElement(mapObj)));
+    container.appendChild(mainGrid);
+}
+
+// ── 전체 라이브러리 렌더링: featured → original → recent maps ──
 export function renderLibraryCards(mapsList, isSearch = false) {
     const grid = document.getElementById('libraryGrid');
     if (!grid) return;
     grid.innerHTML = '';
     grid.style.display = 'block';
 
-    if (mapsList.length === 0) {
-        grid.innerHTML = '<p style="text-align: center; width: 100%; color: #64748b; font-weight: 500; padding: 60px 0;">검색 결과나 등록된 맵이 없습니다.</p>';
+    if (isSearch) {
+        renderRecentMapsSection(grid, mapsList);
         return;
     }
 
-    const mainContainer = document.createElement('div');
-    mainContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-bottom: 50px;';
+    if (mapsList.length > 0) {
+        const featured = [...mapsList]
+            .sort((a, b) => (b.reactionGod || 0) - (a.reactionGod || 0))
+            .slice(0, 10);
+        renderHorizontalSection(grid, "featured", featured);
 
-    mapsList.forEach(mapObj => {
-        const card = createCardElement(mapObj);
-        card.style.width = '100%';
-        mainContainer.appendChild(card);
-    });
-    grid.appendChild(mainContainer);
-
-    if (!isSearch) {
-        const divider = document.createElement('hr');
-        divider.style.cssText = 'border: 0; height: 1px; background-color: #e2e8f0; margin: 0 0 40px 0;';
-        grid.appendChild(divider);
-
-        const createRow = (title, maps) => {
-            const section = document.createElement('div');
-            section.className = 'library-section';
-            section.style.marginBottom = '45px';
-
-            const heading = document.createElement('h2');
-            heading.innerText = title;
-            heading.style.cssText = 'font-size: 24px; margin-bottom: 16px; font-weight: 800; color: #0f172a; text-transform: capitalize; padding-left: 4px; letter-spacing: -0.5px;';
-            section.appendChild(heading);
-
-            const scrollContainer = document.createElement('div');
-            scrollContainer.className = 'horizontal-scroll-container';
-            scrollContainer.style.cssText = 'display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-right: 50px; scroll-snap-type: x mandatory; scroll-behavior: smooth;';
-            scrollContainer.style.scrollbarWidth = 'none';
-            scrollContainer.style.msOverflowStyle = 'none';
-
-            maps.forEach(mapObj => {
-                const card = createCardElement(mapObj);
-                card.style.width = '220px';
-                card.style.flex = '0 0 auto';
-                card.style.scrollSnapAlign = 'start';
-                scrollContainer.appendChild(card);
-            });
-
-            section.appendChild(scrollContainer);
-            grid.appendChild(section);
-        };
-
-        const featuredMaps = [...mapsList].sort((a, b) => (b.reactionGod || 0) - (a.reactionGod || 0)).slice(0, 10);
-        const originalMaps = [...mapsList].sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-        });
-
-        if (featuredMaps.length > 0) createRow("featured", featuredMaps);
-        if (originalMaps.length > 0) createRow("original", originalMaps);
+        const original = [...mapsList].sort((a, b) =>
+            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+        renderHorizontalSection(grid, "original", original);
     }
+
+    renderRecentMapsSection(grid, mapsList);
 }
 
-// ═══════════════ 반응형 제안 패널 (드로어) 제어 ═══════════════
+// ═══════════════ 우측 패널 탭 전환 ═══════════════
+export function switchRightPanel(tab) {
+    const nextMapPanel = document.getElementById('panelNextMap');
+    const suggestionPanel = document.getElementById('panelSuggestion');
+    if (nextMapPanel) nextMapPanel.style.display = tab === 'next-map' ? 'block' : 'none';
+    if (suggestionPanel) suggestionPanel.style.display = tab === 'suggestion' ? 'block' : 'none';
+    document.querySelectorAll('.right-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.panel === tab);
+    });
+}
+
+// ═══════════════ "다음 문제" 패널 렌더링 ═══════════════
+export function renderNextMapPanel() {
+    const list = document.getElementById('nextMapList');
+    if (!list) return;
+    const maps = allLibraryMaps.filter(m => m.id !== currentLoadedMapId).slice(0, 20);
+    list.innerHTML = '';
+
+    if (maps.length === 0) {
+        list.innerHTML = '<p style="color:#94a3b8; font-size:13px; text-align:center; padding:20px 0;">다른 맵이 없습니다.</p>';
+        return;
+    }
+
+    maps.forEach(mapObj => {
+        const card = document.createElement('div');
+        card.className = 'next-map-card';
+
+        const miniContainer = document.createElement('div');
+        miniContainer.className = 'next-mini';
+        const miniGrid = createMiniGridDOM(mapObj.mapData, true);
+        miniGrid.style.cssText = 'width:100%; height:100%; border:none; background:#fff;';
+        miniContainer.appendChild(miniGrid);
+
+        const info = document.createElement('div');
+        info.className = 'next-info';
+        const diff = mapObj.difficulty || 'Normal';
+        const userDiff = calculateUserDifficulty(mapObj.diffVotes);
+        info.innerHTML = `
+            <h4>${mapObj.title || '제목 없음'}</h4>
+            <p>
+                <span class="diff-mini diff-${diff}">${diff}</span>
+                ${userDiff ? `<span class="diff-mini diff-${userDiff}">${userDiff}</span>` : ''}
+                ${mapObj.author || ''}
+            </p>
+        `;
+
+        card.appendChild(miniContainer);
+        card.appendChild(info);
+        card.addEventListener('click', () => playMapFromLibrary(mapObj));
+        list.appendChild(card);
+    });
+}
+
+// ═══════════════ 제안 드로어 제어 (하위 호환) ═══════════════
 export function closeSuggestionDrawer() {
     const sugContainer = document.getElementById('suggestionBoardContainer');
-    if (sugContainer) {
-        sugContainer.classList.remove('drawer-open');
-    }
+    if (sugContainer) sugContainer.classList.remove('drawer-open');
 }
 
 // ═══════════════ 맵 플레이 ═══════════════
@@ -257,23 +347,23 @@ export function playMapFromLibrary(mapObj) {
     currentMapReactions.god = mapObj.reactionGod || 0;
 
     const loadedMapInfo = document.getElementById('loadedMapInfo');
-    if(loadedMapInfo) loadedMapInfo.style.display = 'flex';
+    if (loadedMapInfo) loadedMapInfo.style.display = 'flex';
 
     const infoTitle = document.getElementById('infoTitle');
-    if(infoTitle) infoTitle.innerText = `🗺️ ${mapObj.title}`;
+    if (infoTitle) infoTitle.innerText = `🗺️ ${mapObj.title}`;
 
     const infoAuthor = document.getElementById('infoAuthor');
-    if(infoAuthor) infoAuthor.innerText = mapObj.author;
+    if (infoAuthor) infoAuthor.innerText = mapObj.author;
 
     const diffSpan = document.getElementById('infoDifficulty');
-    if(diffSpan) {
+    if (diffSpan) {
         const diff = mapObj.difficulty || 'Normal';
         diffSpan.innerText = diff;
         diffSpan.className = `difficulty-badge diff-${diff}`;
     }
 
     const userDiffSpan = document.getElementById('infoUserDifficulty');
-    if(userDiffSpan) {
+    if (userDiffSpan) {
         const userDiff = calculateUserDifficulty(mapObj.diffVotes);
         if (userDiff) {
             userDiffSpan.innerText = userDiff;
@@ -285,15 +375,14 @@ export function playMapFromLibrary(mapObj) {
     }
 
     updateReactionUI(mapObj.id);
-
-    const sugContainer = document.getElementById('suggestionBoardContainer');
-    if(sugContainer) {
-        sugContainer.style.display = '';
-        sugContainer.classList.add('drawer-open');
-    }
-
     updateSugHeaderBtnUI();
     loadSuggestionsForCurrentMap();
+
+    // 우측 패널 표시 및 "다음 문제" 탭 기본 활성화
+    const rightPanel = document.getElementById('rightSidePanel');
+    if (rightPanel) rightPanel.style.display = 'flex';
+    switchRightPanel('next-map');
+    renderNextMapPanel();
 
     showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
 
@@ -355,23 +444,21 @@ export function updateReactionUI(mapId) {
     const btnGod = document.getElementById('btnReactGod');
 
     const countOk = document.getElementById('countOk');
-    if(countOk) countOk.innerText = currentMapReactions.ok;
+    if (countOk) countOk.innerText = currentMapReactions.ok;
 
     const countGod = document.getElementById('countGod');
-    if(countGod) countGod.innerText = currentMapReactions.god;
+    if (countGod) countGod.innerText = currentMapReactions.god;
 
-    if(btnOk) {
+    if (btnOk) {
         btnOk.classList.toggle('active', state.ok);
         btnOk.classList.toggle('ok', state.ok);
     }
-    if(btnGod) {
+    if (btnGod) {
         btnGod.classList.toggle('active', state.god);
         btnGod.classList.toggle('god', state.god);
     }
 
-    document.querySelectorAll('.diff-vote-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    document.querySelectorAll('.diff-vote-btn').forEach(btn => btn.classList.remove('active'));
     if (state.diff) {
         const activeBtn = document.querySelector(`.diff-vote-btn.diff-${state.diff}`);
         if (activeBtn) activeBtn.classList.add('active');
@@ -416,17 +503,17 @@ export function handleSugHeaderBtnAction() {
 // ═══════════════ 제안 모달 ═══════════════
 export function openSuggestionModal() {
     const modal = document.getElementById('suggestionModal');
-    if(modal) modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 }
 export function closeSuggestionModal() {
     const modal = document.getElementById('suggestionModal');
-    if(modal) modal.style.display = 'none';
+    if (modal) modal.style.display = 'none';
 }
 
 export async function submitSuggestion() {
     const catSelect = document.getElementById('sugCategory');
     const commentInput = document.getElementById('sugComment');
-    if(!catSelect || !commentInput) return;
+    if (!catSelect || !commentInput) return;
 
     const category = catSelect.value;
     const comment = commentInput.value.trim();
@@ -452,10 +539,7 @@ export async function submitSuggestion() {
     };
 
     const btn = document.getElementById('sugSubmitBtn');
-    if(btn) {
-        btn.innerText = "등록 중...";
-        btn.disabled = true;
-    }
+    if (btn) { btn.innerText = "등록 중..."; btn.disabled = true; }
 
     try {
         await FB.uploadSuggestionToDB(currentLoadedMapId, sugData);
@@ -465,10 +549,7 @@ export async function submitSuggestion() {
     } catch (error) {
         alert("제안 등록 실패: " + error.message);
     } finally {
-        if(btn) {
-            btn.innerText = "제안 등록";
-            btn.disabled = false;
-        }
+        if (btn) { btn.innerText = "제안 등록"; btn.disabled = false; }
         commentInput.value = "";
     }
 }
@@ -476,7 +557,7 @@ export async function submitSuggestion() {
 export async function loadSuggestionsForCurrentMap() {
     if (!currentLoadedMapId) return;
     const listDiv = document.getElementById('suggestionList');
-    if(!listDiv) return;
+    if (!listDiv) return;
 
     listDiv.innerHTML = '<div style="padding: 30px; text-align: center;"><p style="color:#94a3b8; font-size:14px; font-weight: 500;">불러오는 중...</p></div>';
 
@@ -520,7 +601,7 @@ export async function loadSuggestionsForCurrentMap() {
 
             content.innerHTML = `
                 <div style="margin-bottom:10px; display: flex; align-items: center; gap: 8px;">
-                    ${catBadge} 
+                    ${catBadge}
                     <span style="color:#94a3b8;font-size:11px;font-weight:500;">${new Date(sug.createdAt).toLocaleDateString()}</span>
                 </div>
                 <p style="margin:0; font-size: 14px; font-weight:700; color:#1e293b; line-height: 1.5; word-break: keep-all;">${sug.comment}</p>
@@ -550,7 +631,6 @@ export async function loadSuggestionsForCurrentMap() {
                             }
                         }
                     }
-
                     for (let r = 0; r < GRID_SIZE; r++) {
                         for (let c = 0; c < GRID_SIZE; c++) {
                             let cellItem = mapData[r][c];
@@ -558,7 +638,6 @@ export async function loadSuggestionsForCurrentMap() {
                                 let rot = cellItem.canRotate ? 0 : (cellItem.rotation || 0);
                                 if (cellItem.type === 'block') rot = 0;
                                 let key = `${cellItem.type}_${cellItem.canRotate}_${rot}`;
-
                                 if (playerInventory[key] && playerInventory[key].count > 0) {
                                     playerInventory[key].count--;
                                 } else {
@@ -573,7 +652,6 @@ export async function loadSuggestionsForCurrentMap() {
                     refreshLaser();
                 }
                 showNotification("제안된 풀이를 불러왔습니다. 확인해보세요!", "#27ae60");
-                closeSuggestionDrawer();
             });
             actions.appendChild(testBtn);
 
@@ -603,7 +681,7 @@ export async function loadSuggestionsForCurrentMap() {
             listDiv.appendChild(item);
         });
     } catch (e) {
-        if(listDiv) listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:#ef4444;">게시판을 불러오는 데 실패했습니다.</p></div>`;
+        if (listDiv) listDiv.innerHTML = `<div style="padding: 20px; text-align: center;"><p style="color:#ef4444;">게시판을 불러오는 데 실패했습니다.</p></div>`;
     }
 }
 
@@ -612,7 +690,7 @@ export async function deleteCurrentMap() {
     if (!currentLoadedMapId) return;
     if (confirm("정말로 이 맵을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 제안과 평가도 함께 삭제됩니다.")) {
         const btn = document.getElementById('deleteMapBtn');
-        if(!btn) return;
+        if (!btn) return;
 
         const originalText = btn.innerHTML;
         btn.innerHTML = "삭제 중...";
@@ -645,9 +723,13 @@ export function createNewMap() {
         refreshLaser();
 
         const loadedMapInfo = document.getElementById('loadedMapInfo');
-        if(loadedMapInfo) loadedMapInfo.style.display = 'none';
+        if (loadedMapInfo) loadedMapInfo.style.display = 'none';
 
-        closeSuggestionDrawer();
+        const rightPanel = document.getElementById('rightSidePanel');
+        if (rightPanel) rightPanel.style.display = 'none';
+
+        const answerBtn = document.getElementById('answerBtn');
+        if (answerBtn) answerBtn.style.display = 'none';
 
         currentLoadedMapId = null;
         currentLoadedMapAuthorUid = null;
@@ -682,46 +764,38 @@ export function initUrlParamLoader() {
     }
 }
 
-// ═══════════════ HTML 버튼 자동 연결 (Event Listeners) ═══════════════
-// HTML에서 onclick 속성을 제거했기 때문에, JS 파일이 알아서 화면의 버튼을 찾아 연결해주는 핵심 로직입니다.
+// ═══════════════ 이벤트 리스너 초기화 ═══════════════
 export function initLibraryEventListeners() {
-    // 버튼을 찾아 안전하게 이벤트를 달아주는 헬퍼 함수
     const bindBtn = (id, eventType, fn) => {
         const el = document.getElementById(id);
-        if (el) {
-            // 중복 실행 방지를 위해 기존 이벤트 리스너를 제거하는 로직은 현 구조상 생략해도 안전합니다.
-            el.addEventListener(eventType, fn);
-        }
+        if (el) el.addEventListener(eventType, fn);
     };
 
-    // 1. 주요 버튼들 연결
     bindBtn('libraryToggleBtn', 'click', toggleLibraryScreen);
     bindBtn('newMapBtn', 'click', createNewMap);
-    bindBtn('sortSelect', 'change', loadLibraryMaps);
-    bindBtn('searchInput', 'input', applyFilters);
 
-    // 2. 투표 및 액션 버튼들 연결
+    // 평가 & 투표
     bindBtn('btnReactOk', 'click', () => toggleReaction('ok'));
     bindBtn('btnReactGod', 'click', () => toggleReaction('god'));
     bindBtn('sugHeaderBtn', 'click', handleSugHeaderBtnAction);
     bindBtn('deleteMapBtn', 'click', deleteCurrentMap);
 
-    // 3. 모달 관련 버튼들 연결
+    // 제안 모달
     bindBtn('sugSubmitBtn', 'click', submitSuggestion);
-    // 모달 닫기 버튼은 id가 무엇인지 불확실하여 일반적으로 쓰일만한 id를 모두 방어적으로 적어둡니다.
     bindBtn('closeSugModalBtn', 'click', closeSuggestionModal);
 
-    // 4. 난이도 투표 버튼들 연결 (id가 아닌 클래스로 여러 개를 찾아냅니다)
+    // 난이도 투표
     document.querySelectorAll('.diff-vote-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const diffClass = Array.from(e.currentTarget.classList).find(c => c.startsWith('diff-'));
-            if (diffClass) {
-                const diffLevel = diffClass.replace('diff-', '');
-                voteDifficulty(diffLevel);
-            }
+            if (diffClass) voteDifficulty(diffClass.replace('diff-', ''));
         });
+    });
+
+    // 우측 패널 탭
+    document.querySelectorAll('.right-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchRightPanel(btn.dataset.panel));
     });
 }
 
-// 모듈이 로드되는 순간 자동으로 위의 이벤트 리스너들을 전부 연결합니다.
 initLibraryEventListeners();
