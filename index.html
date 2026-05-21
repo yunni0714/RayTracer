@@ -100,18 +100,6 @@
         .diff-vote-btn.active.diff-Hard { border-color: #e67e22; background: #e67e22; color: white; }
         .diff-vote-btn.active.diff-Insane { border-color: #e74c3c; background: #e74c3c; color: white; }
 
-        .suggestion-board-container {
-            background-color: #fff;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
-            border-left: 6px solid #f39c12;
-            width: 100%;
-            box-sizing: border-box;
-            display: none;
-        }
-        
         .suggestion-header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;
@@ -129,16 +117,7 @@
         }
 
         #libraryScreen { flex-direction: column; width: 100%; }
-        .library-controls {
-            display: flex; justify-content: space-between; margin-bottom: 20px;
-            background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .library-controls input { flex: 1; padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; margin-right: 15px; }
-        .library-controls select { padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 6px; cursor: pointer; }
-        .library-grid-layout {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; width: 100%;
-        }
-        
+
         .map-card {
             background: white; border-radius: 12px; padding: 20px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s;
@@ -297,24 +276,17 @@
     <div class="header-bar">
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <div class="header-actions">
-            <button id="newMapBtn" class="mode-toggle-btn" style="background-color: #e67e22; display: none;">✨ 새 맵 만들기</button>
             <button id="libraryToggleBtn" class="mode-toggle-btn library-btn">📚 맵 라이브러리 열기</button>
-            <button id="modeToggleBtn" class="mode-toggle-btn">🛠️ 현재: 에디터 모드</button>
+            <!-- JS 호환성용 숨김 버튼 -->
+            <button id="modeToggleBtn" class="mode-toggle-btn" style="display:none;">🛠️ 현재: 에디터 모드</button>
+            <button id="newMapBtn" class="mode-toggle-btn" style="display:none; background-color:#e67e22;">✨ 새 맵 만들기</button>
         </div>
     </div>
 
     <!-- 1. 라이브러리 스크린 -->
     <div id="libraryScreen" class="screen">
-        <div class="library-controls">
-            <input type="text" id="searchInput" placeholder="맵 제목, 제작자 이름으로 검색...">
-            <select id="sortSelect">
-                <option value="createdAt">최신 등록순</option>
-                <option value="reactionGod">갓맵(👍)순</option>
-            </select>
-        </div>
-        
-        <div class="library-grid-layout" id="libraryGrid">
-            <p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold;">맵 데이터를 불러오는 중입니다...</p>
+        <div id="libraryGrid">
+            <p style="text-align: center; width: 100%; color: #7f8c8d; font-weight: bold; padding: 40px 0;">맵 데이터를 불러오는 중입니다...</p>
         </div>
     </div>
 
@@ -344,21 +316,6 @@
             </div>
         </div>
 
-        <!-- 다른 풀이 제안 & 맵 삭제 영역 -->
-        <div id="suggestionBoardContainer" class="suggestion-board-container">
-            <div class="suggestion-header">
-                <h3 id="suggestionHeaderTitle">💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
-                <!-- 삭제 버튼 추가 -->
-                <div style="display: flex; gap: 10px;">
-                    <button id="sugHeaderBtn" class="sug-btn">내 풀이 제안하기</button>
-                    <button id="deleteMapBtn" class="sug-btn" style="background-color: #e74c3c; display: none;">🗑️ 맵 삭제</button>
-                </div>
-            </div>
-            <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;">
-                <!-- 제안 목록이 렌더링 됩니다 -->
-            </div>
-        </div>
-
         <div class="main-content">
             <div class="board-wrapper">
                 <div class="grid-container" id="grid"></div>
@@ -372,6 +329,7 @@
 
             <div class="palette-area">
                 <button id="laserToggleBtn" class="action-btn sim-btn">🔴 실시간 레이저 켜기 (OFF)</button>
+                <button id="answerBtn" class="action-btn answer-btn" style="display:none;">📖 정답 보기</button>
 
                 <div id="testModeInventory">
                     <h3>🎒 플레이어 인벤토리</h3>
@@ -438,9 +396,35 @@
                 </div>
                 <textarea id="output" placeholder="JSON을 입력하세요."></textarea>
             </div>
+
+            <!-- 우측 사이드 패널 (맵 로드 시 표시) -->
+            <div id="rightSidePanel" style="display:none;">
+                <div class="right-tab-buttons">
+                    <button class="right-tab active" data-panel="next-map" type="button">다음<br>문제</button>
+                    <button class="right-tab" data-panel="suggestion" type="button">풀이<br>제안</button>
+                </div>
+                <div class="right-panel-content">
+                    <!-- 탭 1: 다른 문제 풀어보기 -->
+                    <div id="panelNextMap" class="right-panel-tab-content">
+                        <h3 class="panel-title">💡 다른 문제 풀어보기</h3>
+                        <div id="nextMapList"></div>
+                    </div>
+                    <!-- 탭 2: 풀이 제안 게시판 -->
+                    <div id="panelSuggestion" class="right-panel-tab-content" style="display:none;">
+                        <div class="suggestion-header">
+                            <h3 id="suggestionHeaderTitle">💡 다른 풀이 제안 (<span id="sugCount">0</span>건)</h3>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button id="sugHeaderBtn" class="sug-btn">내 풀이 제안하기</button>
+                                <button id="deleteMapBtn" class="sug-btn" style="background-color: #e74c3c; display: none;">🗑️ 맵 삭제</button>
+                            </div>
+                        </div>
+                        <div id="suggestionList" style="display:flex; flex-direction:column; gap:10px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
+
     <div id="notification"></div>
 
     <!-- 맵 업로드 모달 -->

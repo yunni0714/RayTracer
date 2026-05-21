@@ -1,12 +1,13 @@
 // main.js — 진입점: 모든 모듈 import, 초기화, 이벤트 리스너 연결
 import { initFirebase, onAuthReady } from './firebaseApp.js';
 import { resizeCanvas } from './laserEngine.js';
-import { SVG_ART, initGridInteractions, toggleMode, clearGrid, importData, exportData } from './dragAndDrop.js';
+import { SVG_ART, initGridInteractions, toggleMode, clearGrid, importData, exportData, showAnswer } from './dragAndDrop.js';
 import { toggleLaser } from './laserEngine.js';
 import { toggleLibraryScreen, loadLibraryMaps, applyFilters, toggleReaction,
          voteDifficulty, handleSugHeaderBtnAction, deleteCurrentMap,
          createNewMap, openSuggestionModal, closeSuggestionModal, submitSuggestion,
-         updateSugHeaderBtnUI, initUrlParamLoader } from './libraryController.js';
+         updateSugHeaderBtnUI, initUrlParamLoader, currentLoadedMapObj,
+         resetCurrentMap } from './libraryController.js';
 import { openUploadModal, openUploadForEdit, closeUploadModal, packAndUploadMap,
          initPasswordEasterEgg } from './uiController.js';
 
@@ -43,9 +44,10 @@ document.getElementById('newMapBtn').addEventListener('click', createNewMap);
 document.getElementById('libraryToggleBtn').addEventListener('click', toggleLibraryScreen);
 document.getElementById('modeToggleBtn').addEventListener('click', toggleMode);
 
-// --- 라이브러리 검색/정렬 ---
-document.getElementById('searchInput').addEventListener('input', applyFilters);
-document.getElementById('sortSelect').addEventListener('change', loadLibraryMaps);
+// --- 정답 보기 ---
+document.getElementById('answerBtn').addEventListener('click', showAnswer);
+
+// searchInput / sortSelect는 libraryController.js의 renderRecentMapsSection()에서 동적으로 생성·연결됨
 
 // --- 평가 버튼 ---
 document.getElementById('btnReactOk').addEventListener('click', () => toggleReaction('ok'));
@@ -82,9 +84,6 @@ suggestionModal.querySelectorAll('button')[0].addEventListener('click', closeSug
 document.getElementById('sugSubmitBtn').addEventListener('click', submitSuggestion);
 
 // --- window 브릿지 (순환 참조 해결) ---
-// libraryController → uiController (openUploadForEdit)
 window._openUploadForEdit = openUploadForEdit;
-
-// dragAndDrop → libraryController (clearGrid에서 currentLoadedMapId 리셋)
-import { resetCurrentMap } from './libraryController.js';
+window._getCurrentMapObj = () => currentLoadedMapObj;
 window._setCurrentMapNull = resetCurrentMap;
