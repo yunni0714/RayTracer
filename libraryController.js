@@ -289,7 +289,7 @@ export function switchRightPanel(tab) {
 export function renderNextMapPanel() {
     const list = document.getElementById('nextMapList');
     if (!list) return;
-    const maps = allLibraryMaps.filter(m => m.id !== currentLoadedMapId).slice(0, 20);
+    const maps = allLibraryMaps.filter(m => m.id !== currentLoadedMapId).slice(0, 3);
     list.innerHTML = '';
 
     if (maps.length === 0) {
