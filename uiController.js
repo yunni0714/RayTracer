@@ -89,7 +89,7 @@ export async function packAndUploadMap() {
                 createdAt: new Date().toISOString(),
                 reactionOk: 0,
                 reactionGod: 0,
-                diffVotes: { Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
+                diffVotes: { Tutor: 0, Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
                 authorUid: FB.currentUserUid,
                 mapData: mapItems
             };

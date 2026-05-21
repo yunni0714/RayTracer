@@ -54,6 +54,7 @@ document.getElementById('btnReactOk').addEventListener('click', () => toggleReac
 document.getElementById('btnReactGod').addEventListener('click', () => toggleReaction('god'));
 
 // --- 난이도 투표 ---
+document.getElementById('btnVoteTutor').addEventListener('click', () => voteDifficulty('Tutor'));
 document.getElementById('btnVoteEasy').addEventListener('click', () => voteDifficulty('Easy'));
 document.getElementById('btnVoteNormal').addEventListener('click', () => voteDifficulty('Normal'));
 document.getElementById('btnVoteHard').addEventListener('click', () => voteDifficulty('Hard'));

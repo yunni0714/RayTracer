@@ -35,7 +35,7 @@ function saveMapLocalState(mapId, stateData) {
 // ═══════════════ 유저 체감 난이도 계산 ═══════════════
 export function calculateUserDifficulty(diffVotes) {
     if (!diffVotes) return null;
-    let total = diffVotes.Easy + diffVotes.Normal + diffVotes.Hard + diffVotes.Insane;
+    let total = (diffVotes.Tutor || 0) + (diffVotes.Easy || 0) + (diffVotes.Normal || 0) + (diffVotes.Hard || 0) + (diffVotes.Insane || 0);
     if (total === 0) return null;
     return Object.keys(diffVotes).reduce((a, b) => diffVotes[a] > diffVotes[b] ? a : b);
 }
