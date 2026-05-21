@@ -278,8 +278,8 @@
         <h2>🧩 Project Ray 레벨 에디터</h2>
         <div class="header-actions">
             <button id="libraryToggleBtn" class="mode-toggle-btn library-btn">📚 맵 라이브러리 열기</button>
+            <button id="modeToggleBtn" class="mode-toggle-btn">🛠️ 현재: 에디터 모드</button>
             <!-- JS 호환성용 숨김 버튼 -->
-            <button id="modeToggleBtn" class="mode-toggle-btn" style="display:none;">🛠️ 현재: 에디터 모드</button>
             <button id="newMapBtn" class="mode-toggle-btn" style="display:none; background-color:#e67e22;">✨ 새 맵 만들기</button>
         </div>
     </div>
@@ -418,6 +418,8 @@
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button id="sugHeaderBtn" class="sug-btn">내 풀이 제안하기</button>
                                 <button id="deleteMapBtn" class="sug-btn" style="background-color: #e74c3c; display: none;">🗑️ 맵 삭제</button>
+                                <button id="saveMapEditBtn" class="sug-btn map-edit-only" style="background-color: #10b981;">💾 수정 저장하기</button>
+                                <button id="cancelMapEditBtn" class="sug-btn map-edit-only" style="background-color: #7f8c8d;">❌ 취소</button>
                             </div>
                         </div>
                         <div id="suggestionList"></div>

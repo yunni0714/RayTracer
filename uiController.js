@@ -19,12 +19,20 @@ export function closeUploadModal() {
     document.getElementById('uploadSubmitBtn').innerText = "서버에 업로드";
     const descEl = document.getElementById('mapDesc');
     if (descEl) descEl.value = '';
+    const titleEl = document.getElementById('mapTitle');
+    const authorEl = document.getElementById('mapAuthor');
+    if (titleEl) titleEl.readOnly = false;
+    if (authorEl) authorEl.readOnly = false;
 }
 
 export function openUploadForEdit(mapObj) {
     isEditingMap = true;
-    document.getElementById('mapTitle').value = mapObj.title || "";
-    document.getElementById('mapAuthor').value = mapObj.author || "";
+    const titleEl = document.getElementById('mapTitle');
+    const authorEl = document.getElementById('mapAuthor');
+    titleEl.value = mapObj.title || "";
+    authorEl.value = mapObj.author || "";
+    titleEl.readOnly = true;
+    authorEl.readOnly = true;
     document.getElementById('mapDifficulty').value = mapObj.difficulty || "Normal";
     const descEl = document.getElementById('mapDesc');
     if (descEl) descEl.value = mapObj.description || "";
@@ -64,12 +72,14 @@ export async function packAndUploadMap() {
 
     try {
         if (isEditingMap && currentLoadedMapId) {
+            const nextVersion = (currentLoadedMapObj.version || 1) + 1;
             const updateData = {
                 title: title,
                 author: author,
                 difficulty: difficulty,
                 description: description,
-                mapData: mapItems
+                mapData: mapItems,
+                version: nextVersion
             };
             await FB.updateMapInDB(currentLoadedMapId, updateData);
             showNotification("맵이 성공적으로 수정되었습니다!", "#27ae60");
@@ -79,6 +89,7 @@ export async function packAndUploadMap() {
             currentLoadedMapObj.difficulty = difficulty;
             currentLoadedMapObj.description = description;
             currentLoadedMapObj.mapData = mapItems;
+            currentLoadedMapObj.version = nextVersion;
             playMapFromLibrary(currentLoadedMapObj);
         } else {
             const packedData = {
@@ -91,6 +102,7 @@ export async function packAndUploadMap() {
                 reactionGod: 0,
                 diffVotes: { Tutor: 0, Easy: 0, Normal: 0, Hard: 0, Insane: 0 },
                 authorUid: FB.currentUserUid,
+                version: 1,
                 mapData: mapItems
             };
 

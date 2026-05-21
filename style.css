@@ -125,7 +125,7 @@
 
 /* 카드 메타 (제목, 작성자) */
 .map-card-v2 .card-meta {
-    padding: 14px 20px 10px 20px;
+    padding: 14px 20px 0 20px;
     margin-top: 0;
 }
 .map-card-v2 .card-meta h4 {
@@ -145,38 +145,46 @@
     font-weight: 500;
 }
 
-/* 구분선 */
+/* 구분선 (시각적 제거 — DOM 호환을 위해 자리만 유지) */
 .map-card-v2 .card-divider {
-    height: 1px;
-    background: #e2e8f0;
-    margin: 0 20px;
+    height: 0;
+    background: transparent;
+    margin: 0;
 }
 
 /* 카드 액션 (난이도 배지 + 통계) */
 .map-card-v2 .card-bottom {
-    padding: 14px 20px 18px 20px;
+    padding: 6px 20px 14px 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     margin-top: auto;
 }
 .map-card-v2 .badge-row {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-wrap: nowrap;
+    min-width: 0;
 }
 .map-card-v2 .diff-pill {
-    padding: 8px 14px;
-    font-size: 14px;
+    padding: 6px 10px;
+    font-size: 12px;
     font-weight: 800;
     border-radius: 8px;
     color: white;
     letter-spacing: -0.3px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
 }
 .map-card-v2 .diff-pill.diff-None {
     background: #cbd5e1;
     color: #475569;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 .diff-pill.diff-Tutor {
     background: #3498db;
@@ -215,8 +223,10 @@
     display: flex;
     gap: 20px;
     overflow-x: auto;
+    padding-top: 12px;
     padding-bottom: 20px;
     padding-right: 50px;
+    margin-top: -8px;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     scrollbar-width: none;
@@ -226,6 +236,34 @@
     width: 260px;
     flex: 0 0 auto;
     scroll-snap-align: start;
+}
+
+/* ──────────────────────────────────────────
+   5b) 맵 수정 모드 (body.is-map-edit-mode)
+────────────────────────────────────────── */
+.map-edit-only { display: none; }
+
+body.is-map-edit-mode #testModeInventory,
+body.is-map-edit-mode #answerBtn,
+body.is-map-edit-mode .actions,
+body.is-map-edit-mode #output,
+body.is-map-edit-mode .right-tab-buttons,
+body.is-map-edit-mode #sugHeaderBtn,
+body.is-map-edit-mode #modeToggleBtn { display: none !important; }
+
+body.is-map-edit-mode #deleteMapBtn { display: none !important; }
+body.is-map-edit-mode .sug-test-btn { display: none !important; }
+
+body.is-map-edit-mode #editorPaletteGroup { display: block !important; }
+body.is-map-edit-mode .modifier-section { display: block !important; }
+
+body.is-map-edit-mode #panelNextMap { display: none !important; }
+body.is-map-edit-mode #panelSuggestion { display: block !important; }
+
+body.is-map-edit-mode .map-edit-only { display: inline-block !important; }
+
+body.is-map-edit-mode .board-wrapper {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
 }
 
 /* ──────────────────────────────────────────
