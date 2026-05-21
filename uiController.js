@@ -7,8 +7,57 @@ import { currentLoadedMapId, currentLoadedMapAuthorUid, currentLoadedMapObj,
 // --- 맵 수정 모드 플래그 ---
 export let isEditingMap = false;
 
+// --- 닉네임 설정 (최초 로그인) ---
+export async function submitNickname() {
+    const input = document.getElementById('nicknameInput');
+    const nickname = input ? input.value.trim() : '';
+    if (!nickname || nickname.length < 2) {
+        alert("닉네임은 2자 이상이어야 합니다.");
+        return;
+    }
+    try {
+        await FB.createUserProfile(FB.currentUserUid, nickname);
+        FB.setCurrentUserNickname(nickname);
+        const el = document.getElementById('userNickname');
+        if (el) el.innerText = `👤 ${nickname}`;
+        document.getElementById('nicknameModal').style.display = 'none';
+        showNotification(`환영합니다, ${nickname}님!`, "#27ae60");
+    } catch (e) {
+        alert("닉네임 저장 실패: " + e.message);
+    }
+}
+
+// --- 닉네임 변경 ---
+export async function submitNicknameChange() {
+    const input = document.getElementById('changeNicknameInput');
+    const nickname = input ? input.value.trim() : '';
+    if (!nickname || nickname.length < 2) {
+        alert("닉네임은 2자 이상이어야 합니다.");
+        return;
+    }
+    try {
+        await FB.updateUserNickname(FB.currentUserUid, nickname);
+        FB.setCurrentUserNickname(nickname);
+        const el = document.getElementById('userNickname');
+        if (el) el.innerText = `👤 ${nickname}`;
+        document.getElementById('changeNicknameModal').style.display = 'none';
+        showNotification("닉네임이 변경되었습니다!", "#27ae60");
+    } catch (e) {
+        alert("닉네임 변경 실패: " + e.message);
+    }
+}
+
 // --- 업로드 모달 ---
 export function openUploadModal() {
+    if (!FB.currentUserUid) {
+        showNotification("로그인 후 맵을 업로드할 수 있습니다.", "#e74c3c");
+        return;
+    }
+    const authorEl = document.getElementById('mapAuthor');
+    if (authorEl && FB.currentUserNickname) {
+        authorEl.value = FB.currentUserNickname;
+        authorEl.readOnly = true;
+    }
     document.getElementById('uploadModal').style.display = 'flex';
 }
 

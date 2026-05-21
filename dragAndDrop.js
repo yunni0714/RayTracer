@@ -354,10 +354,14 @@ export function enterMapEditMode() {
     mapEditOriginalBackup = JSON.parse(JSON.stringify(mapData));
     isMapEditMode = true;
     document.body.classList.add('is-map-edit-mode');
+    const modeBtn = document.getElementById('modeToggleBtn');
+    if (modeBtn) modeBtn.style.display = '';
 }
 
 export function exitMapEditMode({ restore = false } = {}) {
     const wasActive = isMapEditMode;
+    const modeBtn = document.getElementById('modeToggleBtn');
+    if (modeBtn) modeBtn.style.display = 'none';
     if (restore && mapEditOriginalBackup) {
         mapData = JSON.parse(JSON.stringify(mapEditOriginalBackup));
         for (let r = 0; r < GRID_SIZE; r++) {

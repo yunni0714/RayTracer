@@ -1,7 +1,11 @@
 // firebaseApp.js — Firebase 초기화 및 모든 DB 통신 함수
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, getDoc, getDocs, query, orderBy, limit, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc,
+    query, orderBy, limit, updateDoc, increment, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+    getRedirectResult, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBdf2slxxy1fXM-lQ-iL87-2p-uea3nFi8",
@@ -15,43 +19,104 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-// --- 임시 UID 폴백 (익명 로그인 실패 시) ---
-function getFallbackUid() {
-    let uid = localStorage.getItem('ray_fallback_uid');
-    if (!uid) {
-        uid = 'anon_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('ray_fallback_uid', uid);
-    }
-    return uid;
+// --- 전역 공유: 현재 유저 정보 ---
+export let currentUserUid = null;
+export let currentUserNickname = null;
+
+// 외부에서 nickname 갱신이 필요할 때 사용하는 setter
+export function setCurrentUserNickname(nickname) {
+    currentUserNickname = nickname;
 }
 
-// --- 전역 공유: 현재 유저 UID ---
-export let currentUserUid = null;
-
-// --- onAuthStateChanged 콜백을 외부에서 주입받기 위한 저장소 ---
+// --- 인증 상태 콜백 ---
 let onAuthReadyCallback = null;
-
 export function onAuthReady(cb) {
     onAuthReadyCallback = cb;
 }
 
-// --- Firebase 인증 초기화 ---
+// --- 구글 로그인 ---
+export async function signInWithGoogle() {
+    try {
+        await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+            await signInWithRedirect(auth, googleProvider);
+        } else {
+            console.error("구글 로그인 오류:", err);
+            throw err;
+        }
+    }
+}
+
+// --- 로그아웃 ---
+export async function signOutUser() {
+    await signOut(auth);
+}
+
+// --- 유저 프로필 (Firestore users/{uid}) ---
+export async function getUserProfile(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? snap.data() : null;
+}
+
+export async function createUserProfile(uid, nickname) {
+    await setDoc(doc(db, "users", uid), {
+        nickname,
+        createdAt: new Date().toISOString()
+    });
+}
+
+export async function updateUserNickname(uid, nickname) {
+    await updateDoc(doc(db, "users", uid), { nickname });
+}
+
+// --- 헤더 로그인 UI 갱신 ---
+function updateHeaderAuthUI(loggedIn, nickname) {
+    const loginBtn = document.getElementById('loginBtn');
+    const userMenu = document.getElementById('userMenu');
+    const userNicknameEl = document.getElementById('userNickname');
+    if (loginBtn) loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+    if (userMenu) userMenu.style.display = loggedIn ? 'flex' : 'none';
+    if (userNicknameEl) userNicknameEl.innerText = nickname ? `👤 ${nickname}` : '👤';
+}
+
+// --- Firebase 초기화 ---
 export function initFirebase() {
-    onAuthStateChanged(auth, (user) => {
+    // 리디렉션 로그인 후 결과 처리 (팝업 차단 시 사용됨)
+    getRedirectResult(auth).catch(() => {});
+
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUserUid = user.uid;
-            if (onAuthReadyCallback) onAuthReadyCallback();
-        } else {
-            signInAnonymously(auth).catch((error) => {
-                currentUserUid = getFallbackUid();
-                if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
-                    setTimeout(() => {
-                        alert("🚨 [안내] 파이어베이스 익명 로그인이 꺼져있어 임시 ID로 동작합니다.");
-                    }, 1000);
+            try {
+                const profile = await getUserProfile(user.uid);
+                if (profile && profile.nickname) {
+                    currentUserNickname = profile.nickname;
+                    updateHeaderAuthUI(true, currentUserNickname);
+                } else {
+                    // 최초 로그인: 닉네임 설정 모달 표시
+                    updateHeaderAuthUI(true, null);
+                    const modal = document.getElementById('nicknameModal');
+                    if (modal) modal.style.display = 'flex';
                 }
-                if (onAuthReadyCallback) onAuthReadyCallback();
-            });
+            } catch (e) {
+                updateHeaderAuthUI(true, null);
+            }
+        } else {
+            currentUserUid = null;
+            currentUserNickname = null;
+            updateHeaderAuthUI(false, null);
+            // 닉네임 모달 닫기 (로그아웃 시)
+            const modal = document.getElementById('nicknameModal');
+            if (modal) modal.style.display = 'none';
+        }
+        // auth 상태 변화 시 외부 콜백 알림 (맵 소유권 UI 갱신 등)
+        if (typeof window._onAuthChange === 'function') window._onAuthChange(!!user);
+        if (onAuthReadyCallback) {
+            onAuthReadyCallback();
+            onAuthReadyCallback = null; // 최초 1회만 실행
         }
     });
 }

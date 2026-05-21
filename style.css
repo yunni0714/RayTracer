@@ -3,6 +3,48 @@
 ========================================= */
 
 /* ──────────────────────────────────────────
+   0) 로그인 / 유저 메뉴
+────────────────────────────────────────── */
+.login-btn { background-color: #4285f4 !important; }
+.login-btn:hover { background-color: #3367d6 !important; }
+
+.user-menu { position: relative; display: flex; align-items: center; }
+.user-nickname-btn {
+    background-color: #27ae60 !important;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    min-width: 160px;
+    z-index: 9999;
+    overflow: hidden;
+}
+.user-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    font-family: inherit;
+}
+.user-dropdown button:hover { background: #f1f5f9; }
+
+/* ──────────────────────────────────────────
    1) 가로 스크롤 스크롤바 숨기기
 ────────────────────────────────────────── */
 .horizontal-scroll-container::-webkit-scrollbar {
@@ -248,8 +290,7 @@ body.is-map-edit-mode #answerBtn,
 body.is-map-edit-mode .actions,
 body.is-map-edit-mode #output,
 body.is-map-edit-mode .right-tab-buttons,
-body.is-map-edit-mode #sugHeaderBtn,
-body.is-map-edit-mode #modeToggleBtn { display: none !important; }
+body.is-map-edit-mode #sugHeaderBtn { display: none !important; }
 
 body.is-map-edit-mode #deleteMapBtn { display: none !important; }
 body.is-map-edit-mode .sug-test-btn { display: none !important; }

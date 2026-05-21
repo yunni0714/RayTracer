@@ -1,15 +1,15 @@
 // main.js — 진입점: 모든 모듈 import, 초기화, 이벤트 리스너 연결
-import { initFirebase, onAuthReady } from './firebaseApp.js';
+import { initFirebase, onAuthReady, signInWithGoogle, signOutUser } from './firebaseApp.js';
 import { resizeCanvas } from './laserEngine.js';
 import { SVG_ART, initGridInteractions, toggleMode, clearGrid, importData, exportData, showAnswer } from './dragAndDrop.js';
 import { toggleLaser } from './laserEngine.js';
 import { toggleLibraryScreen, loadLibraryMaps, applyFilters, toggleReaction,
          voteDifficulty, handleSugHeaderBtnAction, deleteCurrentMap,
          createNewMap, openSuggestionModal, closeSuggestionModal, submitSuggestion,
-         updateSugHeaderBtnUI, initUrlParamLoader, currentLoadedMapObj,
-         resetCurrentMap } from './libraryController.js';
+         updateSugHeaderBtnUI, loadSuggestionsForCurrentMap, initUrlParamLoader,
+         currentLoadedMapObj, resetCurrentMap } from './libraryController.js';
 import { openUploadModal, openUploadForEdit, closeUploadModal, packAndUploadMap,
-         initPasswordEasterEgg } from './uiController.js';
+         initPasswordEasterEgg, submitNickname, submitNicknameChange } from './uiController.js';
 
 // ═══════════════ 초기화 시퀀스 ═══════════════
 
@@ -37,17 +37,58 @@ onAuthReady(() => {
     initUrlParamLoader();
 });
 
-// ═══════════════ 이벤트 리스너 (기존 onclick 대체) ═══════════════
+// 7. Auth 상태 변화 시 (로그인/로그아웃) 소유권 UI 갱신
+window._onAuthChange = () => {
+    updateSugHeaderBtnUI();
+    if (currentLoadedMapObj) loadSuggestionsForCurrentMap();
+};
+
+// ═══════════════ 이벤트 리스너 ═══════════════
 
 // --- 헤더 ---
 document.getElementById('newMapBtn').addEventListener('click', createNewMap);
 document.getElementById('libraryToggleBtn').addEventListener('click', toggleLibraryScreen);
 document.getElementById('modeToggleBtn').addEventListener('click', toggleMode);
 
+// --- 로그인 / 로그아웃 ---
+document.getElementById('loginBtn').addEventListener('click', signInWithGoogle);
+document.getElementById('logoutBtn').addEventListener('click', signOutUser);
+
+// --- 유저 메뉴 드롭다운 토글 ---
+document.getElementById('userNickname').addEventListener('click', () => {
+    const dd = document.getElementById('userDropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+});
+
+// 드롭다운 외부 클릭 시 닫기
+document.addEventListener('click', (e) => {
+    const userMenu = document.getElementById('userMenu');
+    const dd = document.getElementById('userDropdown');
+    if (userMenu && !userMenu.contains(e.target)) {
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+// --- 닉네임 변경 버튼 ---
+document.getElementById('changeNicknameBtn').addEventListener('click', () => {
+    import('./firebaseApp.js').then(FB => {
+        const input = document.getElementById('changeNicknameInput');
+        if (input) input.value = FB.currentUserNickname || '';
+    });
+    document.getElementById('changeNicknameModal').style.display = 'flex';
+    document.getElementById('userDropdown').style.display = 'none';
+});
+
+// --- 닉네임 모달 ---
+document.getElementById('nicknameSubmitBtn').addEventListener('click', submitNickname);
+document.getElementById('nicknameCancelBtn').addEventListener('click', signOutUser);
+document.getElementById('changeNicknameSubmitBtn').addEventListener('click', submitNicknameChange);
+document.getElementById('changeNicknameCancelBtn').addEventListener('click', () => {
+    document.getElementById('changeNicknameModal').style.display = 'none';
+});
+
 // --- 정답 보기 ---
 document.getElementById('answerBtn').addEventListener('click', showAnswer);
-
-// searchInput / sortSelect는 libraryController.js의 renderRecentMapsSection()에서 동적으로 생성·연결됨
 
 // --- 평가 버튼 ---
 document.getElementById('btnReactOk').addEventListener('click', () => toggleReaction('ok'));

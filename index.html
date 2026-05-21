@@ -278,9 +278,18 @@
         <h2>🧩 RayTracer </h2>
         <div class="header-actions">
             <button id="libraryToggleBtn" class="mode-toggle-btn library-btn">📚 맵 라이브러리 열기</button>
-            <button id="modeToggleBtn" class="mode-toggle-btn">🛠️ 현재: 에디터 모드</button>
+            <button id="modeToggleBtn" class="mode-toggle-btn" style="display:none;">🛠️ 현재: 에디터 모드</button>
             <!-- JS 호환성용 숨김 버튼 -->
             <button id="newMapBtn" class="mode-toggle-btn" style="display:none; background-color:#e67e22;">✨ 새 맵 만들기</button>
+            <!-- 로그인 / 유저 메뉴 -->
+            <button id="loginBtn" class="mode-toggle-btn login-btn">🔑 로그인</button>
+            <div id="userMenu" class="user-menu" style="display:none;">
+                <button id="userNickname" class="mode-toggle-btn user-nickname-btn">👤</button>
+                <div id="userDropdown" class="user-dropdown" style="display:none;">
+                    <button id="changeNicknameBtn">✏️ 닉네임 변경</button>
+                    <button id="logoutBtn">🚪 로그아웃</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -473,6 +482,33 @@
             <div class="modal-actions">
                 <button>취소</button>
                 <button id="sugSubmitBtn">제안 등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 닉네임 설정 모달 (최초 로그인 시) -->
+    <div id="nicknameModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3>👋 처음 오셨군요!</h3>
+            <p style="color:#64748b; font-size:14px; margin-top:0;">사용할 닉네임을 입력해주세요.<br><small>나중에 프로필에서 변경 가능합니다.</small></p>
+            <label>닉네임 <span style="color:#94a3b8; font-size:12px;">(2~12자)</span></label>
+            <input type="text" id="nicknameInput" placeholder="예: RayMaster" maxlength="12">
+            <div class="modal-actions">
+                <button id="nicknameCancelBtn">로그아웃</button>
+                <button id="nicknameSubmitBtn" style="background-color:#4285f4;">🚀 시작하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 닉네임 변경 모달 -->
+    <div id="changeNicknameModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3>✏️ 닉네임 변경</h3>
+            <label>새 닉네임 <span style="color:#94a3b8; font-size:12px;">(2~12자)</span></label>
+            <input type="text" id="changeNicknameInput" placeholder="새 닉네임 입력" maxlength="12">
+            <div class="modal-actions">
+                <button id="changeNicknameCancelBtn">취소</button>
+                <button id="changeNicknameSubmitBtn">변경하기</button>
             </div>
         </div>
     </div>
