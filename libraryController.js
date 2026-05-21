@@ -4,7 +4,8 @@ import { SVG_ART, GRID_SIZE, CELL_SIZE, mapData, playerInventory, isEditorMode,
     editorMapDataBackup, selectedTool, lastActiveTool, undoStack,
     showNotification, cancelDragOperation, deselectAllTools, restoreTool,
     refundToInventory, updateCellVisual, applyMapData, saveStateDirectly,
-    renderInventoryUI, toggleMode, resetAnswerState } from './dragAndDrop.js';
+    renderInventoryUI, toggleMode, resetAnswerState, resetEditorState,
+    enterMapEditMode, exitMapEditMode, isMapEditMode } from './dragAndDrop.js';
 import { refreshLaser } from './laserEngine.js';
 
 // ═══════════════ 전역 상태 ═══════════════
@@ -349,6 +350,7 @@ export function closeSuggestionDrawer() {
 // ═══════════════ 맵 플레이 ═══════════════
 export function playMapFromLibrary(mapObj) {
     resetAnswerState();
+    exitMapEditMode();
     if (isLibraryMode) toggleLibraryScreen();
     if (!isEditorMode) toggleMode();
 
@@ -364,7 +366,10 @@ export function playMapFromLibrary(mapObj) {
     if (loadedMapInfo) loadedMapInfo.style.display = 'flex';
 
     const infoTitle = document.getElementById('infoTitle');
-    if (infoTitle) infoTitle.innerText = `🗺️ ${mapObj.title}`;
+    if (infoTitle) {
+        const v = mapObj.version || 1;
+        infoTitle.innerText = `🗺️ ${mapObj.title}${v >= 2 ? ` (ver. ${v})` : ''}`;
+    }
 
     const infoAuthor = document.getElementById('infoAuthor');
     if (infoAuthor) infoAuthor.innerText = mapObj.author;
@@ -506,12 +511,31 @@ export function handleSugHeaderBtnAction() {
     }
 
     if (currentLoadedMapAuthorUid && FB.currentUserUid === currentLoadedMapAuthorUid) {
-        if (typeof window._openUploadForEdit === 'function') {
-            window._openUploadForEdit(currentLoadedMapObj);
-        }
+        startMapEdit();
     } else {
         openSuggestionModal();
     }
+}
+
+// ═══════════════ 맵 인플레이스 수정 ═══════════════
+export function startMapEdit() {
+    if (!currentLoadedMapObj) return;
+    resetAnswerState();
+    enterMapEditMode();
+    showNotification("✏️ 수정 모드입니다. 그리드를 자유롭게 배치한 뒤 저장하세요.", "#f59e0b");
+}
+
+export function saveMapEdit() {
+    if (typeof window._openUploadForEdit === 'function') {
+        window._openUploadForEdit(currentLoadedMapObj);
+    }
+}
+
+export function cancelMapEdit() {
+    if (!confirm("수정한 내용을 모두 버리고 원래 맵으로 돌아갑니다. 계속하시겠습니까?")) return;
+    exitMapEditMode({ restore: true });
+    if (isEditorMode) toggleMode();
+    showNotification("수정이 취소되었습니다.", "#7f8c8d");
 }
 
 // ═══════════════ 제안 모달 ═══════════════
@@ -710,15 +734,11 @@ export async function deleteCurrentMap() {
 export function createNewMap() {
     if (confirm("진행 중인 맵이 모두 초기화되고 빈 에디터로 돌아갑니다. 새로 만드시겠습니까?")) {
         resetAnswerState();
+        exitMapEditMode();
         if (isLibraryMode) toggleLibraryScreen();
         if (!isEditorMode) toggleMode();
 
-        mapData.length = 0;
-        for (let i = 0; i < GRID_SIZE; i++) {
-            mapData.push(Array(GRID_SIZE).fill(null));
-        }
-        playerInventory = {};
-        editorMapDataBackup = null;
+        resetEditorState();
 
         document.querySelectorAll('.grid-cell').forEach(cell => updateCellVisual(cell, null));
         refreshLaser();
@@ -780,6 +800,8 @@ export function initLibraryEventListeners() {
     bindBtn('btnReactGod', 'click', () => toggleReaction('god'));
     bindBtn('sugHeaderBtn', 'click', handleSugHeaderBtnAction);
     bindBtn('deleteMapBtn', 'click', deleteCurrentMap);
+    bindBtn('saveMapEditBtn', 'click', saveMapEdit);
+    bindBtn('cancelMapEditBtn', 'click', cancelMapEdit);
 
     // 제안 모달
     bindBtn('sugSubmitBtn', 'click', submitSuggestion);

@@ -31,10 +31,12 @@ export let mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(nul
 export let playerInventory = {};
 export let editorMapDataBackup = null;
 export let isEditorMode = true;
+export let isMapEditMode = false;
 
 let isAnswerShown = false;
 let answerMapBackup = null;
 let answerInventoryBackup = null;
+let mapEditOriginalBackup = null;
 
 export let selectedTool = null;
 export let lastActiveTool = null;
@@ -305,6 +307,7 @@ export function showAnswer() {
         answerMapBackup = JSON.parse(JSON.stringify(mapData));
         answerInventoryBackup = JSON.parse(JSON.stringify(playerInventory));
         applyMapData(mapObj.mapData);
+        renderInventoryUI();
         isAnswerShown = true;
         if (btn) { btn.innerHTML = "📖 정답 닫기 (ON)"; btn.style.backgroundColor = "#8e44ad"; }
         showNotification("📖 정답을 표시합니다.", "#8e44ad");
@@ -334,6 +337,42 @@ export function resetAnswerState() {
     answerInventoryBackup = null;
     const btn = document.getElementById('answerBtn');
     if (btn) { btn.innerHTML = "📖 정답 보기"; btn.style.backgroundColor = ""; }
+}
+
+// ═══════════════ 에디터 상태 초기화 (새 맵 만들기용) ═══════════════
+export function resetEditorState() {
+    mapData = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(null));
+    playerInventory = {};
+    editorMapDataBackup = null;
+    undoStack = [];
+}
+
+// ═══════════════ 맵 수정 모드 (인플레이스 그리드 편집) ═══════════════
+export function enterMapEditMode() {
+    if (isMapEditMode) return;
+    if (!isEditorMode) toggleMode();
+    mapEditOriginalBackup = JSON.parse(JSON.stringify(mapData));
+    isMapEditMode = true;
+    document.body.classList.add('is-map-edit-mode');
+}
+
+export function exitMapEditMode({ restore = false } = {}) {
+    const wasActive = isMapEditMode;
+    if (restore && mapEditOriginalBackup) {
+        mapData = JSON.parse(JSON.stringify(mapEditOriginalBackup));
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
+                updateCellVisual(cell, mapData[r][c]);
+            }
+        }
+        editorMapDataBackup = JSON.parse(JSON.stringify(mapData));
+        refreshLaser();
+    }
+    mapEditOriginalBackup = null;
+    isMapEditMode = false;
+    document.body.classList.remove('is-map-edit-mode');
+    return wasActive;
 }
 
 // ═══════════════ 클리어 / 익스포트 / 임포트 ═══════════════

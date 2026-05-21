@@ -9,6 +9,37 @@
 
 ---
 
+## [0.6.0] - 2026-05-21
+
+### Added
+- 맵 인플레이스 수정 모드 (`isMapEditMode` 플래그 + `body.is-map-edit-mode` 클래스)
+  - 본인 맵에서 "✏️ 맵 수정하기" 클릭 시 좌측 인벤토리/정답 보기 → 기물 창고 + 특성 부여 창고로 전환
+  - 우측 패널은 탭 토글 숨김 + 풀이제안만 고정 노출
+  - 헤더에 💾 수정 저장하기 / ❌ 취소 버튼 (CSS 가시성 토글)
+  - 수정 모드 중 제안 카드의 "이 풀이로 테스트" 버튼은 숨김 (작업 덮어쓰기 방지)
+  - `dragAndDrop.js`: `enterMapEditMode()`, `exitMapEditMode({ restore })` 신규 export
+- 맵 버전 필드 (`version`)
+  - 신규 업로드 시 `version: 1`
+  - 수정 저장 시 +1, `playMapFromLibrary`에서 `version >= 2` 면 제목 옆 `(ver. N)` 표시
+- 수정 모달 readonly 처리: `openUploadForEdit` 진입 시 `mapTitle.readOnly = true`, `mapAuthor.readOnly = true`, `closeUploadModal` 진입 시 원복
+- `dragAndDrop.js` `resetEditorState()` export — 그리드/인벤토리/백업/undo를 자기 모듈 안에서 일관되게 초기화
+
+### Fixed
+- "✨ 새 맵 만들기" 가 마지막 맵을 그대로 보여주던 버그
+  - `libraryController.js:createNewMap()` 안의 `playerInventory = {}` / `editorMapDataBackup = null` 은 **다른 모듈의 import 바인딩에 대한 재할당** 이라 ES 모듈 규칙상 TypeError 발생 → 이후 그리드 시각 초기화 / 패널 숨김이 실행되지 않았음
+  - `resetEditorState()` 호출로 교체
+- "📖 정답 보기" 토글 ON 시 그리드에는 정답이 표시되지만 인벤토리 영역이 그대로 남던 버그
+  - `dragAndDrop.js:showAnswer()` 의 `applyMapData(...)` 직후 `renderInventoryUI()` 호출 추가
+- 평가 배지 "diff-None" 이 다른 배지와 그림자/굵기 차이로 vote 버튼처럼 보이던 문제 (`box-shadow` 통일)
+
+### Changed
+- 카드 메타 ↔ 배지 사이 약 25px 빈 공간 제거 (`.card-meta` padding-bottom 제거, `.card-divider` 시각만 0px 처리, `.card-bottom` padding-top 축소)
+- 난이도 배지 한 줄 고정 (`flex-wrap: nowrap` + 폰트 14→12px, padding 8/14 → 6/10, `flex: 1 1 0`, `text-overflow: ellipsis`)
+- 가로 스크롤 섹션 카드 hover 시 상단 클리핑 방지 (`padding-top: 12px`, `margin-top: -8px`)
+- 헤더의 `#modeToggleBtn` 노출 (기존 `display:none` 제거)
+
+---
+
 ## [0.5.0] - 2026-05-21
 
 ### Added
