@@ -17,6 +17,8 @@ export function closeUploadModal() {
     isEditingMap = false;
     document.getElementById('uploadModal').querySelector('h3').innerText = "맵 공유하기";
     document.getElementById('uploadSubmitBtn').innerText = "서버에 업로드";
+    const descEl = document.getElementById('mapDesc');
+    if (descEl) descEl.value = '';
 }
 
 export function openUploadForEdit(mapObj) {
@@ -24,6 +26,8 @@ export function openUploadForEdit(mapObj) {
     document.getElementById('mapTitle').value = mapObj.title || "";
     document.getElementById('mapAuthor').value = mapObj.author || "";
     document.getElementById('mapDifficulty').value = mapObj.difficulty || "Normal";
+    const descEl = document.getElementById('mapDesc');
+    if (descEl) descEl.value = mapObj.description || "";
 
     document.getElementById('uploadModal').querySelector('h3').innerText = "✏️ 맵 수정하기";
     document.getElementById('uploadSubmitBtn').innerText = "수정 반영하기";
@@ -35,6 +39,7 @@ export async function packAndUploadMap() {
     const title = document.getElementById('mapTitle').value.trim();
     const author = document.getElementById('mapAuthor').value.trim();
     const difficulty = document.getElementById('mapDifficulty').value;
+    const description = document.getElementById('mapDesc')?.value.trim() || '';
 
     if (!title || !author) { alert("맵 제목과 제작자 닉네임을 모두 입력해주세요."); return; }
 
@@ -63,6 +68,7 @@ export async function packAndUploadMap() {
                 title: title,
                 author: author,
                 difficulty: difficulty,
+                description: description,
                 mapData: mapItems
             };
             await FB.updateMapInDB(currentLoadedMapId, updateData);
@@ -71,6 +77,7 @@ export async function packAndUploadMap() {
             currentLoadedMapObj.title = title;
             currentLoadedMapObj.author = author;
             currentLoadedMapObj.difficulty = difficulty;
+            currentLoadedMapObj.description = description;
             currentLoadedMapObj.mapData = mapItems;
             playMapFromLibrary(currentLoadedMapObj);
         } else {
@@ -78,6 +85,7 @@ export async function packAndUploadMap() {
                 title: title,
                 author: author,
                 difficulty: difficulty,
+                description: description,
                 createdAt: new Date().toISOString(),
                 reactionOk: 0,
                 reactionGod: 0,

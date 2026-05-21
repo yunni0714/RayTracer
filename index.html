@@ -151,7 +151,7 @@
         }
         .mini-cell svg { width: 80%; height: 80%; }
 
-        .main-content { display: flex; gap: 40px; width: 100%; align-items: flex-start; }
+        .main-content { display: flex; gap: 20px; width: 100%; align-items: flex-start; }
 
         .board-wrapper {
             position: relative; width: fit-content; height: fit-content;
@@ -443,6 +443,10 @@
                 <option value="Hard">어려움 (Hard)</option>
                 <option value="Insane">매우 어려움 (Insane)</option>
             </select>
+            <label>맵 설명 <span style="color:#999; font-size:12px;">(선택)</span></label>
+            <textarea id="mapDesc" placeholder="맵 소개나 힌트를 입력해주세요." rows="2"
+                style="width:100%; padding:10px; margin-top:5px; border:1px solid #ccc;
+                       border-radius:5px; box-sizing:border-box; resize:none; font-family:inherit;"></textarea>
             <div class="modal-actions">
                 <button>취소</button>
                 <button id="uploadSubmitBtn">서버에 업로드</button>
