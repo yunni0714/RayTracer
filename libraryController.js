@@ -301,26 +301,39 @@ export function renderNextMapPanel() {
         const card = document.createElement('div');
         card.className = 'next-map-card';
 
-        const miniContainer = document.createElement('div');
-        miniContainer.className = 'next-mini';
-        const miniGrid = createMiniGridDOM(mapObj.mapData, true);
-        miniGrid.style.cssText = 'width:100%; height:100%; border:none; background:#fff;';
-        miniContainer.appendChild(miniGrid);
+        // 좌측: 미니 그리드 (createMiniGridV2 재사용)
+        const gridArea = document.createElement('div');
+        gridArea.className = 'next-grid-area';
+        gridArea.appendChild(createMiniGridV2(mapObj.mapData));
+        card.appendChild(gridArea);
 
+        // 우측: 정보 영역
         const info = document.createElement('div');
-        info.className = 'next-info';
+        info.className = 'next-info-v2';
+
         const diff = mapObj.difficulty || 'Normal';
         const userDiff = calculateUserDifficulty(mapObj.diffVotes);
+        const evalLabel = userDiff || 'None';
+        const dateStr = mapObj.createdAt
+            ? new Date(mapObj.createdAt).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })
+            : '';
+        const okCount = mapObj.reactionOk || 0;
+        const godCount = mapObj.reactionGod || 0;
+
         info.innerHTML = `
-            <h4>${mapObj.title || '제목 없음'}</h4>
-            <p>
-                <span class="diff-mini diff-${diff}">${diff}</span>
-                ${userDiff ? `<span class="diff-mini diff-${userDiff}">${userDiff}</span>` : ''}
-                ${mapObj.author || ''}
-            </p>
+            <h4 title="${mapObj.title || ''}">${mapObj.title || '제목 없음'}</h4>
+            <p class="next-sub">${mapObj.author || ''} &bull; ${dateStr}</p>
+            ${mapObj.description ? `<p class="next-desc">${mapObj.description}</p>` : ''}
+            <div class="next-badge-row">
+                <span class="diff-pill diff-${diff}">공식: ${diff}</span>
+                <span class="diff-pill diff-${evalLabel}">평가: ${evalLabel}</span>
+            </div>
+            <div class="next-stat-row">
+                <span class="stat stat-ok">✅ ${okCount}</span>
+                <span class="stat stat-god">🔥 ${godCount}</span>
+            </div>
         `;
 
-        card.appendChild(miniContainer);
         card.appendChild(info);
         card.addEventListener('click', () => playMapFromLibrary(mapObj));
         list.appendChild(card);
