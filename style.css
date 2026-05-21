@@ -126,6 +126,7 @@
 /* 카드 메타 (제목, 작성자) */
 .map-card-v2 .card-meta {
     padding: 14px 20px 10px 20px;
+    margin-top: 0;
 }
 .map-card-v2 .card-meta h4 {
     margin: 0 0 4px 0;
