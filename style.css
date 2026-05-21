@@ -100,7 +100,7 @@
 .map-card-v2 .mini-wrapper {
     padding: 18px 18px 0 18px;
 }
-.map-card-v2 .mini-grid-v2 {
+.mini-grid-v2 {
     width: 100%;
     aspect-ratio: 1 / 1;
     display: grid;
@@ -112,13 +112,13 @@
     padding: 4px;
     box-sizing: border-box;
 }
-.map-card-v2 .mini-cell-v2 {
+.mini-cell-v2 {
     box-shadow: inset 0 0 0 1px #e2e8f0;
     display: flex;
     justify-content: center;
     align-items: center;
 }
-.map-card-v2 .mini-cell-v2 svg {
+.mini-cell-v2 svg {
     width: 75%;
     height: 75%;
 }
@@ -177,6 +177,9 @@
 .map-card-v2 .diff-pill.diff-None {
     background: #cbd5e1;
     color: #475569;
+}
+.diff-pill.diff-Tutor {
+    background: #3498db;
 }
 .map-card-v2 .stat-row {
     display: flex;

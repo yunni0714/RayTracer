@@ -69,6 +69,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: inline-block;
         }
+        .diff-Tutor { background-color: #3498db; }
         .diff-Easy { background-color: #2ecc71; }
         .diff-Normal { background-color: #f39c12; color: #fff; }
         .diff-Hard { background-color: #e67e22; }
@@ -96,6 +97,7 @@
             border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;
         }
         .diff-vote-btn:hover { filter: brightness(0.9); }
+        .diff-vote-btn.active.diff-Tutor { border-color: #3498db; background: #3498db; color: white; }
         .diff-vote-btn.active.diff-Easy { border-color: #2ecc71; background: #2ecc71; color: white; }
         .diff-vote-btn.active.diff-Normal { border-color: #f39c12; background: #f39c12; color: white; }
         .diff-vote-btn.active.diff-Hard { border-color: #e67e22; background: #e67e22; color: white; }
@@ -261,7 +263,9 @@
         .modal-actions button:nth-child(2) { background: #27ae60; color: white; }
 
         body.is-test-mode .modifier-section { display: none; }
-        body.is-test-mode .badge-inv { display: none; } 
+        body.is-test-mode .badge-inv { display: none; }
+        body.is-test-mode .actions { display: none; }
+        body.is-test-mode #output { display: none; }
         body:not(.unlocked) #group-advanced .tool-item { display: none; }
         body.unlocked #advanced-empty-msg { display: none; }
         
@@ -309,6 +313,7 @@
                 </div>
                 <div class="diff-vote-group">
                     <span class="diff-vote-label">체감 난이도 투표:</span>
+                    <button id="btnVoteTutor" class="diff-vote-btn diff-Tutor">Tutor</button>
                     <button id="btnVoteEasy" class="diff-vote-btn diff-Easy">Easy</button>
                     <button id="btnVoteNormal" class="diff-vote-btn diff-Normal">Normal</button>
                     <button id="btnVoteHard" class="diff-vote-btn diff-Hard">Hard</button>
@@ -438,6 +443,7 @@
             <input type="text" id="mapAuthor" placeholder="예: RayMaster">
             <label>난이도</label>
             <select id="mapDifficulty">
+                <option value="Tutor">튜토리얼 (Tutor)</option>
                 <option value="Easy">쉬움 (Easy)</option>
                 <option value="Normal" selected>보통 (Normal)</option>
                 <option value="Hard">어려움 (Hard)</option>
