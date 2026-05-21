@@ -32,6 +32,10 @@ export let playerInventory = {};
 export let editorMapDataBackup = null;
 export let isEditorMode = true;
 
+let isAnswerShown = false;
+let answerMapBackup = null;
+let answerInventoryBackup = null;
+
 export let selectedTool = null;
 export let lastActiveTool = null;
 
@@ -232,6 +236,7 @@ export function renderInventoryUI() {
 // ═══════════════ 에디터/테스트 모드 전환 ═══════════════
 
 export function toggleMode() {
+    resetAnswerState();
     isEditorMode = !isEditorMode;
     const btn = document.getElementById('modeToggleBtn');
     const answerBtn = document.getElementById('answerBtn');
@@ -290,33 +295,45 @@ export function toggleMode() {
 }
 
 export function showAnswer() {
-    const mapObj = typeof window._getCurrentMapObj === 'function' ? window._getCurrentMapObj() : null;
-    if (!mapObj || !mapObj.mapData) {
-        showNotification("원본 맵 데이터가 없습니다.", "#e74c3c");
-        return;
-    }
-
-    const cells = document.querySelectorAll('.grid-cell');
-    const originalHTML = Array.from(cells).map(c => c.innerHTML);
-
-    const tempData = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
-    mapObj.mapData.forEach(item => {
-        if (item.y < GRID_SIZE && item.x < GRID_SIZE && !item.isInventory) {
-            tempData[item.y][item.x] = item;
+    const btn = document.getElementById('answerBtn');
+    if (!isAnswerShown) {
+        const mapObj = typeof window._getCurrentMapObj === 'function' ? window._getCurrentMapObj() : null;
+        if (!mapObj || !mapObj.mapData) {
+            showNotification("원본 맵 데이터가 없습니다.", "#e74c3c");
+            return;
         }
-    });
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            const cell = document.querySelector(`.grid-cell[data-row='${r}'][data-col='${c}']`);
-            if (cell) updateCellVisual(cell, tempData[r][c]);
+        answerMapBackup = JSON.parse(JSON.stringify(mapData));
+        answerInventoryBackup = JSON.parse(JSON.stringify(playerInventory));
+        applyMapData(mapObj.mapData);
+        isAnswerShown = true;
+        if (btn) { btn.innerHTML = "📖 정답 닫기 (ON)"; btn.style.backgroundColor = "#8e44ad"; }
+        showNotification("📖 정답을 표시합니다.", "#8e44ad");
+    } else {
+        if (answerMapBackup) {
+            const restored = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (answerMapBackup[r][c]) restored.push({ x: c, y: r, ...answerMapBackup[r][c] });
+                }
+            }
+            applyMapData(restored);
+            playerInventory = answerInventoryBackup || {};
+            renderInventoryUI();
         }
-    }
-    showNotification("📖 정답입니다! 3초 후 복원됩니다.", "#8e44ad");
-
-    setTimeout(() => {
-        cells.forEach((cell, i) => { cell.innerHTML = originalHTML[i]; });
+        answerMapBackup = null;
+        answerInventoryBackup = null;
+        isAnswerShown = false;
+        if (btn) { btn.innerHTML = "📖 정답 보기"; btn.style.backgroundColor = ""; }
         showNotification("플레이 화면으로 돌아왔습니다.", "#27ae60");
-    }, 3000);
+    }
+}
+
+export function resetAnswerState() {
+    isAnswerShown = false;
+    answerMapBackup = null;
+    answerInventoryBackup = null;
+    const btn = document.getElementById('answerBtn');
+    if (btn) { btn.innerHTML = "📖 정답 보기"; btn.style.backgroundColor = ""; }
 }
 
 // ═══════════════ 클리어 / 익스포트 / 임포트 ═══════════════

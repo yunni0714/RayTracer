@@ -424,3 +424,95 @@
     }
     .recent-maps-header h2 { font-size: 18px; }
 }
+
+/* ──────────────────────────────────────────
+   풀이 제안 카드 v2 — 가로 레이아웃
+────────────────────────────────────────── */
+.suggestion-item {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    transition: border-color 0.2s;
+}
+.suggestion-item:hover { border-color: #cbd5e1; }
+
+.suggestion-item .sug-grid-area {
+    width: 38%;
+    flex-shrink: 0;
+}
+.suggestion-item .sug-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+}
+.suggestion-item .sug-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.suggestion-item .sug-comment {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.suggestion-item .sug-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+    align-self: center;
+}
+.suggestion-item .sug-test-btn {
+    padding: 9px 12px;
+    border: none;
+    background: #10b981;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+.suggestion-item .sug-test-btn:hover { background: #059669; }
+.suggestion-item .sug-del-btn {
+    padding: 7px 12px;
+    border: 1px solid #f87171;
+    background: transparent;
+    color: #ef4444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+}
+.suggestion-item .sug-del-btn:hover { background: #ef4444; color: #fff; }
+
+/* 풀이 제안 목록 스크롤 (카드 3개까지 표시) */
+#suggestionList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 536px;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+#suggestionList::-webkit-scrollbar { width: 4px; }
+#suggestionList::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
