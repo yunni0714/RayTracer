@@ -403,6 +403,9 @@ export function playMapFromLibrary(mapObj) {
     switchRightPanel('next-map');
     renderNextMapPanel();
 
+    const modeBtn = document.getElementById('modeToggleBtn');
+    if (modeBtn) modeBtn.style.display = 'none';
+
     showNotification(`[${mapObj.title}] 플레이를 시작합니다!`, "#27ae60");
 
     if (isEditorMode) toggleMode();
@@ -411,6 +414,10 @@ export function playMapFromLibrary(mapObj) {
 // ═══════════════ 평가 & 투표 ═══════════════
 export async function toggleReaction(type) {
     if (!currentLoadedMapId) return;
+    if (!FB.currentUserUid) {
+        showNotification("로그인 후 평가할 수 있습니다.", "#e74c3c");
+        return;
+    }
     const btn = type === 'ok' ? document.getElementById('btnReactOk') : document.getElementById('btnReactGod');
     if (!btn || btn.disabled) return;
     btn.disabled = true;
@@ -438,6 +445,10 @@ export async function toggleReaction(type) {
 
 export async function voteDifficulty(diffLevel) {
     if (!currentLoadedMapId) return;
+    if (!FB.currentUserUid) {
+        showNotification("로그인 후 투표할 수 있습니다.", "#e74c3c");
+        return;
+    }
     const state = getMapLocalState(currentLoadedMapId);
     if (state.diff === diffLevel) return;
 
@@ -506,7 +517,7 @@ export function updateSugHeaderBtnUI() {
 
 export function handleSugHeaderBtnAction() {
     if (!FB.currentUserUid) {
-        alert("로그인 정보를 확인 중입니다. 잠시 후 시도해주세요.");
+        showNotification("로그인 후 이용할 수 있습니다.", "#e74c3c");
         return;
     }
 
@@ -540,6 +551,10 @@ export function cancelMapEdit() {
 
 // ═══════════════ 제안 모달 ═══════════════
 export function openSuggestionModal() {
+    if (!FB.currentUserUid) {
+        showNotification("로그인 후 풀이를 제안할 수 있습니다.", "#e74c3c");
+        return;
+    }
     const modal = document.getElementById('suggestionModal');
     if (modal) modal.style.display = 'flex';
 }
@@ -751,6 +766,9 @@ export function createNewMap() {
 
         const answerBtn = document.getElementById('answerBtn');
         if (answerBtn) answerBtn.style.display = 'none';
+
+        const modeBtn = document.getElementById('modeToggleBtn');
+        if (modeBtn) modeBtn.style.display = '';
 
         currentLoadedMapId = null;
         currentLoadedMapAuthorUid = null;
