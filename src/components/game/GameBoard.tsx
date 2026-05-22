@@ -8,45 +8,22 @@ import { CELL_SIZE, GRID_SIZE } from '../../lib/svgArt';
 const size = CELL_SIZE * GRID_SIZE;
 
 export function GameBoard() {
-  const { isLaserOn, toggleLaser, isEditorMode, isAnswerShown, showAnswer, hideAnswer, currentLoadedMapObj } = useGameStore(useShallow(s => ({
-    isLaserOn: s.isLaserOn,
-    toggleLaser: s.toggleLaser,
-    isEditorMode: s.isEditorMode,
-    isAnswerShown: s.isAnswerShown,
-    showAnswer: s.showAnswer,
-    hideAnswer: s.hideAnswer,
-    currentLoadedMapObj: s.currentLoadedMapObj,
-  })));
+  const { isEditorMode } = useGameStore(useShallow(s => ({ isEditorMode: s.isEditorMode })));
 
   const canvasRef = useLaserCanvas();
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-start gap-2">
       <div className="relative" style={{ width: size, height: size }}>
         <GridContainer />
         <LaserCanvas ref={canvasRef} />
       </div>
 
-      {!isEditorMode && (
-        <div className="flex gap-2">
-          <button
-            onClick={toggleLaser}
-            className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
-              isLaserOn ? 'bg-ray-green' : 'bg-ray-red'
-            }`}
-          >
-            {isLaserOn ? '🟢 레이저 끄기 (ON)' : '🔴 레이저 켜기 (OFF)'}
-          </button>
-          {currentLoadedMapObj && (
-            <button
-              onClick={isAnswerShown ? hideAnswer : showAnswer}
-              className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors ${
-                isAnswerShown ? 'bg-ray-purple' : 'bg-gray-500 hover:bg-gray-600'
-              }`}
-            >
-              {isAnswerShown ? '📖 정답 닫기 (ON)' : '📖 정답 보기'}
-            </button>
-          )}
+      {isEditorMode && (
+        <div className="text-xs text-gray-500 leading-5">
+          🖱️ <strong>기물 잡고 이동:</strong> 드래그 후 도구 자동 재선택<br />
+          🖱️ <strong>기물 든 상태 클릭:</strong> 같은 기물이면 <span className="text-ray-red font-semibold">회전</span>, 다른 기물이면 <span className="text-ray-red font-semibold">덮어쓰기</span><br />
+          🖱️ <strong>빈손 상태 클릭:</strong> 특성 덧칠 및 회전
         </div>
       )}
     </div>

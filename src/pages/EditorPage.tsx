@@ -14,15 +14,19 @@ import { SuggestionModal } from '../components/modals/SuggestionModal';
 
 export function EditorPage() {
   const {
-    isLibraryMode, activeModal, isEditorMode, currentUserUid,
-    openModal, currentLoadedMapObj,
+    isLibraryMode, activeModal, isEditorMode,
+    currentLoadedMapObj, isLaserOn, toggleLaser,
+    isAnswerShown, showAnswer, hideAnswer,
   } = useGameStore(useShallow(s => ({
     isLibraryMode: s.isLibraryMode,
     activeModal: s.activeModal,
     isEditorMode: s.isEditorMode,
-    currentUserUid: s.currentUserUid,
-    openModal: s.openModal,
     currentLoadedMapObj: s.currentLoadedMapObj,
+    isLaserOn: s.isLaserOn,
+    toggleLaser: s.toggleLaser,
+    isAnswerShown: s.isAnswerShown,
+    showAnswer: s.showAnswer,
+    hideAnswer: s.hideAnswer,
   })));
 
   return (
@@ -34,33 +38,43 @@ export function EditorPage() {
           <LibraryScreen />
         ) : (
           <div className="flex h-full overflow-hidden">
-            {/* 좌측: 팔레트/인벤토리 + 맵 정보 */}
-            <aside className="w-56 shrink-0 p-3 bg-white border-r border-gray-200 overflow-y-auto">
-              <PalettePanel />
-              <TestModeInventory />
 
-              {/* 에디터 모드 맵 공유 버튼 (맵 미로드 시만 표시) */}
-              {isEditorMode && currentUserUid && !currentLoadedMapObj && (
-                <div className="mt-4 border-t pt-3">
-                  <button
-                    onClick={() => openModal('upload')}
-                    className="w-full px-3 py-2 bg-ray-purple text-white text-sm rounded hover:opacity-90 transition-opacity"
-                  >
-                    📤 맵 공유하기
-                  </button>
-                </div>
-              )}
-
-              {/* 로드된 맵 정보 + 평가/투표/액션 */}
+            {/* ① LEFT: board-wrapper */}
+            <div className="flex flex-col shrink-0 p-4 gap-2 overflow-y-auto">
               {currentLoadedMapObj && <LoadedMapInfo />}
-            </aside>
-
-            {/* 중앙: 게임 보드 */}
-            <div className="flex-1 flex items-center justify-center p-4 min-w-0">
               <GameBoard />
             </div>
 
-            {/* 우측: 사이드 패널 (맵 로드 시에만) */}
+            {/* ② RIGHT: palette-area (~380px) */}
+            <div className="w-96 shrink-0 bg-white border-l border-gray-200 p-3 overflow-y-auto flex flex-col gap-2">
+              {/* 레이저 버튼 (항상 표시) */}
+              <button
+                onClick={toggleLaser}
+                className="w-full px-4 py-3 rounded text-white text-sm font-bold transition-colors"
+                style={{ background: isLaserOn ? '#27ae60' : '#e74c3c' }}
+              >
+                {isLaserOn ? '🟢 실시간 레이저 끄기 (ON)' : '🔴 실시간 레이저 켜기 (OFF)'}
+              </button>
+
+              {/* 정답 보기 버튼 (테스트 모드 + 맵 로드 시) */}
+              {!isEditorMode && currentLoadedMapObj && (
+                <button
+                  onClick={isAnswerShown ? hideAnswer : showAnswer}
+                  className="w-full px-4 py-3 rounded text-white text-sm font-bold transition-colors"
+                  style={{ background: isAnswerShown ? '#8e44ad' : '#27ae60' }}
+                >
+                  {isAnswerShown ? '📖 정답 닫기 (ON)' : '📖 정답 보기'}
+                </button>
+              )}
+
+              {/* 테스트 모드: 인벤토리 */}
+              {!isEditorMode && <TestModeInventory />}
+
+              {/* 에디터 모드: 팔레트 패널 */}
+              {isEditorMode && <PalettePanel />}
+            </div>
+
+            {/* ③ FAR RIGHT: rightSidePanel (맵 로드 시) */}
             {currentLoadedMapObj && (
               <div className="p-3 overflow-hidden flex items-stretch">
                 <RightSidePanel />
