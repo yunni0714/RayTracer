@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
 import type { PieceType } from '../../types/game';
@@ -16,7 +17,7 @@ export function PalettePanel() {
     isModRotatableActive, isModLockActive, isModInvActive,
     setModRotatable, setModLock, setModInv,
     clearGrid, isEditorMode,
-  } = useGameStore(s => ({
+  } = useGameStore(useShallow(s => ({
     selectedTool: s.selectedTool,
     setSelectedTool: s.setSelectedTool,
     isUnlocked: s.isUnlocked,
@@ -28,7 +29,7 @@ export function PalettePanel() {
     setModInv: s.setModInv,
     clearGrid: s.clearGrid,
     isEditorMode: s.isEditorMode,
-  }));
+  })));
 
   if (!isEditorMode) return null;
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { fetchLibraryList } from '../../lib/firebaseService';
 import { MapCard } from './MapCard';
@@ -26,7 +27,7 @@ function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
 
 export function LibraryScreen() {
   const { allLibraryMaps, setAllLibraryMaps, setCurrentLoadedMap, setLibraryMode,
-    setMapData, setInventory, toggleMode, isEditorMode } = useGameStore(s => ({
+    setMapData, setInventory, toggleMode, isEditorMode } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
     setAllLibraryMaps: s.setAllLibraryMaps,
     setCurrentLoadedMap: s.setCurrentLoadedMap,
@@ -35,7 +36,7 @@ export function LibraryScreen() {
     setInventory: s.setInventory,
     toggleMode: s.toggleMode,
     isEditorMode: s.isEditorMode,
-  }));
+  })));
 
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');

@@ -1,12 +1,13 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
 import type { PieceType, Rotation } from '../../types/game';
 
 export function TestModeInventory() {
-  const { isEditorMode, playerInventory } = useGameStore(s => ({
+  const { isEditorMode, playerInventory } = useGameStore(useShallow(s => ({
     isEditorMode: s.isEditorMode,
     playerInventory: s.playerInventory,
-  }));
+  })));
 
   if (isEditorMode) return null;
 

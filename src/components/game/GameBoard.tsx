@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { useLaserCanvas } from '../../hooks/useLaserCanvas';
 import { GridContainer } from './GridContainer';
@@ -7,11 +8,11 @@ import { CELL_SIZE, GRID_SIZE } from '../../lib/svgArt';
 const size = CELL_SIZE * GRID_SIZE;
 
 export function GameBoard() {
-  const { isLaserOn, toggleLaser, isEditorMode } = useGameStore(s => ({
+  const { isLaserOn, toggleLaser, isEditorMode } = useGameStore(useShallow(s => ({
     isLaserOn: s.isLaserOn,
     toggleLaser: s.toggleLaser,
     isEditorMode: s.isEditorMode,
-  }));
+  })));
 
   const canvasRef = useLaserCanvas();
 
