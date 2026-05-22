@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../store/gameStore';
 import {
   updateMapReactionsInDB,
@@ -31,9 +32,25 @@ export function getMapState(mapId: string): MapState {
 }
 
 export function useMapReactions() {
-  const currentLoadedMapObj = useGameStore(s => s.currentLoadedMapObj);
-  const currentUserUid = useGameStore(s => s.currentUserUid);
-  const showNotification = useGameStore(s => s.showNotification);
+  const {
+    currentLoadedMapObj, currentUserUid, showNotification,
+    setCurrentMapReactions,
+  } = useGameStore(useShallow(s => ({
+    currentLoadedMapObj: s.currentLoadedMapObj,
+    currentUserUid: s.currentUserUid,
+    showNotification: s.showNotification,
+    setCurrentMapReactions: s.setCurrentMapReactions,
+  })));
+
+  const [localState, setLocalState] = useState<MapState>({ ok: false, god: false, diff: null });
+
+  useEffect(() => {
+    if (currentLoadedMapObj) {
+      setLocalState(getMapState(currentLoadedMapObj.id));
+    } else {
+      setLocalState({ ok: false, god: false, diff: null });
+    }
+  }, [currentLoadedMapObj?.id]);
 
   const toggleReaction = useCallback(async (type: 'reactionOk' | 'reactionGod') => {
     if (!currentUserUid) { showNotification('로그인이 필요합니다.', '#e74c3c'); return; }
@@ -45,12 +62,21 @@ export function useMapReactions() {
     const field = type === 'reactionOk' ? 'ok' : 'god';
     const isOn = state[field];
 
-    state[field] = !isOn;
-    states[mapId] = state;
+    const newState = { ...state, [field]: !isOn };
+    states[mapId] = newState;
     saveMapStates(states);
+    setLocalState(newState);
+
+    // 스토어 카운트 낙관적 업데이트 (stale closure 방지를 위해 getState() 사용)
+    const current = useGameStore.getState().currentMapReactions;
+    const delta = isOn ? -1 : 1;
+    setCurrentMapReactions({
+      ok: current.ok + (type === 'reactionOk' ? delta : 0),
+      god: current.god + (type === 'reactionGod' ? delta : 0),
+    });
 
     await updateMapReactionsInDB(mapId, type, isOn ? -1 : 1);
-  }, [currentLoadedMapObj, currentUserUid, showNotification]);
+  }, [currentLoadedMapObj, currentUserUid, showNotification, setCurrentMapReactions]);
 
   const voteDifficulty = useCallback(async (level: Difficulty) => {
     if (!currentUserUid) { showNotification('로그인이 필요합니다.', '#e74c3c'); return; }
@@ -60,19 +86,16 @@ export function useMapReactions() {
     const states = loadMapStates();
     const state = states[mapId] ?? { ok: false, god: false, diff: null };
     const oldVote = state.diff;
+    const newDiff = oldVote === level ? null : level;
 
-    if (oldVote === level) {
-      state.diff = null;
-      states[mapId] = state;
-      saveMapStates(states);
-      await updateMapDifficultyVoteInDB(mapId, oldVote, null);
-    } else {
-      state.diff = level;
-      states[mapId] = state;
-      saveMapStates(states);
-      await updateMapDifficultyVoteInDB(mapId, oldVote, level);
-    }
+    const newState = { ...state, diff: newDiff };
+    states[mapId] = newState;
+    saveMapStates(states);
+    setLocalState(newState);
+
+    await updateMapDifficultyVoteInDB(mapId, oldVote, newDiff);
+    showNotification(newDiff ? '체감 난이도 투표가 완료되었습니다!' : '투표가 취소되었습니다.');
   }, [currentLoadedMapObj, currentUserUid, showNotification]);
 
-  return { toggleReaction, voteDifficulty };
+  return { toggleReaction, voteDifficulty, localState };
 }

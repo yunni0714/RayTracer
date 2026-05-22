@@ -6,17 +6,23 @@ import { GameBoard } from '../components/game/GameBoard';
 import { PalettePanel } from '../components/palette/PalettePanel';
 import { TestModeInventory } from '../components/palette/TestModeInventory';
 import { LibraryScreen } from '../components/library/LibraryScreen';
+import { LoadedMapInfo } from '../components/library/LoadedMapInfo';
+import { RightSidePanel } from '../components/library/RightSidePanel';
 import { NicknameModal } from '../components/modals/NicknameModal';
 import { UploadModal } from '../components/modals/UploadModal';
 import { SuggestionModal } from '../components/modals/SuggestionModal';
 
 export function EditorPage() {
-  const { isLibraryMode, activeModal, isEditorMode, currentUserUid, openModal } = useGameStore(useShallow(s => ({
+  const {
+    isLibraryMode, activeModal, isEditorMode, currentUserUid,
+    openModal, currentLoadedMapObj,
+  } = useGameStore(useShallow(s => ({
     isLibraryMode: s.isLibraryMode,
     activeModal: s.activeModal,
     isEditorMode: s.isEditorMode,
     currentUserUid: s.currentUserUid,
     openModal: s.openModal,
+    currentLoadedMapObj: s.currentLoadedMapObj,
   })));
 
   return (
@@ -27,14 +33,14 @@ export function EditorPage() {
         {isLibraryMode ? (
           <LibraryScreen />
         ) : (
-          <div className="flex h-full">
-            {/* 좌측: 팔레트/인벤토리 */}
+          <div className="flex h-full overflow-hidden">
+            {/* 좌측: 팔레트/인벤토리 + 맵 정보 */}
             <aside className="w-56 shrink-0 p-3 bg-white border-r border-gray-200 overflow-y-auto">
               <PalettePanel />
               <TestModeInventory />
 
-              {/* 에디터 모드 액션 버튼 */}
-              {isEditorMode && currentUserUid && (
+              {/* 에디터 모드 맵 공유 버튼 (맵 미로드 시만 표시) */}
+              {isEditorMode && currentUserUid && !currentLoadedMapObj && (
                 <div className="mt-4 border-t pt-3">
                   <button
                     onClick={() => openModal('upload')}
@@ -44,12 +50,22 @@ export function EditorPage() {
                   </button>
                 </div>
               )}
+
+              {/* 로드된 맵 정보 + 평가/투표/액션 */}
+              {currentLoadedMapObj && <LoadedMapInfo />}
             </aside>
 
             {/* 중앙: 게임 보드 */}
-            <div className="flex-1 flex items-center justify-center p-4">
+            <div className="flex-1 flex items-center justify-center p-4 min-w-0">
               <GameBoard />
             </div>
+
+            {/* 우측: 사이드 패널 (맵 로드 시에만) */}
+            {currentLoadedMapObj && (
+              <div className="p-3 overflow-hidden flex items-stretch">
+                <RightSidePanel />
+              </div>
+            )}
           </div>
         )}
       </main>

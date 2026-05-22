@@ -4,13 +4,11 @@ import type { MapItemDTO } from '../../types/game';
 interface Props {
   mapData: MapItemDTO[];
   hideInventory?: boolean;
-  size?: number;
+  variant?: 'v2' | 'v1';
+  size?: number; // v1 전용
 }
 
-export function MiniGrid({ mapData, hideInventory = false, size = 120 }: Props) {
-  const cellSize = size / GRID_SIZE;
-
-  // MapItemDTO[] → 2D 배열로 변환
+export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size = 120 }: Props) {
   const grid: (MapItemDTO | null)[][] = Array.from({ length: GRID_SIZE }, () =>
     Array(GRID_SIZE).fill(null)
   );
@@ -22,31 +20,62 @@ export function MiniGrid({ mapData, hideInventory = false, size = 120 }: Props) 
     }
   }
 
+  if (variant === 'v1') {
+    const cellSize = size / GRID_SIZE;
+    return (
+      <div
+        className="grid border border-gray-300 bg-white shrink-0"
+        style={{
+          gridTemplateColumns: `repeat(${GRID_SIZE}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${GRID_SIZE}, ${cellSize}px)`,
+          width: size,
+          height: size,
+        }}
+      >
+        {Array.from({ length: GRID_SIZE }, (_, row) =>
+          Array.from({ length: GRID_SIZE }, (_, col) => {
+            const item = grid[row][col];
+            return (
+              <div
+                key={`${row}-${col}`}
+                className="border border-gray-200 flex items-center justify-center overflow-hidden"
+                style={{ width: cellSize, height: cellSize }}
+              >
+                {item && (
+                  <div
+                    style={{
+                      transform: `rotate(${item.rotation}deg)`,
+                      width: cellSize - 4,
+                      height: cellSize - 4,
+                    }}
+                    dangerouslySetInnerHTML={{ __html: SVG_ART[item.type] }}
+                  />
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+
+  // v2: aspect-ratio 1/1, percentage layout
   return (
-    <div
-      className="grid border border-gray-300 bg-white shrink-0"
-      style={{
-        gridTemplateColumns: `repeat(${GRID_SIZE}, ${cellSize}px)`,
-        gridTemplateRows: `repeat(${GRID_SIZE}, ${cellSize}px)`,
-        width: size,
-        height: size,
-      }}
-    >
+    <div className="mini-grid-v2">
       {Array.from({ length: GRID_SIZE }, (_, row) =>
         Array.from({ length: GRID_SIZE }, (_, col) => {
           const item = grid[row][col];
           return (
-            <div
-              key={`${row}-${col}`}
-              className="border border-gray-200 flex items-center justify-center overflow-hidden"
-              style={{ width: cellSize, height: cellSize }}
-            >
+            <div key={`${row}-${col}`} className="mini-cell-v2">
               {item && (
                 <div
                   style={{
                     transform: `rotate(${item.rotation}deg)`,
-                    width: cellSize - 4,
-                    height: cellSize - 4,
+                    width: '75%',
+                    height: '75%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                   dangerouslySetInnerHTML={{ __html: SVG_ART[item.type] }}
                 />
