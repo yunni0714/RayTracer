@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
 import type { Difficulty, MapItemDTO } from '../../types/game';
@@ -10,14 +11,14 @@ export function UploadModal() {
   const {
     currentUserUid, currentUserNickname, currentLoadedMapObj,
     mapData, closeModal, showNotification,
-  } = useGameStore(s => ({
+  } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
     currentLoadedMapObj: s.currentLoadedMapObj,
     mapData: s.mapData,
     closeModal: s.closeModal,
     showNotification: s.showNotification,
-  }));
+  })));
 
   const isEdit = currentLoadedMapObj !== null;
   const [title, setTitle] = useState(isEdit ? currentLoadedMapObj!.title : '');

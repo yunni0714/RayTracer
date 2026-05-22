@@ -1,21 +1,23 @@
 import { useRef, useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { signInWithGoogle, signOutUser } from '../../lib/firebaseService';
 
 export function Header() {
-  const { currentUserUid, currentUserNickname, isEditorMode, isLibraryMode } = useGameStore(s => ({
+  const {
+    currentUserUid, currentUserNickname, isEditorMode, isLibraryMode,
+    toggleMode, setLibraryMode, openModal, showNotification, resetEditorState,
+  } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
     isEditorMode: s.isEditorMode,
     isLibraryMode: s.isLibraryMode,
-  }));
-  const { toggleMode, setLibraryMode, openModal, showNotification, resetEditorState } = useGameStore(s => ({
     toggleMode: s.toggleMode,
     setLibraryMode: s.setLibraryMode,
     openModal: s.openModal,
     showNotification: s.showNotification,
     resetEditorState: s.resetEditorState,
-  }));
+  })));
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

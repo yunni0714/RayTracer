@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { uploadSuggestionToDB } from '../../lib/firebaseService';
 import type { MapItemDTO } from '../../types/game';
@@ -12,14 +13,14 @@ export function SuggestionModal() {
   const {
     currentUserUid, currentUserNickname, currentLoadedMapObj, mapData,
     closeModal, showNotification,
-  } = useGameStore(s => ({
+  } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
     currentLoadedMapObj: s.currentLoadedMapObj,
     mapData: s.mapData,
     closeModal: s.closeModal,
     showNotification: s.showNotification,
-  }));
+  })));
 
   function buildMapData(): MapItemDTO[] {
     const items: MapItemDTO[] = [];

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from './hooks/useAuth';
 import { useGameStore } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
@@ -10,7 +11,7 @@ import { GRID_SIZE } from './lib/svgArt';
 function useUrlMapLoader() {
   const [searchParams] = useSearchParams();
   const currentUserUid = useGameStore(s => s.currentUserUid);
-  const { setMapData, setInventory, setCurrentLoadedMap, setLibraryMode, toggleMode, isEditorMode, setLaserOn } = useGameStore(s => ({
+  const { setMapData, setInventory, setCurrentLoadedMap, setLibraryMode, toggleMode, isEditorMode, setLaserOn } = useGameStore(useShallow(s => ({
     setMapData: s.setMapData,
     setInventory: s.setInventory,
     setCurrentLoadedMap: s.setCurrentLoadedMap,
@@ -18,7 +19,7 @@ function useUrlMapLoader() {
     toggleMode: s.toggleMode,
     isEditorMode: s.isEditorMode,
     setLaserOn: s.setLaserOn,
-  }));
+  })));
 
   useEffect(() => {
     const mapId = searchParams.get('mapId');

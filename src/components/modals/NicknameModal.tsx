@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { createUserProfile, updateUserNickname } from '../../lib/firebaseService';
 
@@ -8,12 +9,12 @@ interface Props {
 
 export function NicknameModal({ mode }: Props) {
   const [value, setValue] = useState('');
-  const { currentUserUid, setNickname, closeModal, showNotification } = useGameStore(s => ({
+  const { currentUserUid, setNickname, closeModal, showNotification } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     setNickname: s.setNickname,
     closeModal: s.closeModal,
     showNotification: s.showNotification,
-  }));
+  })));
 
   async function handleSubmit() {
     const nick = value.trim();

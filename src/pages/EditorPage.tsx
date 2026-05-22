@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../store/gameStore';
 import { Header } from '../components/layout/Header';
 import { Notification } from '../components/layout/Notification';
@@ -10,13 +11,13 @@ import { UploadModal } from '../components/modals/UploadModal';
 import { SuggestionModal } from '../components/modals/SuggestionModal';
 
 export function EditorPage() {
-  const { isLibraryMode, activeModal, isEditorMode, currentUserUid, openModal } = useGameStore(s => ({
+  const { isLibraryMode, activeModal, isEditorMode, currentUserUid, openModal } = useGameStore(useShallow(s => ({
     isLibraryMode: s.isLibraryMode,
     activeModal: s.activeModal,
     isEditorMode: s.isEditorMode,
     currentUserUid: s.currentUserUid,
     openModal: s.openModal,
-  }));
+  })));
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
