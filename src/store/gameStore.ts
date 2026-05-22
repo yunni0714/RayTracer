@@ -4,7 +4,7 @@ import type {
 } from '../types/game';
 import { GRID_SIZE } from '../lib/svgArt';
 
-function emptyGrid(): (CellData | null)[][] {
+export function emptyGrid(): (CellData | null)[][] {
   return Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 }
 
@@ -29,6 +29,12 @@ interface GameStore {
   selectedTool: SelectedTool | null;
   editorMapDataBackup: (CellData | null)[][] | null;
   editorInventoryBackup: Record<string, InventoryItem> | null;
+  mapEditOriginalBackup: (CellData | null)[][] | null;
+
+  // ── 정답 보기 ─────────────────────────────
+  isAnswerShown: boolean;
+  answerMapBackup: (CellData | null)[][] | null;
+  answerInventoryBackup: Record<string, InventoryItem> | null;
 
   // ── 수정자 ───────────────────────────────────
   isModRotatableActive: boolean;
@@ -72,8 +78,12 @@ interface GameStore {
   // ── 액션: 모드 ───────────────────────────────
   toggleMode: () => void;
   enterMapEditMode: () => void;
-  exitMapEditMode: () => void;
+  exitMapEditMode: (opts?: { restore?: boolean }) => void;
   resetEditorState: () => void;
+
+  // ── 액션: 정답 보기 ──────────────────────────
+  showAnswer: () => void;
+  hideAnswer: () => void;
 
   // ── 액션: 도구 선택 ──────────────────────────
   setSelectedTool: (tool: SelectedTool | null) => void;
@@ -107,6 +117,7 @@ interface GameStore {
   clearGrid: () => void;
 }
 
+
 export const useGameStore = create<GameStore>((set, get) => ({
   // ── 초기값 ───────────────────────────────────
   mapData: emptyGrid(),
@@ -117,6 +128,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedTool: null,
   editorMapDataBackup: null,
   editorInventoryBackup: null,
+  mapEditOriginalBackup: null,
+  isAnswerShown: false,
+  answerMapBackup: null,
+  answerInventoryBackup: null,
   isModRotatableActive: false,
   isModLockActive: false,
   isModInvActive: false,
@@ -228,8 +243,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   }),
 
-  enterMapEditMode: () => set({ isMapEditMode: true }),
-  exitMapEditMode: () => set({ isMapEditMode: false }),
+  enterMapEditMode: () => set((s) => ({
+    isMapEditMode: true,
+    mapEditOriginalBackup: s.mapData.map(r => r.map(c => c ? { ...c } : null)),
+  })),
+
+  exitMapEditMode: (opts?: { restore?: boolean }) => set((s) => ({
+    isMapEditMode: false,
+    mapData: opts?.restore && s.mapEditOriginalBackup ? s.mapEditOriginalBackup : s.mapData,
+    mapEditOriginalBackup: null,
+  })),
 
   resetEditorState: () => set({
     mapData: emptyGrid(),
@@ -239,6 +262,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     isMapEditMode: false,
     editorMapDataBackup: null,
     editorInventoryBackup: null,
+    mapEditOriginalBackup: null,
+    isAnswerShown: false,
+    answerMapBackup: null,
+    answerInventoryBackup: null,
     isLaserOn: false,
     selectedTool: null,
     currentLoadedMapObj: null,
@@ -283,7 +310,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // ── 맵 초기화 ─────────────────────────────────
   clearGrid: () => {
-    get().saveUndoSnapshot();
-    set({ mapData: emptyGrid(), playerInventory: {} });
+    const { isEditorMode, mapData, playerInventory } = get();
+
+    if (isEditorMode) {
+      if (!window.confirm('맵의 모든 기물을 삭제하시겠습니까?')) return;
+      get().saveUndoSnapshot();
+      set({ mapData: emptyGrid(), playerInventory: {} });
+    } else {
+      if (!window.confirm('배치한 모든 기물을 인벤토리로 회수하시겠습니까?')) return;
+      get().saveUndoSnapshot();
+
+      const newMap = mapData.map(r => r.map(c => (!c || c.isInventory) ? null : c));
+
+      const refunded = { ...playerInventory };
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const cell = mapData[r][c];
+          if (cell?.isInventory) {
+            const key = `${cell.type}_${cell.canRotate ? 'r' : 'f'}`;
+            if (refunded[key]) {
+              refunded[key] = { ...refunded[key], count: refunded[key].count + 1 };
+            } else {
+              refunded[key] = { count: 1, type: cell.type, canRotate: cell.canRotate, rotation: cell.rotation };
+            }
+          }
+        }
+      }
+      set({ mapData: newMap, playerInventory: refunded });
+    }
+  },
+
+  // ── 정답 보기 ─────────────────────────────────
+  showAnswer: () => {
+    const { mapData, playerInventory, currentLoadedMapObj } = get();
+    if (!currentLoadedMapObj) return;
+
+    const answerMapBackup = mapData.map(r => r.map(c => c ? { ...c } : null));
+    const answerInventoryBackup = JSON.parse(JSON.stringify(playerInventory));
+
+    const originalGrid = emptyGrid();
+    for (const item of currentLoadedMapObj.mapData) {
+      if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+        originalGrid[item.y][item.x] = {
+          type: item.type,
+          rotation: item.rotation,
+          canMove: item.canMove,
+          canRotate: item.canRotate,
+          isInventory: item.isInventory,
+        };
+      }
+    }
+
+    set({
+      isAnswerShown: true,
+      answerMapBackup,
+      answerInventoryBackup,
+      mapData: originalGrid,
+      playerInventory: {},
+    });
+  },
+
+  hideAnswer: () => {
+    const { answerMapBackup, answerInventoryBackup } = get();
+    set({
+      isAnswerShown: false,
+      mapData: answerMapBackup ?? emptyGrid(),
+      playerInventory: answerInventoryBackup ?? {},
+      answerMapBackup: null,
+      answerInventoryBackup: null,
+    });
   },
 }));

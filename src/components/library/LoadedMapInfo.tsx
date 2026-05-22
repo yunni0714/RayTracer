@@ -21,6 +21,7 @@ export function LoadedMapInfo() {
   const {
     currentLoadedMapObj, currentUserUid, currentLoadedMapAuthorUid,
     currentMapReactions, openModal, showNotification,
+    isMapEditMode, exitMapEditMode,
   } = useGameStore(useShallow(s => ({
     currentLoadedMapObj: s.currentLoadedMapObj,
     currentUserUid: s.currentUserUid,
@@ -28,6 +29,8 @@ export function LoadedMapInfo() {
     currentMapReactions: s.currentMapReactions,
     openModal: s.openModal,
     showNotification: s.showNotification,
+    isMapEditMode: s.isMapEditMode,
+    exitMapEditMode: s.exitMapEditMode,
   })));
 
   const { toggleReaction, voteDifficulty, localState } = useMapReactions();
@@ -130,7 +133,26 @@ export function LoadedMapInfo() {
 
       {/* 작성자/비작성자 액션 버튼 */}
       <div className="flex flex-col gap-1.5 mt-1">
-        {isMapOwner ? (
+        {isMapOwner && isMapEditMode ? (
+          <>
+            <button
+              onClick={() => openModal('upload')}
+              style={{ ...btnBase, background: '#10b981', color: 'white' }}
+            >
+              💾 수정 완료 (업로드)
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('수정한 내용을 모두 버리고 원래 맵으로 돌아가시겠습니까?')) {
+                  exitMapEditMode({ restore: true });
+                }
+              }}
+              style={{ ...btnBase, background: 'transparent', color: '#ef4444', border: '1.5px solid #ef4444' }}
+            >
+              ❌ 수정 취소
+            </button>
+          </>
+        ) : isMapOwner ? (
           <>
             <button
               onClick={() => openModal('upload')}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { createUserProfile, updateUserNickname } from '../../lib/firebaseService';
@@ -9,6 +9,13 @@ interface Props {
 
 export function NicknameModal({ mode }: Props) {
   const [value, setValue] = useState('');
+
+  useEffect(() => {
+    if (mode !== 'set') return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') e.stopPropagation(); };
+    document.addEventListener('keydown', handler, true);
+    return () => document.removeEventListener('keydown', handler, true);
+  }, [mode]);
   const { currentUserUid, setNickname, closeModal, showNotification } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     setNickname: s.setNickname,
