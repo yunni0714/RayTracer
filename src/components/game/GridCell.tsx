@@ -23,10 +23,13 @@ export function GridCell({ row, col, cell }: Props) {
         />
       )}
       {cell?.isInventory && (
-        <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-ray-blue opacity-70" />
+        <div className="absolute top-0.5 right-0.5 text-xs leading-none select-none">🎒</div>
       )}
-      {cell && !cell.canRotate && !cell.canMove && (
-        <div className="absolute top-1 right-1 text-xs opacity-50">🔒</div>
+      {cell && !cell.isInventory && cell.canRotate && (
+        <div className="absolute top-0.5 right-0.5 text-xs leading-none select-none">🔄</div>
+      )}
+      {cell && !cell.isInventory && !cell.canMove && (
+        <div className="absolute top-0.5 right-0.5 text-xs leading-none select-none">🔒</div>
       )}
     </div>
   );
