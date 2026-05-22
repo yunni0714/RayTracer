@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type {
-  CellData, InventoryItem, MapDocument, GameSnapshot, SelectedTool,
+  CellData, InventoryItem, MapDocument, SuggestionDocument, GameSnapshot, SelectedTool,
 } from '../types/game';
 import { GRID_SIZE } from '../lib/svgArt';
 
@@ -43,6 +43,8 @@ interface GameStore {
   allLibraryMaps: MapDocument[];
   currentLoadedMapObj: MapDocument | null;
   currentLoadedMapAuthorUid: string | null;
+  currentMapReactions: { ok: number; god: number };
+  suggestions: SuggestionDocument[];
 
   // ── 인증 ─────────────────────────────────────
   currentUserUid: string | null;
@@ -87,6 +89,8 @@ interface GameStore {
   setLibraryMode: (on: boolean) => void;
   setAllLibraryMaps: (maps: MapDocument[]) => void;
   setCurrentLoadedMap: (map: MapDocument | null) => void;
+  setCurrentMapReactions: (counts: { ok: number; god: number }) => void;
+  setSuggestions: (sugs: SuggestionDocument[]) => void;
 
   // ── 액션: 인증 ───────────────────────────────
   setUser: (user: { uid: string; nickname: string | null } | null) => void;
@@ -121,6 +125,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   allLibraryMaps: [],
   currentLoadedMapObj: null,
   currentLoadedMapAuthorUid: null,
+  currentMapReactions: { ok: 0, god: 0 },
+  suggestions: [],
   currentUserUid: null,
   currentUserNickname: null,
   notification: null,
@@ -255,7 +261,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setCurrentLoadedMap: (map) => set({
     currentLoadedMapObj: map,
     currentLoadedMapAuthorUid: map?.authorUid ?? null,
+    currentMapReactions: map ? { ok: map.reactionOk ?? 0, god: map.reactionGod ?? 0 } : { ok: 0, god: 0 },
+    suggestions: [],
   }),
+  setCurrentMapReactions: (counts) => set({ currentMapReactions: counts }),
+  setSuggestions: (sugs) => set({ suggestions: sugs }),
 
   // ── 인증 ─────────────────────────────────────
   setUser: (user) => set({

@@ -7,6 +7,7 @@ export function Header() {
   const {
     currentUserUid, currentUserNickname, isEditorMode, isLibraryMode,
     toggleMode, setLibraryMode, openModal, showNotification, resetEditorState,
+    currentLoadedMapObj, isMapEditMode,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -17,6 +18,8 @@ export function Header() {
     openModal: s.openModal,
     showNotification: s.showNotification,
     resetEditorState: s.resetEditorState,
+    currentLoadedMapObj: s.currentLoadedMapObj,
+    isMapEditMode: s.isMapEditMode,
   })));
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -66,7 +69,7 @@ export function Header() {
         {isLibraryMode ? '✏️ 에디터' : '📚 라이브러리'}
       </button>
 
-      {!isLibraryMode && (
+      {!isLibraryMode && (!currentLoadedMapObj || isMapEditMode) && (
         <button
           onClick={toggleMode}
           className={`px-3 py-1.5 rounded text-sm font-medium transition-opacity hover:opacity-90 ${

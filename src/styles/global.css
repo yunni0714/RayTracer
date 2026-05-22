@@ -32,3 +32,127 @@
   transform: translate(-50%, -50%);
   opacity: 0.7;
 }
+
+/* ── 라이브러리 카드 v2 ──────────────────────────────── */
+.map-card-v2 {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f1f5f9;
+}
+.map-card-v2:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.1);
+  border-color: #cbd5e1;
+}
+
+/* ── 미니 그리드 v2 ──────────────────────────────────── */
+.mini-grid-v2 {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  background-color: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.mini-cell-v2 {
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.mini-cell-v2 svg { width: 75%; height: 75%; }
+
+/* ── 난이도 배지 (diff-pill) ─────────────────────────── */
+.diff-pill {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  display: inline-block;
+}
+.diff-pill.diff-Tutor   { background: #3498db; }
+.diff-pill.diff-Easy    { background: #2ecc71; }
+.diff-pill.diff-Normal  { background: #f39c12; }
+.diff-pill.diff-Hard    { background: #e67e22; }
+.diff-pill.diff-Insane  { background: #e74c3c; }
+.diff-pill.diff-None    { background: #cbd5e1; color: #475569; }
+
+/* ── 수평 스크롤 섹션 ────────────────────────────────── */
+.horizontal-scroll-section {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.horizontal-scroll-section::-webkit-scrollbar { height: 6px; }
+.horizontal-scroll-section::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.horizontal-scroll-section .map-card-v2 {
+  width: 260px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+/* ── 다음문제 카드 ───────────────────────────────────── */
+.next-map-card {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.next-map-card:hover {
+  border-color: #2980b9;
+  box-shadow: 0 2px 8px rgba(41,128,185,0.12);
+  transform: translateX(2px);
+}
+
+/* ── 제안 아이템 ─────────────────────────────────────── */
+.suggestion-item {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  transition: border-color 0.2s;
+}
+.suggestion-item:hover { border-color: #cbd5e1; }
+
+/* ── 제안 목록 스크롤 ────────────────────────────────── */
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 536px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.suggestion-list::-webkit-scrollbar { width: 4px; }
+.suggestion-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
