@@ -9,6 +9,89 @@
 
 ---
 
+## [0.8.0] - 2026-05-22
+
+### Added
+
+#### 빌드 환경
+- Vite v6 빌드 환경 구성 (`package.json`, `vite.config.ts`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`)
+- React 18 + TypeScript 도입 (`createRoot`, `StrictMode`, JSX transform)
+- Tailwind CSS v3 설정 (`tailwind.config.js`, `postcss.config.js`)
+  - 커스텀 색상 토큰: `ray-purple/green/blue/red/orange`, `diff-tutor/easy/normal/hard/insane`
+  - 커스텀 그리드: `game-grid` (5×100px)
+- Zustand v5 상태 관리 라이브러리 도입
+- react-router-dom v6 도입 — URL `?mapId=xxx` 파라미터 처리 (`useSearchParams`)
+- `.gitignore` 신규 생성 (`node_modules/`, `dist/`, `.env` 제외)
+- `.env.example` 신규 생성 — Firebase 설정 환경변수 템플릿
+
+#### 타입 시스템 (`src/types/`)
+- `src/types/game.ts`: 핵심 타입 전체 정의
+  - `PieceType` — 18종 기물 리터럴 유니온 타입
+  - `Rotation` — `0 | 45 | 90 | ... | 315`
+  - `CellData`, `InventoryItem`, `MapItemDTO`
+  - `MapDocument`, `SuggestionDocument`
+  - `GameSnapshot`, `SelectedTool`, `GameMode`
+
+#### 라이브러리 레이어 (`src/lib/`)
+- `src/lib/svgArt.ts`: `SVG_ART` 상수 (`dragAndDrop.js`에서 분리, `Record<PieceType, string>` 타입 부여)
+- `src/lib/laserEngine.ts`: 레이저 물리 계산 순수 함수 (`DOM 의존성 완전 제거, ctx 파라미터화`)
+  - `setupCanvas(canvas)` — DPR(HiDPI) 처리 포함
+  - `simulateLaser(ctx, canvas, mapData)` — BFS 빔 추적 로직 원형 보존
+  - `clearLaser(ctx, canvas)`
+- `src/lib/firebase.ts`: Firebase 초기화 (CDN URL → npm 패키지, `import.meta.env` 연동)
+- `src/lib/firebaseService.ts`: DB CRUD 함수 이식 (`firebaseApp.js` → TypeScript + 완전 타입화)
+  - Auth: `signInWithGoogle`, `signOutUser`, `initRedirectResultHandler`
+  - User: `getUserProfile`, `createUserProfile`, `updateUserNickname`
+  - Maps: `uploadToDB`, `fetchFromDB`, `fetchLibraryList`, `updateMapReactionsInDB`, `updateMapDifficultyVoteInDB`, `updateMapInDB`, `deleteMapFromDB`
+  - Suggestions: `uploadSuggestionToDB`, `fetchSuggestionsFromDB`, `deleteSuggestionFromDB`
+
+#### 상태 관리 (`src/store/`)
+- `src/store/gameStore.ts`: Zustand 단일 스토어 — 6개 모듈 분산 전역 변수를 슬라이스로 통합
+  - 슬라이스: 게임 그리드 / 에디터 모드 / 수정자 / Undo / 레이저 / 라이브러리 / 인증 / UI(알림·모달)
+  - `saveUndoSnapshot` — JSON deep copy 기반, 최대 50단계
+  - `toggleMode` — 에디터↔테스트 전환 시 인벤토리 분리/복원 로직 포함
+
+#### 커스텀 훅 (`src/hooks/`)
+- `src/hooks/useAuth.ts`: `onAuthStateChanged` → Zustand `setUser` 연결, 최초 로그인 시 닉네임 모달 자동 오픈
+- `src/hooks/useLaserCanvas.ts`: `useRef<HTMLCanvasElement>` 관리 + `mapData`/`isLaserOn` 변경 시 `useEffect`로 자동 재계산
+- `src/hooks/useGridDragDrop.ts`: 기존 마우스 이벤트 드래그 로직 이식 (`dragSource`는 `useRef`로 관리해 클로저 스테일 방지)
+- `src/hooks/useMapReactions.ts`: `localStorage` 키 `ray_map_states` 그대로 유지 + Firebase 원자적 `increment` 업데이트
+
+#### 컴포넌트 (`src/components/`)
+- `layout/Header.tsx`: 헤더 바 (로그인/유저메뉴 드롭다운/라이브러리 토글/모드 전환)
+- `layout/Notification.tsx`: 하단 우측 토스트 알림 (2초 자동 해제)
+- `game/LaserCanvas.tsx`: `forwardRef` Canvas 컴포넌트
+- `game/GridCell.tsx`: 단일 셀 (`data-row`/`data-col` 속성, SVG 인라인 렌더링, 회전 transform)
+- `game/GridContainer.tsx`: 5×5 그리드 + `useGridDragDrop` 연결
+- `game/GameBoard.tsx`: `GridContainer` + `LaserCanvas` 조합 + 레이저 토글 버튼
+- `palette/ToolItem.tsx`: 팔레트/인벤토리 공통 기물 아이템 버튼
+- `palette/PalettePanel.tsx`: 기본/상급 탭 + 수정자 3종(회전가능/이동잠금/인벤토리) + 전체지우기
+- `palette/TestModeInventory.tsx`: 테스트 모드 인벤토리 (에디터 모드 시 숨김)
+- `library/MiniGrid.tsx`: 5×5 썸네일 재사용 컴포넌트 (`MapCard`, `SuggestionModal`에서 공유)
+- `library/MapCard.tsx`: 라이브러리 카드 (미니 그리드 + 제목/작성자/날짜/난이도/반응 통계)
+- `library/LibraryScreen.tsx`: 라이브러리 화면 (검색/정렬 + 반응형 카드 그리드, 최대 50개)
+- `modals/NicknameModal.tsx`: 닉네임 최초 설정(`mode='set'`) / 변경(`mode='change'`) 통합 모달
+- `modals/UploadModal.tsx`: 맵 공유(`uploadToDB`) / 수정(`updateMapInDB`) 통합 모달
+- `modals/SuggestionModal.tsx`: 풀이 제안 등록 (카테고리 NG/ABCD + 현재 맵 배치 스냅샷 저장)
+
+#### 페이지 진입점 (`src/`)
+- `src/pages/EditorPage.tsx`: 전체 레이아웃 조합 (Header + 사이드 팔레트 + GameBoard + 모달들)
+- `src/App.tsx`: `useAuth()` 호출 + URL 파라미터 로더 + `EditorPage` 렌더링
+- `src/main.tsx`: React 18 `createRoot` 진입점 (`BrowserRouter` 래핑)
+- `src/styles/global.css`: Tailwind base + 교체 불가 CSS (코너 마커 SVG, 커스텀 스크롤바, 알림 `@keyframes`)
+- `src/vite-env.d.ts`: `import.meta.env` 타입 참조
+
+### Changed
+- `index.html`: 기존 518줄 전체 구조 → Vite 진입점으로 교체 (`<div id="root">` + `<script type="module" src="/src/main.tsx">`)
+- Firebase 설정: `firebaseApp.js` 하드코딩 → `.env` 파일 분리 (`VITE_FIREBASE_*` 환경변수 6개)
+- `laserEngine`: `document.getElementById('laserCanvas')` 모듈 스코프 직접 참조 → `ctx: CanvasRenderingContext2D` 파라미터 수신 방식으로 변경 (React 컴포넌트 마운트 시점 이전 DOM 접근 오류 방지)
+- 상태 관리: 6개 모듈 분산 전역 변수 → Zustand 단일 스토어 (모듈 간 순환 참조 자연 해소)
+- `body.is-test-mode`, `body.is-map-edit-mode` 등 body 클래스 기반 CSS 상태 전환 → Zustand 상태 기반 React 조건부 렌더링으로 교체 설계
+- `window._openUploadForEdit`, `window._getCurrentMapObj` 등 모듈 간 순환 참조 해결용 `window` 브릿지 → Zustand `getState()` 직접 접근으로 대체 설계
+- URL 파라미터 로더: `setTimeout 500ms` 딜레이 방식 → `useAuth` Auth 완료 후 `useEffect` 실행으로 교체 (정확한 타이밍 보장)
+
+---
+
 ## [0.7.0] - 2026-05-21
 
 ### Added
