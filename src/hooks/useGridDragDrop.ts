@@ -17,6 +17,7 @@ interface DragSource {
 export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>) {
   const dragSourceRef = useRef<DragSource | null>(null);
   const ghostRef = useRef<HTMLDivElement | null>(null);
+  const paintTargetRef = useRef<{ row: number; col: number } | null>(null);
 
   const { setCell, swapCells, isEditorMode, setSelectedTool, saveUndoSnapshot } = useGameStore.getState();
 
@@ -92,6 +93,13 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         const cell = getCell(row, col);
 
         if (cell && isEditorMode) {
+          const state = useGameStore.getState();
+          const hasActiveMod = state.isModRotatableActive || state.isModLockActive || state.isModInvActive;
+          if (hasActiveMod) {
+            // 수정자 덧칠 모드: 드래그 없이 mouseUp에서 해당 셀에 덧칠
+            paintTargetRef.current = { row, col };
+            return;
+          }
           saveUndoSnapshot();
           dragSourceRef.current = {
             type: 'grid',
@@ -111,7 +119,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
               pieceType: st.type,
               rotation: 0 as Rotation,
               canRotate: useGameStore.getState().isModRotatableActive,
-              canMove: !useGameStore.getState().isModLockActive,
+              canMove: true,
             };
             ghostRef.current = createGhost(st.type, e.clientX, e.clientY);
           }
@@ -132,6 +140,23 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     }
 
     function onMouseUp(e: MouseEvent): void {
+      // 수정자 덧칠 처리
+      const pt = paintTargetRef.current;
+      if (pt) {
+        paintTargetRef.current = null;
+        const state = useGameStore.getState();
+        const existing = state.mapData[pt.row][pt.col];
+        if (existing) {
+          const patched: CellData = { ...existing };
+          if (state.isModRotatableActive) patched.canRotate = true;
+          if (state.isModLockActive) patched.canRotate = false;
+          if (state.isModInvActive) patched.isInventory = true;
+          state.saveUndoSnapshot();
+          state.setCell(pt.row, pt.col, patched);
+        }
+        return;
+      }
+
       const src = dragSourceRef.current;
       if (!src) return;
       dragSourceRef.current = null;
@@ -169,11 +194,11 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       if (src.type === 'palette') {
         const st = useGameStore.getState().selectedTool;
         if (!st) return;
-        const { isModRotatableActive: rotatable, isModLockActive: locked, isModInvActive: inv } = useGameStore.getState();
+        const { isModRotatableActive: rotatable, isModInvActive: inv } = useGameStore.getState();
         const newCell: CellData = {
           type: st.type,
           rotation: 0 as Rotation,
-          canMove: !locked,
+          canMove: true,
           canRotate: rotatable,
           isInventory: inv,
         };
