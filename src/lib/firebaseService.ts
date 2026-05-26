@@ -31,7 +31,9 @@ export async function signOutUser(): Promise<void> {
 }
 
 export function initRedirectResultHandler(): void {
-  getRedirectResult(auth).catch(() => {});
+  getRedirectResult(auth).catch((err) => {
+    console.error('[auth] redirect sign-in failed:', err);
+  });
 }
 
 // ── User Profile ────────────────────────────────────────
