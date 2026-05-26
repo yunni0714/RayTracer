@@ -37,7 +37,10 @@ export function Header() {
 
   async function handleLogin() {
     try { await signInWithGoogle(); }
-    catch { showNotification('로그인에 실패했습니다.', '#e74c3c'); }
+    catch (err) {
+      const code = (err as { code?: string }).code ?? String(err);
+      showNotification(`로그인 실패: ${code}`, '#e74c3c');
+    }
   }
 
   async function handleLogout() {
