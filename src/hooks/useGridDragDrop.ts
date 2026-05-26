@@ -100,12 +100,14 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
   function restoreLastActiveTool(): void {
     const last = lastActiveToolRef.current;
+    lastActiveToolRef.current = null;
     if (!last) return;
     const state = useGameStore.getState();
+    // 테스트 모드에서 팔레트 도구를 되살리지 않는다 (모드 전환 race 방지)
+    if (!state.isEditorMode && last.source !== 'inventory') return;
     const stillAvailable = !last.isInvTool
       || (last.inventoryKey != null && (state.playerInventory[last.inventoryKey]?.count ?? 0) > 0);
     if (stillAvailable) state.setSelectedTool(last);
-    lastActiveToolRef.current = null;
   }
 
   useEffect(() => {
@@ -139,8 +141,11 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         }
 
         // 든 도구가 있으면 보관 후 해제 (mouseUp에서 덮어쓰기/회전 판정에 사용)
+        // 테스트 모드에서는 인벤토리 도구만 의미가 있으므로 팔레트 도구는 보관하지 않는다
         if (state.selectedTool) {
-          lastActiveToolRef.current = { ...state.selectedTool };
+          if (isEditor || state.selectedTool.source === 'inventory') {
+            lastActiveToolRef.current = { ...state.selectedTool };
+          }
           state.setSelectedTool(null);
         }
         dragSourceRef.current = {

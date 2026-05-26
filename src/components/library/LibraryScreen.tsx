@@ -53,8 +53,7 @@ export function LibraryScreen() {
     if (s.isAnswerShown) s.hideAnswer();
     if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
 
-    s.setCurrentLoadedMap(map);
-    s.loadMapForPlay(mapDocToGrid(map));
+    s.loadMapForPlay(mapDocToGrid(map), map);
     setLibraryMode(false);
     s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }
