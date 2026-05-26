@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/RayTracer/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Ray — Level Editor</title>
+    <script>
+      (function() {
+        var redirect = sessionStorage.getItem('spa_redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa_redirect');
+          history.replaceState(null, '', '/RayTracer/' + redirect);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/RayTracer/assets/index-BkGVJsFw.js"></script>
+    <link rel="stylesheet" crossorigin href="/RayTracer/assets/index-yxlk2TKs.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
