@@ -4,9 +4,11 @@ import { ToolItem } from './ToolItem';
 import type { PieceType, Rotation } from '../../types/game';
 
 export function TestModeInventory() {
-  const { isEditorMode, playerInventory } = useGameStore(useShallow(s => ({
+  const { isEditorMode, playerInventory, selectedTool, setSelectedTool } = useGameStore(useShallow(s => ({
     isEditorMode: s.isEditorMode,
     playerInventory: s.playerInventory,
+    selectedTool: s.selectedTool,
+    setSelectedTool: s.setSelectedTool,
   })));
 
   if (isEditorMode) return null;
@@ -26,6 +28,21 @@ export function TestModeInventory() {
               type={item.type as PieceType}
               rotation={item.rotation as Rotation}
               count={item.count}
+              selected={selectedTool?.source === 'inventory' && selectedTool.inventoryKey === key}
+              onClick={() =>
+                setSelectedTool(
+                  selectedTool?.source === 'inventory' && selectedTool.inventoryKey === key
+                    ? null
+                    : {
+                        type: item.type as PieceType,
+                        source: 'inventory',
+                        isInvTool: true,
+                        inventoryKey: key,
+                        canRotate: item.canRotate,
+                        rotation: item.rotation as Rotation,
+                      },
+                )
+              }
             />
           ))}
         </div>

@@ -85,4 +85,7 @@ export interface SelectedTool {
   fromRow?: number;
   fromCol?: number;
   inventoryKey?: string;
+  isInvTool?: boolean;
+  canRotate?: boolean;
+  rotation?: Rotation;
 }
