@@ -29,7 +29,7 @@ function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
 export function LibraryScreen() {
   const {
     allLibraryMaps, setAllLibraryMaps, setCurrentLoadedMap, setLibraryMode,
-    setMapData, setInventory, toggleMode, isEditorMode, resetEditorState,
+    setMapData, toggleMode, isEditorMode, resetEditorState,
     setLaserOn, showNotification,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
@@ -37,7 +37,6 @@ export function LibraryScreen() {
     setCurrentLoadedMap: s.setCurrentLoadedMap,
     setLibraryMode: s.setLibraryMode,
     setMapData: s.setMapData,
-    setInventory: s.setInventory,
     toggleMode: s.toggleMode,
     isEditorMode: s.isEditorMode,
     resetEditorState: s.resetEditorState,
@@ -58,21 +57,12 @@ export function LibraryScreen() {
   }, [sortBy, setAllLibraryMaps]);
 
   function playMap(map: MapDocument) {
+    const s = useGameStore.getState();
+    if (s.isAnswerShown) s.hideAnswer();
+    if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
+
     const grid = mapDocToGrid(map);
-    const inv: ReturnType<typeof useGameStore.getState>['playerInventory'] = {};
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const cell = grid[r][c];
-        if (cell?.isInventory) {
-          const key = `${cell.type}_${cell.canRotate ? 'r' : 'f'}`;
-          if (!inv[key]) inv[key] = { count: 0, type: cell.type, canRotate: cell.canRotate, rotation: cell.rotation };
-          inv[key].count++;
-          grid[r][c] = null;
-        }
-      }
-    }
     setMapData(grid);
-    setInventory(inv);
     setCurrentLoadedMap(map);
     if (!isEditorMode) toggleMode();
     setLibraryMode(false);

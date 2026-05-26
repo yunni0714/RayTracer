@@ -61,14 +61,13 @@ function mapDocToGrid(map: MapDocument): (CellData | null)[][] {
 export function NextMapPanel() {
   const {
     allLibraryMaps, currentLoadedMapObj, setCurrentLoadedMap, setLibraryMode,
-    setMapData, setInventory, toggleMode, isEditorMode, setLaserOn, showNotification,
+    setMapData, toggleMode, isEditorMode, setLaserOn, showNotification,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
     currentLoadedMapObj: s.currentLoadedMapObj,
     setCurrentLoadedMap: s.setCurrentLoadedMap,
     setLibraryMode: s.setLibraryMode,
     setMapData: s.setMapData,
-    setInventory: s.setInventory,
     toggleMode: s.toggleMode,
     isEditorMode: s.isEditorMode,
     setLaserOn: s.setLaserOn,
@@ -83,21 +82,23 @@ export function NextMapPanel() {
   );
 
   function playMap(map: MapDocument) {
+    const s = useGameStore.getState();
+    if (s.isAnswerShown) s.hideAnswer();
+    if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
+
     const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-    const inv: ReturnType<typeof useGameStore.getState>['playerInventory'] = {};
     for (const item of map.mapData) {
       if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
-        if (item.isInventory) {
-          const key = `${item.type}_${item.canRotate ? 'r' : 'f'}`;
-          if (!inv[key]) inv[key] = { count: 0, type: item.type, canRotate: item.canRotate, rotation: item.rotation as Rotation };
-          inv[key].count++;
-        } else {
-          grid[item.y][item.x] = { type: item.type, rotation: item.rotation as Rotation, canMove: item.canMove, canRotate: item.canRotate, isInventory: false };
-        }
+        grid[item.y][item.x] = {
+          type: item.type,
+          rotation: item.rotation as Rotation,
+          canMove: item.canMove,
+          canRotate: item.canRotate,
+          isInventory: item.isInventory,
+        };
       }
     }
     setMapData(grid);
-    setInventory(inv);
     setCurrentLoadedMap(map);
     if (!isEditorMode) toggleMode();
     setLibraryMode(false);
