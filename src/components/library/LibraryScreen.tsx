@@ -28,20 +28,12 @@ function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
 
 export function LibraryScreen() {
   const {
-    allLibraryMaps, setAllLibraryMaps, setCurrentLoadedMap, setLibraryMode,
-    setMapData, toggleMode, isEditorMode, resetEditorState,
-    setLaserOn, showNotification,
+    allLibraryMaps, setAllLibraryMaps, setLibraryMode, resetEditorState,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
     setAllLibraryMaps: s.setAllLibraryMaps,
-    setCurrentLoadedMap: s.setCurrentLoadedMap,
     setLibraryMode: s.setLibraryMode,
-    setMapData: s.setMapData,
-    toggleMode: s.toggleMode,
-    isEditorMode: s.isEditorMode,
     resetEditorState: s.resetEditorState,
-    setLaserOn: s.setLaserOn,
-    showNotification: s.showNotification,
   })));
 
   const [, setSearchParams] = useSearchParams();
@@ -61,16 +53,10 @@ export function LibraryScreen() {
     if (s.isAnswerShown) s.hideAnswer();
     if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
 
-    const grid = mapDocToGrid(map);
-    setMapData(grid);
-    setCurrentLoadedMap(map);
-    if (!isEditorMode) toggleMode();
+    s.setCurrentLoadedMap(map);
+    s.loadMapForPlay(mapDocToGrid(map));
     setLibraryMode(false);
-    setTimeout(() => {
-      if (useGameStore.getState().isEditorMode) useGameStore.getState().toggleMode();
-      setLaserOn(true);
-    }, 0);
-    showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
+    s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }
 
   function createNewMap() {
@@ -78,7 +64,7 @@ export function LibraryScreen() {
     resetEditorState();
     setLibraryMode(false);
     setSearchParams({});
-    showNotification('새로운 맵이 생성되었습니다!', '#e67e22');
+    useGameStore.getState().showNotification('새로운 맵이 생성되었습니다!', '#e67e22');
   }
 
   const isSearching = search.trim() !== '';

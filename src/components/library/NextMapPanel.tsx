@@ -60,18 +60,11 @@ function mapDocToGrid(map: MapDocument): (CellData | null)[][] {
 
 export function NextMapPanel() {
   const {
-    allLibraryMaps, currentLoadedMapObj, setCurrentLoadedMap, setLibraryMode,
-    setMapData, toggleMode, isEditorMode, setLaserOn, showNotification,
+    allLibraryMaps, currentLoadedMapObj, setLibraryMode,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
     currentLoadedMapObj: s.currentLoadedMapObj,
-    setCurrentLoadedMap: s.setCurrentLoadedMap,
     setLibraryMode: s.setLibraryMode,
-    setMapData: s.setMapData,
-    toggleMode: s.toggleMode,
-    isEditorMode: s.isEditorMode,
-    setLaserOn: s.setLaserOn,
-    showNotification: s.showNotification,
   })));
 
   const nextMaps = useMemo(
@@ -98,15 +91,10 @@ export function NextMapPanel() {
         };
       }
     }
-    setMapData(grid);
-    setCurrentLoadedMap(map);
-    if (!isEditorMode) toggleMode();
+    s.setCurrentLoadedMap(map);
+    s.loadMapForPlay(grid);
     setLibraryMode(false);
-    setTimeout(() => {
-      if (useGameStore.getState().isEditorMode) useGameStore.getState().toggleMode();
-      setLaserOn(true);
-    }, 0);
-    showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
+    s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }
 
   if (nextMaps.length === 0) {
