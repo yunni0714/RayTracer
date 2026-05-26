@@ -10,7 +10,8 @@ const DIFF_COLORS: Record<Difficulty, string> = {
   Tutor: '#3498db', Easy: '#2ecc71', Normal: '#f39c12', Hard: '#e67e22', Insane: '#e74c3c',
 };
 
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
+function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>> | undefined | null): Difficulty | null {
+  if (!diffVotes) return null;
   const entries = Object.entries(diffVotes) as [Difficulty, number][];
   const total = entries.reduce((s, [, v]) => s + v, 0);
   if (total === 0) return null;

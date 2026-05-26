@@ -91,8 +91,7 @@ export function NextMapPanel() {
         };
       }
     }
-    s.setCurrentLoadedMap(map);
-    s.loadMapForPlay(grid);
+    s.loadMapForPlay(grid, map);
     setLibraryMode(false);
     s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }

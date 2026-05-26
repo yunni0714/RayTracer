@@ -104,7 +104,7 @@ interface GameStore {
 
   // ── 액션: 모드 ───────────────────────────────
   toggleMode: () => void;
-  loadMapForPlay: (grid: (CellData | null)[][]) => void;
+  loadMapForPlay: (grid: (CellData | null)[][], mapDoc: MapDocument | null) => void;
   enterMapEditMode: () => void;
   exitMapEditMode: (opts?: { restore?: boolean }) => void;
   resetEditorState: () => void;
@@ -126,7 +126,6 @@ interface GameStore {
   // ── 액션: 라이브러리 ─────────────────────────
   setLibraryMode: (on: boolean) => void;
   setAllLibraryMaps: (maps: MapDocument[]) => void;
-  setCurrentLoadedMap: (map: MapDocument | null) => void;
   setCurrentMapReactions: (counts: { ok: number; god: number }) => void;
   setSuggestions: (sugs: SuggestionDocument[]) => void;
 
@@ -273,9 +272,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   }),
 
-  // 라이브러리/다음문제에서 맵을 테스트 모드로 직접 로드.
-  // toggleMode 백업 복원을 거치지 않아 재플레이 시 새 맵이 파괴되지 않는다.
-  loadMapForPlay: (grid) => set(() => {
+  // 라이브러리/다음문제/URL에서 맵을 테스트 모드로 직접 로드.
+  // 그리드·맵 메타데이터를 하나의 set()으로 원자적으로 설정해 중간 상태 어긋남을 방지한다.
+  loadMapForPlay: (grid, mapDoc) => set(() => {
     const fullGrid = grid.map(r => r.map(c => c ? { ...c } : null));
     const newMapData = grid.map(r => r.map(c => c?.isInventory ? null : (c ? { ...c } : null)));
     const newInv = buildInventory(grid);
@@ -292,6 +291,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerMapBackup: null,
       answerInventoryBackup: null,
       selectedTool: null,
+      currentLoadedMapObj: mapDoc,
+      currentLoadedMapAuthorUid: mapDoc?.authorUid ?? null,
+      currentMapReactions: mapDoc
+        ? { ok: mapDoc.reactionOk ?? 0, god: mapDoc.reactionGod ?? 0 }
+        : { ok: 0, god: 0 },
+      suggestions: [],
     };
   }),
 
@@ -337,12 +342,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // ── 라이브러리 ───────────────────────────────
   setLibraryMode: (on) => set({ isLibraryMode: on }),
   setAllLibraryMaps: (maps) => set({ allLibraryMaps: maps }),
-  setCurrentLoadedMap: (map) => set({
-    currentLoadedMapObj: map,
-    currentLoadedMapAuthorUid: map?.authorUid ?? null,
-    currentMapReactions: map ? { ok: map.reactionOk ?? 0, god: map.reactionGod ?? 0 } : { ok: 0, god: 0 },
-    suggestions: [],
-  }),
   setCurrentMapReactions: (counts) => set({ currentMapReactions: counts }),
   setSuggestions: (sugs) => set({ suggestions: sugs }),
 
