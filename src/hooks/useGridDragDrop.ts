@@ -66,10 +66,10 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
   function executeRotation(row: number, col: number): void {
     const cell = getCell(row, col);
-    if (!cell || cell.type === 'block' || !cell.canRotate) return;
+    if (!cell || cell.type === 'block') return;
+    if (!isEditorMode && !cell.canRotate) return;
     const step = getRotationStep(cell.type);
     const newRotation = ((cell.rotation + step) % 360) as Rotation;
-    saveUndoSnapshot();
     setCell(row, col, { ...cell, rotation: newRotation });
     const { isLaserOn } = useGameStore.getState();
     if (isLaserOn) {

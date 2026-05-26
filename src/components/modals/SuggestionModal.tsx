@@ -47,7 +47,7 @@ export function SuggestionModal() {
         createdAt: new Date().toISOString(),
         mapData: buildMapData(),
       });
-      showNotification('풀이 제안이 등록되었습니다!');
+      showNotification('새로운 풀이 제안이 등록되었습니다!', '#f39c12');
       closeModal();
     } catch {
       showNotification('오류가 발생했습니다.', '#e74c3c');

@@ -21,7 +21,7 @@ export function LoadedMapInfo() {
   const {
     currentLoadedMapObj, currentUserUid, currentLoadedMapAuthorUid,
     currentMapReactions, openModal, showNotification,
-    isMapEditMode, exitMapEditMode,
+    isMapEditMode, enterMapEditMode, exitMapEditMode,
   } = useGameStore(useShallow(s => ({
     currentLoadedMapObj: s.currentLoadedMapObj,
     currentUserUid: s.currentUserUid,
@@ -30,6 +30,7 @@ export function LoadedMapInfo() {
     openModal: s.openModal,
     showNotification: s.showNotification,
     isMapEditMode: s.isMapEditMode,
+    enterMapEditMode: s.enterMapEditMode,
     exitMapEditMode: s.exitMapEditMode,
   })));
 
@@ -145,6 +146,7 @@ export function LoadedMapInfo() {
               onClick={() => {
                 if (window.confirm('수정한 내용을 모두 버리고 원래 맵으로 돌아가시겠습니까?')) {
                   exitMapEditMode({ restore: true });
+                  showNotification('수정이 취소되었습니다.', '#7f8c8d');
                 }
               }}
               style={{ ...btnBase, background: 'transparent', color: '#ef4444', border: '1.5px solid #ef4444' }}
@@ -155,7 +157,10 @@ export function LoadedMapInfo() {
         ) : isMapOwner ? (
           <>
             <button
-              onClick={() => openModal('upload')}
+              onClick={() => {
+                enterMapEditMode();
+                showNotification('✏️ 수정 모드입니다. 그리드를 자유롭게 배치한 뒤 저장하세요.', '#f59e0b');
+              }}
               style={{ ...btnBase, background: '#10b981', color: 'white' }}
             >
               ✏️ 맵 수정하기

@@ -53,7 +53,7 @@ export function useMapReactions() {
   }, [currentLoadedMapObj?.id]);
 
   const toggleReaction = useCallback(async (type: 'reactionOk' | 'reactionGod') => {
-    if (!currentUserUid) { showNotification('로그인이 필요합니다.', '#e74c3c'); return; }
+    if (!currentUserUid) { showNotification('로그인 후 평가할 수 있습니다.', '#e74c3c'); return; }
     if (!currentLoadedMapObj) return;
 
     const mapId = currentLoadedMapObj.id;
@@ -67,6 +67,11 @@ export function useMapReactions() {
     saveMapStates(states);
     setLocalState(newState);
 
+    showNotification(
+      isOn ? '평가를 취소했습니다.' : '평가를 반영했습니다.',
+      isOn ? '#7f8c8d' : '#27ae60',
+    );
+
     // 스토어 카운트 낙관적 업데이트 (stale closure 방지를 위해 getState() 사용)
     const current = useGameStore.getState().currentMapReactions;
     const delta = isOn ? -1 : 1;
@@ -79,7 +84,7 @@ export function useMapReactions() {
   }, [currentLoadedMapObj, currentUserUid, showNotification, setCurrentMapReactions]);
 
   const voteDifficulty = useCallback(async (level: Difficulty) => {
-    if (!currentUserUid) { showNotification('로그인이 필요합니다.', '#e74c3c'); return; }
+    if (!currentUserUid) { showNotification('로그인 후 투표할 수 있습니다.', '#e74c3c'); return; }
     if (!currentLoadedMapObj) return;
 
     const mapId = currentLoadedMapObj.id;
