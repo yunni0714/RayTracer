@@ -108,6 +108,7 @@ interface GameStore {
   enterMapEditMode: () => void;
   exitMapEditMode: (opts?: { restore?: boolean }) => void;
   resetEditorState: () => void;
+  patchCurrentLoadedMap: (patch: Partial<MapDocument>) => void;
 
   // ── 액션: 정답 보기 ──────────────────────────
   showAnswer: () => void;
@@ -285,6 +286,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       editorMapDataBackup: fullGrid,
       editorInventoryBackup: {},
       mapEditOriginalBackup: null,
+      isMapEditMode: false,
       undoStack: [],
       isLaserOn: true,
       isAnswerShown: false,
@@ -300,15 +302,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
   }),
 
-  enterMapEditMode: () => set((s) => ({
-    isMapEditMode: true,
-    mapEditOriginalBackup: s.mapData.map(r => r.map(c => c ? { ...c } : null)),
-  })),
+  enterMapEditMode: () => set((s) => {
+    const fullGrid = s.editorMapDataBackup
+      ? s.editorMapDataBackup.map(r => r.map(c => c ? { ...c } : null))
+      : s.mapData.map(r => r.map(c => c ? { ...c } : null));
+    return {
+      isMapEditMode: true,
+      isEditorMode: true,
+      mapData: fullGrid,
+      playerInventory: {},
+      mapEditOriginalBackup: fullGrid.map(r => r.map(c => c ? { ...c } : null)),
+      selectedTool: null,
+      isLaserOn: false,
+      isAnswerShown: false,
+      answerMapBackup: null,
+      answerInventoryBackup: null,
+      undoStack: [],
+    };
+  }),
 
-  exitMapEditMode: (opts?: { restore?: boolean }) => set((s) => ({
-    isMapEditMode: false,
-    mapData: opts?.restore && s.mapEditOriginalBackup ? s.mapEditOriginalBackup : s.mapData,
-    mapEditOriginalBackup: null,
+  exitMapEditMode: (opts?: { restore?: boolean }) => set((s) => {
+    const finalGrid = opts?.restore && s.mapEditOriginalBackup
+      ? s.mapEditOriginalBackup
+      : s.mapData;
+    const playGrid = finalGrid.map(r => r.map(c => c?.isInventory ? null : (c ? { ...c } : null)));
+    const playerInv = buildInventory(finalGrid);
+    return {
+      isMapEditMode: false,
+      isEditorMode: false,
+      mapData: playGrid,
+      playerInventory: playerInv,
+      editorMapDataBackup: finalGrid.map(r => r.map(c => c ? { ...c } : null)),
+      mapEditOriginalBackup: null,
+      selectedTool: null,
+      undoStack: [],
+      isLaserOn: true,
+      isAnswerShown: false,
+      answerMapBackup: null,
+      answerInventoryBackup: null,
+    };
+  }),
+
+  patchCurrentLoadedMap: (patch) => set((s) => ({
+    currentLoadedMapObj: s.currentLoadedMapObj ? { ...s.currentLoadedMapObj, ...patch } : null,
   })),
 
   resetEditorState: () => set({
