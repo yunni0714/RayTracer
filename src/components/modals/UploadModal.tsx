@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore } from '../../store/gameStore';
+import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
-import type { Difficulty, MapItemDTO } from '../../types/game';
+import type { CellData, Difficulty, MapDocument, MapItemDTO } from '../../types/game';
 import { GRID_SIZE } from '../../lib/svgArt';
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
@@ -11,6 +11,7 @@ export function UploadModal() {
   const {
     currentUserUid, currentUserNickname, currentLoadedMapObj,
     mapData, closeModal, showNotification,
+    exitMapEditMode, patchCurrentLoadedMap, loadMapForPlay,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -18,6 +19,9 @@ export function UploadModal() {
     mapData: s.mapData,
     closeModal: s.closeModal,
     showNotification: s.showNotification,
+    exitMapEditMode: s.exitMapEditMode,
+    patchCurrentLoadedMap: s.patchCurrentLoadedMap,
+    loadMapForPlay: s.loadMapForPlay,
   })));
 
   const isEdit = currentLoadedMapObj !== null;
@@ -45,27 +49,54 @@ export function UploadModal() {
 
     setLoading(true);
     try {
-      const data = {
-        title: title.trim(),
-        author: currentUserNickname ?? '익명',
-        authorUid: currentUserUid,
-        description: description.trim(),
-        difficulty,
-        mapData: buildMapData(),
-        reactionOk: isEdit ? currentLoadedMapObj!.reactionOk : 0,
-        reactionGod: isEdit ? currentLoadedMapObj!.reactionGod : 0,
-        diffVotes: isEdit ? currentLoadedMapObj!.diffVotes : {},
-        createdAt: isEdit ? currentLoadedMapObj!.createdAt : new Date().toISOString(),
-        version: isEdit ? (currentLoadedMapObj!.version ?? 1) + 1 : 1,
-      };
+      const author = currentUserNickname ?? '익명';
+      const trimmedTitle = title.trim();
+      const trimmedDescription = description.trim();
+      const builtMapData = buildMapData();
 
       if (isEdit) {
-        await updateMapInDB(currentLoadedMapObj!.id, data);
+        const nextVersion = (currentLoadedMapObj!.version ?? 1) + 1;
+        const editPatch = {
+          title: trimmedTitle,
+          author,
+          description: trimmedDescription,
+          difficulty,
+          mapData: builtMapData,
+          version: nextVersion,
+        };
+        await updateMapInDB(currentLoadedMapObj!.id, editPatch);
+        patchCurrentLoadedMap(editPatch);
+        exitMapEditMode({ restore: false });
         showNotification('맵이 수정되었습니다!');
       } else {
-        const newId = await uploadToDB(data);
+        const newDocBody = {
+          title: trimmedTitle,
+          author,
+          authorUid: currentUserUid,
+          description: trimmedDescription,
+          difficulty,
+          mapData: builtMapData,
+          reactionOk: 0,
+          reactionGod: 0,
+          diffVotes: {} as MapDocument['diffVotes'],
+          createdAt: new Date().toISOString(),
+          version: 1,
+        };
+        const newId = await uploadToDB(newDocBody);
         const shareUrl = `${window.location.origin}${window.location.pathname}?mapId=${newId}`;
         await navigator.clipboard.writeText(shareUrl).catch(() => {});
+        const newDoc: MapDocument = { id: newId, ...newDocBody };
+        const grid = emptyGrid();
+        for (const item of builtMapData) {
+          if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+            grid[item.y][item.x] = {
+              type: item.type, rotation: item.rotation,
+              canMove: item.canMove, canRotate: item.canRotate,
+              isInventory: item.isInventory,
+            } as CellData;
+          }
+        }
+        loadMapForPlay(grid, newDoc);
         showNotification('맵이 업로드되었습니다! 링크가 복사됨.');
       }
 
