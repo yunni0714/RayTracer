@@ -9,8 +9,6 @@ interface DragSource {
   fromRow?: number;
   fromCol?: number;
   rotation: Rotation;
-  canRotate: boolean;
-  canMove: boolean;
   justPlaced?: boolean;
 }
 
@@ -83,11 +81,12 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     return 90;
   }
 
-  function executeRotation(row: number, col: number): void {
+  function executeRotation(row: number, col: number): boolean {
     const state = useGameStore.getState();
     const cell = state.mapData[row][col];
-    if (!cell || cell.type === 'block') return;
-    if (!state.isEditorMode && !cell.canRotate) return;
+    if (!cell || cell.type === 'block') return false;
+    if (!state.isEditorMode && !cell.canRotate) return false;
+    state.saveUndoSnapshot();
     const step = getRotationStep(cell.type);
     let newRotation: number;
     if (step === 90 && cell.rotation % 90 !== 0) {
@@ -96,6 +95,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       newRotation = (cell.rotation + step) % 360;
     }
     state.setCell(row, col, { ...cell, rotation: newRotation as Rotation });
+    return true;
   }
 
   function restoreLastActiveTool(): void {
@@ -150,7 +150,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         }
         dragSourceRef.current = {
           origin: 'grid', pieceType: cell.type, fromRow: row, fromCol: col,
-          rotation: cell.rotation, canRotate: cell.canRotate, canMove: cell.canMove,
+          rotation: cell.rotation,
         };
         return;
       }
@@ -172,14 +172,13 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
           if (remaining <= 0) state.setSelectedTool(null);
           dragSourceRef.current = {
             origin: 'grid', pieceType: st.type, fromRow: row, fromCol: col,
-            rotation: st.rotation ?? 0, canRotate: st.canRotate ?? false, canMove: true, justPlaced: true,
+            rotation: st.rotation ?? 0, justPlaced: true,
           };
         }
       } else {
         // 에디터 모드: 팔레트 드래그 시작 (mouseUp에서 배치)
         dragSourceRef.current = {
           origin: 'palette', pieceType: st.type, rotation: 0,
-          canRotate: state.isModRotatableActive, canMove: true,
         };
       }
     }
@@ -213,10 +212,10 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
           let toggledOff = false;
           if (state.isModInvActive && !state.isModLockActive) {
             if (existing.isInventory && existing.canRotate) toggledOff = true;
-            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = true; }
+            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = state.isModRotatableActive ? true : existing.canRotate; }
           } else if (state.isModLockActive) {
-            if (existing.isInventory && !existing.canRotate) toggledOff = true;
-            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = false; }
+            if (!existing.canRotate) { patched.canRotate = true; }
+            else { patched.canRotate = false; }
           } else if (state.isModRotatableActive) {
             if (!existing.isInventory && existing.canRotate) toggledOff = true;
             else { patched.isInventory = false; patched.canMove = false; patched.canRotate = true; }
@@ -265,7 +264,6 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
             if (last) {
               if (last.type === existing.type) {
                 if (isEditor || existing.canRotate) {
-                  state.saveUndoSnapshot();
                   executeRotation(row, col);
                 }
               } else if (isEditor) {
@@ -291,7 +289,6 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
               }
             } else if (isEditor || existing.canRotate) {
               // 빈손 클릭 회전
-              state.saveUndoSnapshot();
               executeRotation(row, col);
             }
           }
@@ -325,6 +322,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
     function onContextMenu(e: MouseEvent): void {
       e.preventDefault();
+      paintTargetRef.current = null;
       // 드래그 중이면 취소
       if (dragSourceRef.current) {
         dragSourceRef.current = null;
