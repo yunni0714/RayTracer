@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Ray 관리자</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; padding: 20px; }
+
+        /* Header */
+        .header { background: #1a252f; color: white; padding: 16px 20px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .header h1 { font-size: 20px; }
+        .auth-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .user-photo { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
+        .uid-badge { background: rgba(0,0,0,0.35); padding: 4px 10px; border-radius: 5px; font-family: monospace; font-size: 12px; cursor: pointer; title: '클릭하여 복사'; user-select: all; }
+        .uid-badge:hover { background: rgba(0,0,0,0.55); }
+
+        /* Tabs */
+        .tab-bar { display: none; gap: 2px; margin-bottom: 16px; background: #dde2e8; border-radius: 8px; padding: 4px; }
+        .tab-bar.visible { display: flex; }
+        .tab-btn { flex: 1; padding: 8px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; color: #666; transition: 0.2s; }
+        .tab-btn.active { background: white; color: #1a252f; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* Control bar */
+        .control-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+        .control-bar input, .control-bar select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+        .control-bar input { flex: 1; min-width: 160px; }
+
+        /* Map item */
+        .map-list { display: flex; flex-direction: column; gap: 8px; }
+        .map-item { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.07); border-left: 5px solid #2c3e50; }
+        .map-main-row { display: flex; align-items: center; padding: 12px 16px; gap: 14px; flex-wrap: wrap; }
+        .map-info { flex: 1; min-width: 200px; }
+        .map-info h3 { font-size: 15px; margin-bottom: 4px; color: #2c3e50; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .map-id { font-size: 11px; color: #aaa; font-family: monospace; }
+        .map-info p { font-size: 12px; color: #777; margin-top: 4px; line-height: 1.6; }
+        .uid-text { font-family: monospace; font-size: 11px; background: #fef9e7; color: #e67e22; padding: 1px 4px; border-radius: 3px; }
+        .diff-badge { display: inline-block; padding: 1px 7px; border-radius: 3px; color: white; font-size: 11px; font-weight: bold; }
+        .map-actions { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+
+        /* Buttons */
+        .btn { padding: 6px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; transition: opacity 0.2s; white-space: nowrap; }
+        .btn:hover { opacity: 0.82; }
+        .btn:active { opacity: 0.65; }
+        .btn-blue   { background: #2980b9; color: white; }
+        .btn-orange { background: #e67e22; color: white; }
+        .btn-red    { background: #e74c3c; color: white; }
+        .btn-green  { background: #27ae60; color: white; }
+        .btn-purple { background: #8e44ad; color: white; }
+        .btn-gray   { background: #95a5a6; color: white; }
+        .btn-dark   { background: #2c3e50; color: white; }
+        .btn-sm     { padding: 4px 8px; font-size: 11px; }
+        .btn-google { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
+        .btn-google:hover { border-color: #4285f4; background: #f8f8ff; }
+        .btn-google img { width: 18px; }
+
+        /* Expand panels */
+        .expand-panel { display: none; padding: 16px 20px; background: #f8fafc; border-top: 1px solid #e4e8ed; }
+        .expand-panel.open { display: block; }
+
+        /* Form */
+        .form-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+        .form-row label { min-width: 70px; font-size: 13px; font-weight: bold; color: #555; padding-top: 6px; }
+        .form-row input, .form-row select, .form-row textarea { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+        .form-row textarea { height: 60px; resize: vertical; }
+        .form-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+        /* Thumbnails */
+        .mini-grid { display: grid; grid-template-columns: repeat(5, 20px); grid-template-rows: repeat(5, 20px); background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 2px; flex-shrink: 0; }
+        .mini-cell { width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 0 1px #eee; }
+        .mini-cell svg { width: 80%; height: 80%; }
+
+        /* Interactive grid (rotation editor) */
+        .rot-editor-wrap { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; }
+        .igrid-outer { flex-shrink: 0; }
+        .igrid-outer label { display: block; font-size: 12px; font-weight: bold; color: #666; margin-bottom: 6px; }
+        .interactive-grid { display: grid; grid-template-columns: repeat(5, 52px); grid-template-rows: repeat(5, 52px); background: #d4dae2; border: 2px solid #b0bac6; border-radius: 6px; gap: 2px; padding: 2px; }
+        .igrid-cell { width: 50px; height: 50px; background: #f5f7fa; display: flex; justify-content: center; align-items: center; border-radius: 3px; transition: background 0.15s; overflow: hidden; }
+        .igrid-cell.clickable { cursor: pointer; background: #eaf4ff; }
+        .igrid-cell.clickable:hover { background: #cce5fa; }
+        .igrid-cell.selected { background: #fff3cd !important; outline: 3px solid #f39c12; }
+        .igrid-cell svg { width: 80%; height: 80%; }
+        .igrid-cell.dimmed svg { opacity: 0.4; }
+        .rot-controls { flex: 1; min-width: 220px; }
+        .rot-hint { font-size: 13px; color: #888; padding: 12px; background: #f0f0f0; border-radius: 6px; }
+        .piece-info-box { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+        .piece-info-box b { font-size: 15px; }
+        .rot-btn-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+        .rot-btn-row span { font-size: 12px; color: #666; }
+
+        /* Suggestions tab */
+        .sugg-header { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+        .sugg-header select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; flex: 1; }
+        .suggestion-item { background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .sugg-body { flex: 1; min-width: 200px; }
+        .sugg-body .sugg-meta { font-size: 13px; margin-bottom: 4px; }
+        .sugg-body .sugg-comment { font-size: 13px; color: #555; margin-bottom: 4px; }
+        .sugg-body .sugg-date { font-size: 11px; color: #aaa; }
+        .cat-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
+        .cat-NG   { background: #e74c3c; color: white; }
+        .cat-ABCD { background: #3498db; color: white; }
+
+        /* Stats */
+        .stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .stat-card .stat-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+        .stat-card .stat-val { font-size: 26px; font-weight: bold; color: #2c3e50; }
+        .stat-card.c-blue .stat-val { color: #2980b9; }
+        .stat-card.c-green .stat-val { color: #27ae60; }
+        .stat-card.c-gold .stat-val { color: #e67e22; }
+        .stats-section { margin-bottom: 24px; }
+        .stats-section h3 { font-size: 15px; color: #2c3e50; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #e0e5ea; }
+        .stats-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+        .stats-table th { background: #2c3e50; color: white; padding: 8px 12px; font-size: 12px; text-align: left; }
+        .stats-table td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .stats-table tr:last-child td { border-bottom: none; }
+        .stats-table tr:hover td { background: #f8f9fa; }
+
+        /* Login screen */
+        .login-screen { text-align: center; padding: 60px 20px; background: white; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+        .login-screen h2 { margin-bottom: 8px; color: #2c3e50; }
+        .login-screen p { color: #888; margin-bottom: 24px; font-size: 14px; }
+
+        /* Loading */
+        .loading { color: #888; padding: 20px; text-align: center; font-size: 14px; }
+        .error-msg { color: #e74c3c; background: #fdf2f2; padding: 12px 16px; border-radius: 6px; font-size: 13px; }
+        .empty-msg { color: #aaa; padding: 20px; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🛠️ Project Ray 관리자</h1>
+    <div id="authSection">
+        <button class="btn-google" onclick="doSignIn()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+            Google 로그인
+        </button>
+    </div>
+</div>
+
+<div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="maps"        onclick="switchTab('maps')">🗺️ 맵 관리</button>
+    <button class="tab-btn"        data-tab="suggestions" onclick="switchTab('suggestions')">💬 풀이 제안</button>
+    <button class="tab-btn"        data-tab="stats"       onclick="switchTab('stats')">📊 통계</button>
+</div>
+
+<!-- Tab: Maps -->
+<div id="tab-maps" class="tab-pane active">
+    <div id="mapContent">
+        <div class="login-screen">
+            <h2>관리자 로그인이 필요합니다</h2>
+            <p>Google 계정으로 로그인하면 Firebase Rules에 등록할 UID를 확인할 수 있습니다.</p>
+            <button class="btn-google" onclick="doSignIn()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                Google 계정으로 로그인
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Suggestions -->
+<div id="tab-suggestions" class="tab-pane">
+    <div class="sugg-header">
+        <select id="mapSelectForSugg" onchange="loadSuggestions()">
+            <option value="">맵을 선택하세요...</option>
+        </select>
+        <button class="btn btn-dark" onclick="loadSuggestions()">🔄 새로고침</button>
+    </div>
+    <div id="suggestionList"><p class="empty-msg">왼쪽에서 맵을 선택하세요.</p></div>
+</div>
+
+<!-- Tab: Stats -->
+<div id="tab-stats" class="tab-pane">
+    <div id="statsContent">
+        <p class="empty-msg">맵 관리 탭에서 데이터를 먼저 로드하세요.</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp }                                   from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, doc,
+             deleteDoc, updateDoc, query, orderBy }            from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js';
+    import { getAuth, GoogleAuthProvider, signInWithPopup,
+             signOut, onAuthStateChanged }                     from 'https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js';
+
+    // ── Firebase init ─────────────────────────────────────────────
+    const firebaseConfig = {
+        apiKey:            'AIzaSyBdf2slxxy1fXM-lQ-iL87-2p-uea3nFi8',
+        authDomain:        'raytracer-d3bcb.firebaseapp.com',
+        projectId:         'raytracer-d3bcb',
+        storageBucket:     'raytracer-d3bcb.firebasestorage.app',
+        messagingSenderId: '43284198744',
+        appId:             '1:43284198744:web:df7be53aed930973ac212d',
+    };
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
+    const googleProvider = new GoogleAuthProvider();
+
+    // ── State ─────────────────────────────────────────────────────
+    const state = {
+        allMaps:      [],
+        filteredMaps: [],
+        editStates:   {},   // mapId → { localMapData, selectedIndex }
+        currentUser:  null,
+    };
+
+    // ── SVG Art ───────────────────────────────────────────────────
+    const SVG = {
+        ray:               `<svg viewBox="0 0 100 100"><circle cx="40" cy="50" r="30" fill="none" stroke="#333" stroke-width="8"/><path d="M40 50 L95 50" stroke="#333" stroke-width="8" stroke-linecap="square"/></svg>`,
+        target:            `<svg viewBox="0 0 100 100"><path d="M50 12 L88 50 L50 88 L12 50 Z" fill="none" stroke="#333" stroke-width="8" stroke-linejoin="miter"/><path d="M69 50 L78 41 L88 50 L78 59 Z" fill="none" stroke="#333" stroke-width="8" stroke-linejoin="miter"/></svg>`,
+        mirror:            `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+        half_mirror:       `<svg viewBox="0 0 100 100"><path d="M10 80 L70 20 M30 90 L90 30" stroke="#333" stroke-width="8" stroke-linecap="square"/></svg>`,
+        block:             `<svg viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 15 L15 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+        tunnel:            `<svg viewBox="0 0 100 100"><path d="M20 30 L80 30 M20 70 L80 70" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+        single_mirror:     `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15 L85 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
+        target_mirror_a:   `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15 L85 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="40" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+        target_mirror_b:   `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15 L85 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+        mirror_45:         `<svg viewBox="0 0 100 100"><path d="M15 50 L85 50" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+        half_mirror_45:    `<svg viewBox="0 0 100 100"><path d="M15 50 L85 50" stroke="#333" stroke-width="8" stroke-dasharray="15 10" stroke-linecap="square"/></svg>`,
+        diag_single_mirror_a: `<svg viewBox="0 0 100 100"><path d="M15 50 L85 50 L85 85 L15 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
+        diag_single_mirror_b: `<svg viewBox="0 0 100 100"><path d="M15 50 L85 50 L85 15 L15 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
+        v_mirror:          `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+        v_half_mirror:     `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85" stroke="#333" stroke-width="8" stroke-dasharray="15 10" stroke-linecap="square"/></svg>`,
+        v_single_mirror:   `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
+        v_target_mirror_a: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="40" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+        v_target_mirror_b: `<svg viewBox="0 0 100 100"><path d="M50 15 L50 85 L85 85 L85 15 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/><rect x="65" y="65" width="20" height="20" fill="none" stroke="#333" stroke-width="8"/></svg>`,
+    };
+
+    const DIFF_COLORS = { Tutor: '#27ae60', Easy: '#2ecc71', Normal: '#3498db', Hard: '#e67e22', Insane: '#e74c3c' };
+    const DIFFICULTIES = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
+    const ROTATIONS    = [0, 45, 90, 135, 180, 225, 270, 315];
+
+    // ── Utils ─────────────────────────────────────────────────────
+    function esc(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '날짜 없음';
+        return new Date(iso).toLocaleString();
+    }
+
+    function makeMiniGrid(mapData) {
+        const wrap = document.createElement('div');
+        wrap.className = 'mini-grid';
+        for (let i = 0; i < 25; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'mini-cell';
+            wrap.appendChild(cell);
+        }
+        if (Array.isArray(mapData)) {
+            mapData.forEach(item => {
+                const x = item.x, y = item.y;
+                if (x >= 0 && x < 5 && y >= 0 && y < 5 && SVG[item.type]) {
+                    wrap.children[y * 5 + x].innerHTML =
+                        `<div style="transform:rotate(${item.rotation||0}deg);width:100%;height:100%;display:flex;justify-content:center;align-items:center;">${SVG[item.type]}</div>`;
+                }
+            });
+        }
+        return wrap;
+    }
+
+    // ── Auth ──────────────────────────────────────────────────────
+    onAuthStateChanged(auth, user => {
+        state.currentUser = user;
+        if (user) {
+            document.getElementById('authSection').innerHTML = `
+                <div class="auth-info">
+                    ${user.photoURL ? `<img class="user-photo" src="${esc(user.photoURL)}" alt="">` : ''}
+                    <span>${esc(user.displayName)}</span>
+                    <span class="uid-badge" onclick="copyUid()" title="클릭하여 UID 복사">${esc(user.uid)}</span>
+                    <button class="btn btn-gray btn-sm" onclick="doSignOut()">로그아웃</button>
+                </div>`;
+            document.getElementById('tabBar').classList.add('visible');
+            loadAllMaps();
+        } else {
+            document.getElementById('authSection').innerHTML = `
+                <button class="btn-google" onclick="doSignIn()">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                    Google 로그인
+                </button>`;
+            document.getElementById('tabBar').classList.remove('visible');
+            document.getElementById('mapContent').innerHTML = `
+                <div class="login-screen">
+                    <h2>관리자 로그인이 필요합니다</h2>
+                    <p>로그인 후 내 UID를 Firebase Rules에 등록하면 관리 기능이 활성화됩니다.</p>
+                    <button class="btn-google" onclick="doSignIn()">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+                        Google 계정으로 로그인
+                    </button>
+                </div>`;
+        }
+    });
+
+    window.doSignIn = async () => {
+        try { await signInWithPopup(auth, googleProvider); }
+        catch (e) { alert('로그인 실패: ' + e.message); }
+    };
+
+    window.doSignOut = async () => {
+        await signOut(auth);
+    };
+
+    window.copyUid = () => {
+        const uid = state.currentUser?.uid;
+        if (!uid) return;
+        navigator.clipboard.writeText(uid).then(() => alert('UID가 클립보드에 복사되었습니다!\n\nFirebase Rules에 이 UID를 등록하세요.'));
+    };
+
+    // ── Map loading ───────────────────────────────────────────────
+    window.loadAllMaps = async () => {
+        const content = document.getElementById('mapContent');
+        content.innerHTML = '<p class="loading">맵 목록을 불러오는 중...</p>';
+        try {
+            const snap = await getDocs(query(collection(db, 'maps'), orderBy('createdAt', 'desc')));
+            state.allMaps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            state.filteredMaps = [...state.allMaps];
+            renderMapTab();
+            updateSuggMapDropdown();
+        } catch (e) {
+            content.innerHTML = `<p class="error-msg">로드 실패: ${esc(e.message)}</p>`;
+        }
+    };
+
+    function renderMapTab() {
+        const content = document.getElementById('mapContent');
+        content.innerHTML = `
+            <div class="control-bar">
+                <button class="btn btn-dark" onclick="loadAllMaps()">🔄 새로고침</button>
+                <input id="searchInput" placeholder="제목 또는 작성자 검색..." oninput="filterMaps()">
+                <select id="sortSelect" onchange="sortAndRenderMaps()">
+                    <option value="createdAt">최신순</option>
+                    <option value="reactionGod">🌟 반응순</option>
+                    <option value="reactionOk">👍 반응순</option>
+                </select>
+            </div>
+            <div class="map-list" id="mapList"></div>`;
+        renderMapList();
+    }
+
+    function renderMapList() {
+        const listEl = document.getElementById('mapList');
+        if (!listEl) return;
+        if (state.filteredMaps.length === 0) {
+            listEl.innerHTML = '<p class="empty-msg">맵이 없습니다.</p>';
+            return;
+        }
+        listEl.innerHTML = '';
+        state.filteredMaps.forEach(map => listEl.appendChild(buildMapItem(map)));
+    }
+
+    function buildMapItem(map) {
+        const wrap = document.createElement('div');
+        wrap.className = 'map-item';
+        wrap.id = `map-item-${map.id}`;
+
+        const diffColor = DIFF_COLORS[map.difficulty] || '#95a5a6';
+        const dateStr   = fmtDate(map.createdAt);
+
+        wrap.innerHTML = `
+            <div class="map-main-row">
+                <div id="mini-thumb-${esc(map.id)}"></div>
+                <div class="map-info">
+                    <h3>
+                        ${esc(map.title)}
+                        <span class="map-id">${esc(map.id)}</span>
+                    </h3>
+                    <p>작성자: <b>${esc(map.author)}</b> | UID: <span class="uid-text">${esc(map.authorUid||'없음')}</span></p>
+                    <p>
+                        <span class="diff-badge" style="background:${diffColor}">${esc(map.difficulty)}</span>
+                        생성: ${esc(dateStr)} | 👍 ${map.reactionOk||0} | 🌟 ${map.reactionGod||0}
+                    </p>
+                </div>
+                <div class="map-actions">
+                    <button class="btn btn-blue"   onclick="togglePanel('meta-${esc(map.id)}')">📝 메타 편집</button>
+                    <button class="btn btn-purple" onclick="openRotPanel('${esc(map.id)}')">🎛️ 회전 편집</button>
+                    <button class="btn btn-orange" onclick="transferOwnership('${esc(map.id)}', '${esc(map.title).replace(/'/g,'\\&apos;')}')">👑 소유권 이전</button>
+                    <button class="btn btn-red"    onclick="deleteMapAdmin('${esc(map.id)}', '${esc(map.title).replace(/'/g,'\\&apos;')}')">🗑️ 영구 삭제</button>
+                </div>
+            </div>
+
+            <!-- 메타데이터 편집 패널 -->
+            <div id="meta-${esc(map.id)}" class="expand-panel">
+                <form onsubmit="saveMetadata(event, '${esc(map.id)}')">
+                    <div class="form-row">
+                        <label>제목</label>
+                        <input name="title" value="${esc(map.title)}" required maxlength="50">
+                    </div>
+                    <div class="form-row">
+                        <label>난이도</label>
+                        <select name="difficulty">
+                            ${DIFFICULTIES.map(d => `<option value="${d}"${map.difficulty===d?' selected':''}>${d}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>작성자명</label>
+                        <input name="author" value="${esc(map.author)}" maxlength="30">
+                    </div>
+                    <div class="form-row">
+                        <label>설명</label>
+                        <textarea name="description">${esc(map.description||'')}</textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-green">💾 저장</button>
+                        <button type="button" class="btn btn-gray" onclick="togglePanel('meta-${esc(map.id)}')">취소</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 회전 편집 패널 -->
+            <div id="rot-${esc(map.id)}" class="expand-panel">
+                <div class="rot-editor-wrap">
+                    <div class="igrid-outer">
+                        <label>그리드 클릭 → 기물 선택</label>
+                        <div id="igrid-${esc(map.id)}" class="interactive-grid"></div>
+                    </div>
+                    <div class="rot-controls" id="rot-ctrl-${esc(map.id)}">
+                        <p class="rot-hint">기물을 클릭하여 선택하세요.<br>모든 기물의 각도를 편집할 수 있습니다.</p>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-green" onclick="saveMapData('${esc(map.id)}')">💾 이 맵 저장</button>
+                    <button class="btn btn-gray"  onclick="togglePanel('rot-${esc(map.id)}')">닫기</button>
+                </div>
+            </div>`;
+
+        // Attach mini thumbnail
+        const thumbEl = wrap.querySelector(`#mini-thumb-${map.id}`);
+        if (thumbEl) thumbEl.appendChild(makeMiniGrid(map.mapData));
+
+        return wrap;
+    }
+
+    // ── Panel toggle ──────────────────────────────────────────────
+    window.togglePanel = (panelId) => {
+        const el = document.getElementById(panelId);
+        if (el) el.classList.toggle('open');
+    };
+
+    window.openRotPanel = (mapId) => {
+        const panelEl = document.getElementById(`rot-${mapId}`);
+        if (!panelEl) return;
+        const wasOpen = panelEl.classList.contains('open');
+        panelEl.classList.toggle('open');
+        if (!wasOpen) initRotEditor(mapId);
+    };
+
+    // ── Rotation editor ───────────────────────────────────────────
+    function initRotEditor(mapId) {
+        const map = state.allMaps.find(m => m.id === mapId);
+        if (!map) return;
+        state.editStates[mapId] = {
+            localMapData: JSON.parse(JSON.stringify(map.mapData || [])),
+            selectedIndex: null,
+        };
+        renderIGrid(mapId);
+        renderRotControls(mapId);
+    }
+
+    function renderIGrid(mapId) {
+        const gridEl = document.getElementById(`igrid-${mapId}`);
+        if (!gridEl) return;
+        const es = state.editStates[mapId];
+        if (!es) return;
+        gridEl.innerHTML = '';
+        for (let row = 0; row < 5; row++) {
+            for (let col = 0; col < 5; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'igrid-cell';
+                const itemIdx = es.localMapData.findIndex(i => i.x === col && i.y === row);
+                if (itemIdx >= 0) {
+                    const item = es.localMapData[itemIdx];
+                    if (SVG[item.type]) {
+                        cell.innerHTML = `<div style="transform:rotate(${item.rotation||0}deg);width:100%;height:100%;display:flex;justify-content:center;align-items:center;">${SVG[item.type]}</div>`;
+                    }
+                    cell.classList.add('clickable');
+                    if (es.selectedIndex === itemIdx) cell.classList.add('selected');
+                    cell.onclick = () => selectPiece(mapId, itemIdx);
+                }
+                gridEl.appendChild(cell);
+            }
+        }
+    }
+
+    function selectPiece(mapId, itemIdx) {
+        const es = state.editStates[mapId];
+        if (!es) return;
+        es.selectedIndex = itemIdx;
+        renderIGrid(mapId);
+        renderRotControls(mapId);
+    }
+
+    function renderRotControls(mapId) {
+        const ctrlEl = document.getElementById(`rot-ctrl-${mapId}`);
+        if (!ctrlEl) return;
+        const es = state.editStates[mapId];
+        if (!es || es.selectedIndex === null) {
+            ctrlEl.innerHTML = '<p class="rot-hint">기물을 클릭하여 선택하세요.<br>모든 기물의 각도를 편집할 수 있습니다.</p>';
+            return;
+        }
+        const item = es.localMapData[es.selectedIndex];
+        if (!item) return;
+        const curRot = item.rotation || 0;
+        ctrlEl.innerHTML = `
+            <div class="piece-info-box">
+                <b>${esc(item.type)}</b><br>
+                위치: (${item.x}, ${item.y}) | 현재 각도: <b>${curRot}°</b><br>
+                <small style="color:#888">canRotate: ${item.canRotate} | canMove: ${item.canMove}</small>
+            </div>
+            <div class="rot-btn-row">
+                <button class="btn btn-blue" onclick="applyDelta('${esc(mapId)}', -90)">↺ -90°</button>
+                <button class="btn btn-blue" onclick="applyDelta('${esc(mapId)}', -45)">↺ -45°</button>
+                <button class="btn btn-blue" onclick="applyDelta('${esc(mapId)}',  45)">↻ +45°</button>
+                <button class="btn btn-blue" onclick="applyDelta('${esc(mapId)}',  90)">↻ +90°</button>
+            </div>
+            <div class="rot-btn-row">
+                <span>직접 입력:</span>
+                <select onchange="applyAbs('${esc(mapId)}', parseInt(this.value))">
+                    ${ROTATIONS.map(r => `<option value="${r}"${curRot===r?' selected':''}>${r}°</option>`).join('')}
+                </select>
+            </div>`;
+    }
+
+    window.applyDelta = (mapId, delta) => {
+        const es = state.editStates[mapId];
+        if (!es || es.selectedIndex === null) return;
+        const item = es.localMapData[es.selectedIndex];
+        item.rotation = (((item.rotation || 0) + delta) % 360 + 360) % 360;
+        renderIGrid(mapId);
+        renderRotControls(mapId);
+    };
+
+    window.applyAbs = (mapId, rotation) => {
+        const es = state.editStates[mapId];
+        if (!es || es.selectedIndex === null) return;
+        es.localMapData[es.selectedIndex].rotation = rotation;
+        renderIGrid(mapId);
+        renderRotControls(mapId);
+    };
+
+    window.saveMapData = async (mapId) => {
+        const es = state.editStates[mapId];
+        if (!es) return;
+        try {
+            await updateDoc(doc(db, 'maps', mapId), { mapData: es.localMapData });
+            // sync to memory cache
+            const cached = state.allMaps.find(m => m.id === mapId);
+            if (cached) cached.mapData = JSON.parse(JSON.stringify(es.localMapData));
+            alert('저장 완료!');
+        } catch (e) {
+            alert('저장 실패: ' + e.message);
+        }
+    };
+
+    // ── Metadata save ─────────────────────────────────────────────
+    window.saveMetadata = async (event, mapId) => {
+        event.preventDefault();
+        const form = event.target;
+        const data = {
+            title:       form.title.value.trim(),
+            difficulty:  form.difficulty.value,
+            author:      form.author.value.trim(),
+            description: form.description.value.trim(),
+        };
+        try {
+            await updateDoc(doc(db, 'maps', mapId), data);
+            const cached = state.allMaps.find(m => m.id === mapId);
+            if (cached) Object.assign(cached, data);
+            state.filteredMaps = state.filteredMaps.map(m => m.id === mapId ? { ...m, ...data } : m);
+            alert('메타데이터 저장 완료!');
+            togglePanel(`meta-${mapId}`);
+            renderMapList();
+        } catch (e) {
+            alert('저장 실패: ' + e.message);
+        }
+    };
+
+    // ── Ownership transfer ────────────────────────────────────────
+    window.transferOwnership = async (mapId, title) => {
+        const myUid = state.currentUser?.uid || '';
+        const newUid = prompt(
+            `[${title}] 맵 소유권을 이전할 UID를 입력하세요.\n※ 엔터만 누르면 내 UID로 이전됩니다.`,
+            myUid
+        );
+        if (newUid === null || !newUid.trim()) return;
+        try {
+            await updateDoc(doc(db, 'maps', mapId), { authorUid: newUid.trim() });
+            const cached = state.allMaps.find(m => m.id === mapId);
+            if (cached) cached.authorUid = newUid.trim();
+            alert('소유권 이전 완료!\n에디터에서 해당 맵을 불러오면 편집/삭제 권한이 활성화됩니다.');
+            renderMapList();
+        } catch (e) {
+            alert('이전 실패: ' + e.message + '\n\nFirebase Rules에 관리자 UID가 등록되어 있는지 확인하세요.');
+        }
+    };
+
+    // ── Delete map + subcollections ───────────────────────────────
+    window.deleteMapAdmin = async (mapId, title) => {
+        if (!confirm(`[${title}] 맵을 영구 삭제하시겠습니까?\n풀이 제안 데이터도 모두 삭제됩니다.\n이 작업은 되돌릴 수 없습니다!`)) return;
+        try {
+            // Delete suggestions subcollection first
+            const suggSnap = await getDocs(collection(db, 'maps', mapId, 'suggestions'));
+            for (const s of suggSnap.docs) {
+                await deleteDoc(doc(db, 'maps', mapId, 'suggestions', s.id));
+            }
+            await deleteDoc(doc(db, 'maps', mapId));
+            state.allMaps      = state.allMaps.filter(m => m.id !== mapId);
+            state.filteredMaps = state.filteredMaps.filter(m => m.id !== mapId);
+            alert('삭제 완료!');
+            renderMapList();
+            updateSuggMapDropdown();
+        } catch (e) {
+            alert('삭제 실패: ' + e.message);
+        }
+    };
+
+    // ── Filter / sort ─────────────────────────────────────────────
+    window.filterMaps = () => {
+        const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+        state.filteredMaps = state.allMaps.filter(m =>
+            (m.title||'').toLowerCase().includes(q) ||
+            (m.author||'').toLowerCase().includes(q)
+        );
+        sortAndRenderMaps();
+    };
+
+    window.sortAndRenderMaps = () => {
+        const field = document.getElementById('sortSelect')?.value || 'createdAt';
+        state.filteredMaps.sort((a, b) => {
+            const va = a[field] || 0, vb = b[field] || 0;
+            if (field === 'createdAt') return vb > va ? 1 : vb < va ? -1 : 0;
+            return (vb - va);
+        });
+        renderMapList();
+    };
+
+    // ── Suggestions tab ───────────────────────────────────────────
+    function updateSuggMapDropdown() {
+        const sel = document.getElementById('mapSelectForSugg');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">맵을 선택하세요...</option>';
+        state.allMaps.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `${m.title} (${m.id.slice(0, 8)}…)`;
+            sel.appendChild(opt);
+        });
+        if (prev) sel.value = prev;
+    }
+
+    window.loadSuggestions = async () => {
+        const mapId  = document.getElementById('mapSelectForSugg')?.value;
+        const listEl = document.getElementById('suggestionList');
+        if (!mapId) { listEl.innerHTML = '<p class="empty-msg">맵을 선택하세요.</p>'; return; }
+        listEl.innerHTML = '<p class="loading">불러오는 중...</p>';
+        try {
+            const snap = await getDocs(query(collection(db, 'maps', mapId, 'suggestions'), orderBy('createdAt', 'desc')));
+            if (snap.empty) { listEl.innerHTML = '<p class="empty-msg">이 맵에 대한 풀이 제안이 없습니다.</p>'; return; }
+            listEl.innerHTML = '';
+            snap.docs.forEach(d => {
+                const s = d.data();
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.id = `sugg-${d.id}`;
+                item.innerHTML = `
+                    <div></div>
+                    <div class="sugg-body">
+                        <div class="sugg-meta">
+                            <span class="cat-badge cat-${esc(s.category)}">${esc(s.category)}</span>
+                            <b>${esc(s.suggesterNickname||'?')}</b>
+                        </div>
+                        <div class="sugg-comment">${esc(s.comment||'(코멘트 없음)')}</div>
+                        <div class="sugg-date">${fmtDate(s.createdAt)}</div>
+                    </div>
+                    <button class="btn btn-red btn-sm" onclick="deleteSuggestion('${esc(mapId)}','${esc(d.id)}')">🗑️ 삭제</button>`;
+                // Attach mini grid thumbnail
+                const thumbWrap = item.querySelector('div');
+                thumbWrap.appendChild(makeMiniGrid(s.mapData));
+                listEl.appendChild(item);
+            });
+        } catch (e) {
+            listEl.innerHTML = `<p class="error-msg">로드 실패: ${esc(e.message)}</p>`;
+        }
+    };
+
+    window.deleteSuggestion = async (mapId, sugId) => {
+        if (!confirm('이 풀이 제안을 삭제하시겠습니까?')) return;
+        try {
+            await deleteDoc(doc(db, 'maps', mapId, 'suggestions', sugId));
+            document.getElementById(`sugg-${sugId}`)?.remove();
+        } catch (e) {
+            alert('삭제 실패: ' + e.message);
+        }
+    };
+
+    // ── Stats tab ─────────────────────────────────────────────────
+    window.switchTab = (tabId) => {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.toggle('active', pane.id === `tab-${tabId}`);
+        });
+        if (tabId === 'stats') renderStats();
+        if (tabId === 'suggestions') updateSuggMapDropdown();
+    };
+
+    function renderStats() {
+        const el = document.getElementById('statsContent');
+        const maps = state.allMaps;
+        if (maps.length === 0) {
+            el.innerHTML = '<p class="empty-msg">맵 관리 탭에서 데이터를 먼저 로드하세요.</p>';
+            return;
+        }
+        const totalOk  = maps.reduce((s, m) => s + (m.reactionOk  || 0), 0);
+        const totalGod = maps.reduce((s, m) => s + (m.reactionGod || 0), 0);
+        const diffCounts = {};
+        DIFFICULTIES.forEach(d => { diffCounts[d] = maps.filter(m => m.difficulty === d).length; });
+        const topGod = [...maps].sort((a,b)=>(b.reactionGod||0)-(a.reactionGod||0)).slice(0,5);
+        const topOk  = [...maps].sort((a,b)=>(b.reactionOk||0)-(a.reactionOk||0)).slice(0,5);
+
+        el.innerHTML = `
+            <div class="stats-section">
+                <h3>📈 전체 현황</h3>
+                <div class="stat-cards">
+                    <div class="stat-card c-blue"><div class="stat-label">전체 맵 수</div><div class="stat-val">${maps.length}</div></div>
+                    <div class="stat-card c-green"><div class="stat-label">총 👍 반응</div><div class="stat-val">${totalOk}</div></div>
+                    <div class="stat-card c-gold"><div class="stat-label">총 🌟 반응</div><div class="stat-val">${totalGod}</div></div>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h3>🎯 난이도별 분포</h3>
+                <div class="stat-cards">
+                    ${DIFFICULTIES.map(d => `<div class="stat-card"><div class="stat-label" style="color:${DIFF_COLORS[d]}">${d}</div><div class="stat-val">${diffCounts[d]}</div></div>`).join('')}
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h3>🌟 God 반응 Top 5</h3>
+                <table class="stats-table">
+                    <tr><th>제목</th><th>🌟 God</th><th>👍 Ok</th><th>난이도</th></tr>
+                    ${topGod.map(m=>`<tr><td>${esc(m.title)}</td><td>${m.reactionGod||0}</td><td>${m.reactionOk||0}</td><td>${esc(m.difficulty)}</td></tr>`).join('')}
+                </table>
+            </div>
+
+            <div class="stats-section">
+                <h3>👍 Ok 반응 Top 5</h3>
+                <table class="stats-table">
+                    <tr><th>제목</th><th>👍 Ok</th><th>🌟 God</th><th>난이도</th></tr>
+                    ${topOk.map(m=>`<tr><td>${esc(m.title)}</td><td>${m.reactionOk||0}</td><td>${m.reactionGod||0}</td><td>${esc(m.difficulty)}</td></tr>`).join('')}
+                </table>
+            </div>`;
+    }
+</script>
+</body>
+</html>
