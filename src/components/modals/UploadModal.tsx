@@ -32,7 +32,7 @@ export function UploadModal() {
       for (let c = 0; c < GRID_SIZE; c++) {
         const cell = mapData[r][c];
         if (cell) {
-          items.push({ x: c, y: r, ...cell });
+          items.push({ x: c, y: r, ...cell, rotation: cell.canRotate ? 0 : cell.rotation });
         }
       }
     }
