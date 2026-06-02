@@ -210,12 +210,12 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         if (existing) {
           const patched: CellData = { ...existing };
           let toggledOff = false;
-          if (state.isModInvActive && !state.isModLockActive) {
-            if (existing.isInventory && existing.canRotate) toggledOff = true;
-            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = state.isModRotatableActive ? true : existing.canRotate; }
+          if (state.isModInvActive) {
+            if (existing.isInventory) toggledOff = true;
+            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = false; }
           } else if (state.isModLockActive) {
-            if (!existing.canRotate) { patched.canRotate = true; }
-            else { patched.canRotate = false; }
+            if (!existing.isInventory && !existing.canRotate) toggledOff = true;
+            else { patched.isInventory = false; patched.canMove = false; patched.canRotate = false; }
           } else if (state.isModRotatableActive) {
             if (!existing.isInventory && existing.canRotate) toggledOff = true;
             else { patched.isInventory = false; patched.canMove = false; patched.canRotate = true; }
@@ -272,7 +272,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
                 state.setCell(row, col, {
                   type: last.type, rotation: 0,
                   isInventory: state.isModInvActive, canMove: state.isModInvActive,
-                  canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
+                  canRotate: state.isModInvActive ? false : state.isModRotatableActive,
                 });
               } else if (
                 existing.isInventory && last.isInvTool && last.inventoryKey
@@ -311,7 +311,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         state.setCell(row, col, {
           type: src.pieceType, rotation: 0,
           isInventory: state.isModInvActive, canMove: state.isModInvActive,
-          canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
+          canRotate: state.isModInvActive ? false : state.isModRotatableActive,
         });
         restoreLastActiveTool();
         return;
