@@ -25,6 +25,9 @@ export function GridCell({ row, col, cell }: Props) {
       {cell?.isInventory && (
         <div className="absolute top-0.5 right-0.5 text-xs leading-none select-none">🎒</div>
       )}
+      {cell?.isInventory && !cell.canRotate && (
+        <div className="absolute top-0.5 left-0.5 text-xs leading-none select-none">🔒</div>
+      )}
       {cell && !cell.isInventory && cell.canRotate && (
         <div className="absolute top-0.5 right-0.5 text-xs leading-none select-none">🔄</div>
       )}
