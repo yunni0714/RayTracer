@@ -139,7 +139,7 @@ export function PalettePanel() {
           onClick={() => {
             const next = !isModRotatableActive;
             setModRotatable(next);
-            if (next) { setModLock(false); setModInv(false); }
+            if (next) { setModLock(false); }
           }}
           className="px-3 py-1.5 text-xs rounded border font-medium transition-colors"
           style={isModRotatableActive
@@ -153,7 +153,7 @@ export function PalettePanel() {
           onClick={() => {
             const next = !isModLockActive;
             setModLock(next);
-            if (next) { setModRotatable(false); setModInv(false); }
+            if (next) { setModRotatable(false); }
           }}
           className="px-3 py-1.5 text-xs rounded border font-medium transition-colors"
           style={isModLockActive
@@ -167,7 +167,6 @@ export function PalettePanel() {
           onClick={() => {
             const next = !isModInvActive;
             setModInv(next);
-            if (next) { setModRotatable(false); setModLock(false); }
           }}
           className="px-3 py-1.5 text-xs rounded border font-medium transition-colors"
           style={isModInvActive

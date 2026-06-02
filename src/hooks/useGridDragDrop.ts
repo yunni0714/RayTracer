@@ -209,18 +209,13 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         const existing = state.mapData[pt.row][pt.col];
         if (existing) {
           const patched: CellData = { ...existing };
-          let toggledOff = false;
+          // 인벤 축과 회전 축을 독립 적용한다 (유저지급 + 회전불가 중첩 지원)
           if (state.isModInvActive) {
-            if (existing.isInventory) toggledOff = true;
-            else { patched.isInventory = true; patched.canMove = true; patched.canRotate = false; }
-          } else if (state.isModLockActive) {
-            if (!existing.isInventory && !existing.canRotate) toggledOff = true;
-            else { patched.isInventory = false; patched.canMove = false; patched.canRotate = false; }
-          } else if (state.isModRotatableActive) {
-            if (!existing.isInventory && existing.canRotate) toggledOff = true;
-            else { patched.isInventory = false; patched.canMove = false; patched.canRotate = true; }
+            patched.isInventory = !existing.isInventory; // 재덧칠 시 인벤 토글
+            patched.canMove = patched.isInventory;
           }
-          if (toggledOff) { patched.isInventory = false; patched.canMove = false; patched.canRotate = false; }
+          if (state.isModRotatableActive) patched.canRotate = true;
+          else if (state.isModLockActive) patched.canRotate = false;
           state.saveUndoSnapshot();
           state.setCell(pt.row, pt.col, patched);
         }
@@ -272,7 +267,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
                 state.setCell(row, col, {
                   type: last.type, rotation: 0,
                   isInventory: state.isModInvActive, canMove: state.isModInvActive,
-                  canRotate: state.isModInvActive ? false : state.isModRotatableActive,
+                  canRotate: state.isModRotatableActive,
                 });
               } else if (
                 existing.isInventory && last.isInvTool && last.inventoryKey
@@ -311,7 +306,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         state.setCell(row, col, {
           type: src.pieceType, rotation: 0,
           isInventory: state.isModInvActive, canMove: state.isModInvActive,
-          canRotate: state.isModInvActive ? false : state.isModRotatableActive,
+          canRotate: state.isModRotatableActive,
         });
         restoreLastActiveTool();
         return;
