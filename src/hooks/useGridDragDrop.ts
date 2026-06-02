@@ -213,9 +213,12 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
           if (state.isModInvActive) {
             patched.isInventory = !existing.isInventory; // 재덧칠 시 인벤 토글
             patched.canMove = patched.isInventory;
+            patched.canRotate = patched.isInventory ? !state.isModLockActive : state.isModRotatableActive;
+          } else if (state.isModRotatableActive) {
+            patched.canRotate = true;
+          } else if (state.isModLockActive) {
+            patched.canRotate = false;
           }
-          if (state.isModRotatableActive) patched.canRotate = true;
-          else if (state.isModLockActive) patched.canRotate = false;
           state.saveUndoSnapshot();
           state.setCell(pt.row, pt.col, patched);
         }
@@ -267,7 +270,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
                 state.setCell(row, col, {
                   type: last.type, rotation: 0,
                   isInventory: state.isModInvActive, canMove: state.isModInvActive,
-                  canRotate: state.isModRotatableActive,
+                  canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
                 });
               } else if (
                 existing.isInventory && last.isInvTool && last.inventoryKey
@@ -306,7 +309,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
         state.setCell(row, col, {
           type: src.pieceType, rotation: 0,
           isInventory: state.isModInvActive, canMove: state.isModInvActive,
-          canRotate: state.isModRotatableActive,
+          canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
         });
         restoreLastActiveTool();
         return;
