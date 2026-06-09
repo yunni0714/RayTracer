@@ -36,6 +36,15 @@ function buildInventory(grid: (CellData | null)[][]): Record<string, InventoryIt
 
 const MAX_UNDO = 50;
 
+// 초기 테마: localStorage > 'light'
+function initialTheme(): 'light' | 'dark' {
+  try {
+    const t = localStorage.getItem('ray-theme');
+    if (t === 'dark' || t === 'light') return t;
+  } catch { /* 비공개 모드 등 localStorage 접근 실패 무시 */ }
+  return 'light';
+}
+
 interface NotificationState {
   message: string;
   color: string;
@@ -86,6 +95,7 @@ interface GameStore {
   notification: NotificationState | null;
   activeModal: ActiveModal;
   isUnlocked: boolean; // 이스터에그 상급 기물 해금
+  theme: 'light' | 'dark';
 
   // ── 액션: 그리드 ─────────────────────────────
   setMapData: (data: (CellData | null)[][]) => void;
@@ -140,6 +150,8 @@ interface GameStore {
   openModal: (modal: ActiveModal) => void;
   closeModal: () => void;
   setUnlocked: (v: boolean) => void;
+  toggleTheme: () => void;
+  setTheme: (t: 'light' | 'dark') => void;
 
   // ── 액션: 맵 데이터 변환 ─────────────────────
   clearGrid: () => void;
@@ -175,6 +187,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   notification: null,
   activeModal: null,
   isUnlocked: false,
+  theme: initialTheme(),
 
   // ── 그리드 ───────────────────────────────────
   setMapData: (data) => set({ mapData: data }),
@@ -394,6 +407,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   openModal: (modal) => set({ activeModal: modal }),
   closeModal: () => set({ activeModal: null }),
   setUnlocked: (v) => set({ isUnlocked: v }),
+  toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+  setTheme: (t) => set({ theme: t }),
 
   // ── 맵 초기화 ─────────────────────────────────
   clearGrid: () => {

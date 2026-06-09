@@ -12,6 +12,12 @@
           sessionStorage.removeItem('spa_redirect');
           history.replaceState(null, '', '/RayTracer/' + redirect);
         }
+        // 첫 페인트 전 테마 적용 (깜빡임 방지)
+        try {
+          if (localStorage.getItem('ray-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
       })();
     </script>
   </head>

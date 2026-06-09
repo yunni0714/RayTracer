@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from './hooks/useAuth';
+import { useTheme } from './hooks/useTheme';
 import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
 import { EditorPage } from './pages/EditorPage';
@@ -45,6 +46,7 @@ function useUrlMapLoader() {
 }
 
 export function App() {
+  useTheme();
   useAuth();
   useUrlMapLoader();
 

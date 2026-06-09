@@ -2,13 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════════════
+   디자인 토큰 — 클린 라이트 기반 + 다크모드
+   .dark 클래스가 <html>에 붙으면 다크 토큰으로 전환된다.
+   ════════════════════════════════════════════════════════ */
+:root {
+  /* 표면 / 배경 */
+  --canvas:      #eef2f7;
+  --surface:     #ffffff;
+  --surface-2:   #f5f8fc;
+  --surface-3:   #eef2f7;
+  /* 경계 */
+  --line:        #dbe3ec;
+  --line-strong: #c2cedd;
+  /* 텍스트 */
+  --text:        #1e293b;
+  --text-muted:  #6b7a90;
+  /* 시맨틱 */
+  --primary:     #2563eb;
+  --primary-ink: #ffffff;
+  --success:     #16a34a;
+  --danger:      #dc2626;
+  --warning:     #f59e0b;
+  --accent:      #7c3aed;
+  --accent-soft: #f3e8ff;
+  /* 보드 / 레이저 */
+  --grid-bg:     #f8fafc;
+  --cell:        #ffffff;
+  --cell-border: #e2e8f0;
+  --cell-marker: #aab6c6;
+  --laser:       #ef4444;
+  /* 난이도 */
+  --diff-tutor:  #3498db;
+  --diff-easy:   #22c55e;
+  --diff-normal: #f59e0b;
+  --diff-hard:   #e67e22;
+  --diff-insane: #ef4444;
+  --diff-none:   #cbd5e1;
+  --diff-none-ink: #475569;
+  /* 그림자 / 스크롤바 */
+  --shadow-sm:   0 2px 10px rgba(15, 23, 42, .06);
+  --shadow-md:   0 10px 24px rgba(15, 23, 42, .10);
+  --scroll-thumb:#cbd5e1;
+}
+
+.dark {
+  --canvas:      #0b1020;
+  --surface:     #121a2e;
+  --surface-2:   #0e1528;
+  --surface-3:   #1b2540;
+  --line:        #243049;
+  --line-strong: #324264;
+  --text:        #e6edf6;
+  --text-muted:  #8a99b8;
+  --primary:     #3b82f6;
+  --primary-ink: #ffffff;
+  --success:     #22c55e;
+  --danger:      #f87171;
+  --warning:     #fbbf24;
+  --accent:      #a78bfa;
+  --accent-soft: #2a1f45;
+  --grid-bg:     #0d1426;
+  --cell:        #0f1830;
+  --cell-border: #1e2a44;
+  --cell-marker: #3a4a6a;
+  --laser:       #ff4d5e;
+  --diff-tutor:  #3b9fe0;
+  --diff-easy:   #34d27d;
+  --diff-normal: #fbb024;
+  --diff-hard:   #f08a3c;
+  --diff-insane: #f8717a;
+  --diff-none:   #3a465f;
+  --diff-none-ink: #b8c4d8;
+  --shadow-sm:   0 2px 12px rgba(0, 0, 0, .40);
+  --shadow-md:   0 12px 28px rgba(0, 0, 0, .55);
+  --scroll-thumb:#324264;
+}
+
+html, body { background: var(--canvas); color: var(--text); }
+html { transition: background-color .2s ease, color .2s ease; }
+
 /* 교체 불가한 CSS: 그리드 셀 코너 마커 */
 .grid-cell {
   background-image:
-    radial-gradient(circle at 3px 3px, #aaa 2px, transparent 2px),
-    radial-gradient(circle at calc(100% - 3px) 3px, #aaa 2px, transparent 2px),
-    radial-gradient(circle at 3px calc(100% - 3px), #aaa 2px, transparent 2px),
-    radial-gradient(circle at calc(100% - 3px) calc(100% - 3px), #aaa 2px, transparent 2px);
+    radial-gradient(circle at 3px 3px, var(--cell-marker) 2px, transparent 2px),
+    radial-gradient(circle at calc(100% - 3px) 3px, var(--cell-marker) 2px, transparent 2px),
+    radial-gradient(circle at 3px calc(100% - 3px), var(--cell-marker) 2px, transparent 2px),
+    radial-gradient(circle at calc(100% - 3px) calc(100% - 3px), var(--cell-marker) 2px, transparent 2px);
 }
 
 /* 커스텀 스크롤바 숨기기 */
@@ -35,20 +115,20 @@
 
 /* ── 라이브러리 카드 v2 ──────────────────────────────── */
 .map-card-v2 {
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   display: flex;
   flex-direction: column;
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--line);
 }
 .map-card-v2:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.1);
-  border-color: #cbd5e1;
+  box-shadow: var(--shadow-md);
+  border-color: var(--line-strong);
 }
 
 /* ── 미니 그리드 v2 ──────────────────────────────────── */
@@ -58,14 +138,14 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(5, 1fr);
-  background-color: #f8fafc;
-  border: 2px solid #e2e8f0;
+  background-color: var(--grid-bg);
+  border: 2px solid var(--cell-border);
   border-radius: 8px;
   padding: 4px;
   box-sizing: border-box;
 }
 .mini-cell-v2 {
-  box-shadow: inset 0 0 0 1px #e2e8f0;
+  box-shadow: inset 0 0 0 1px var(--cell-border);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -86,12 +166,12 @@
   text-align: center;
   display: inline-block;
 }
-.diff-pill.diff-Tutor   { background: #3498db; }
-.diff-pill.diff-Easy    { background: #2ecc71; }
-.diff-pill.diff-Normal  { background: #f39c12; }
-.diff-pill.diff-Hard    { background: #e67e22; }
-.diff-pill.diff-Insane  { background: #e74c3c; }
-.diff-pill.diff-None    { background: #cbd5e1; color: #475569; }
+.diff-pill.diff-Tutor   { background: var(--diff-tutor); }
+.diff-pill.diff-Easy    { background: var(--diff-easy); }
+.diff-pill.diff-Normal  { background: var(--diff-normal); }
+.diff-pill.diff-Hard    { background: var(--diff-hard); }
+.diff-pill.diff-Insane  { background: var(--diff-insane); }
+.diff-pill.diff-None    { background: var(--diff-none); color: var(--diff-none-ink); }
 
 /* ── 수평 스크롤 섹션 ────────────────────────────────── */
 .horizontal-scroll-section {
@@ -102,10 +182,10 @@
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 .horizontal-scroll-section::-webkit-scrollbar { height: 6px; }
-.horizontal-scroll-section::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.horizontal-scroll-section::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
 .horizontal-scroll-section .map-card-v2 {
   width: 260px;
   flex: 0 0 auto;
@@ -118,15 +198,15 @@
   flex-direction: row;
   gap: 14px;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 12px;
   cursor: pointer;
-  background: #fafafa;
+  background: var(--surface-2);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .next-map-card:hover {
-  border-color: #2980b9;
-  box-shadow: 0 2px 8px rgba(41,128,185,0.12);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(41, 128, 185, 0.12);
   transform: translateX(2px);
 }
 
@@ -135,13 +215,13 @@
   display: flex;
   flex-direction: row;
   gap: 12px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px;
   transition: border-color 0.2s;
 }
-.suggestion-item:hover { border-color: #cbd5e1; }
+.suggestion-item:hover { border-color: var(--line-strong); }
 
 /* ── 제안 목록 스크롤 ────────────────────────────────── */
 .suggestion-list {
@@ -152,7 +232,7 @@
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 .suggestion-list::-webkit-scrollbar { width: 4px; }
-.suggestion-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.suggestion-list::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
