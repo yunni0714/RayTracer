@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RayTracer — 디자인 시안 (3 방향)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: #0d1117; color: #c9d1d9; padding: 28px 20px 80px; line-height: 1.5;
+  }
+  .page-head { max-width: 1200px; margin: 0 auto 28px; }
+  .page-head h1 { font-size: 24px; color: #fff; letter-spacing: -0.5px; }
+  .page-head p { color: #8b949e; font-size: 14px; margin-top: 8px; max-width: 760px; }
+  .page-head .hint { margin-top: 12px; font-size: 13px; color: #58a6ff; }
+
+  .themes { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  /* ── theme shell ── */
+  .theme { border-radius: 18px; overflow: hidden; border: 1px solid #21262d; }
+  .theme-label { padding: 14px 20px; font-weight: 800; font-size: 16px; display: flex; align-items: baseline; gap: 10px; color: #fff; }
+  .theme-label small { font-weight: 500; font-size: 13px; color: #8b949e; }
+  .stage { background: var(--bg); padding: 22px; }
+
+  /* ── header bar ── */
+  .pv-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); margin-bottom: 18px; flex-wrap: wrap; }
+  .pv-logo { font-weight: 800; letter-spacing: -0.5px; color: var(--text); font-size: 15px; margin-right: auto; }
+  .pv-logo .dot { color: var(--primary); }
+
+  /* ── layout of fragments ── */
+  .frags { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .frag-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+  /* ── grid ── */
+  .pv-grid { display: grid; grid-template-columns: repeat(5, var(--cs, 56px)); grid-template-rows: repeat(5, var(--cs, 56px));
+             background: var(--grid-bg); border: 2px solid var(--cell-border); border-radius: var(--radius); position: relative; }
+  .pv-cell { border: 1px solid var(--cell-border); background: var(--cell-bg); display: flex; align-items: center; justify-content: center; }
+  .pv-piece { width: 74%; height: 74%; display: flex; }
+  .pv-piece svg { width: 100%; height: 100%; filter: var(--piece-filter); }
+  .pv-laser { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .pv-laser polyline { fill: none; stroke: var(--laser); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: var(--laser-glow); }
+  .pv-solved { margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--success); display: flex; align-items: center; gap: 5px; }
+
+  /* ── panel (palette) ── */
+  .pv-panel { width: 240px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+  .pv-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .pv-tab { flex: 1; padding: 7px; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--muted); border: none; cursor: pointer; }
+  .pv-tab.active { background: var(--primary); color: var(--primary-ink); }
+  .pv-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pv-tool { aspect-ratio: 1; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface-2); display: flex; align-items: center; justify-content: center; padding: 9px; position: relative; }
+  .pv-tool svg { width: 100%; height: 100%; filter: var(--piece-filter); }
+  .pv-tool.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .pv-tool .badge { position: absolute; right: 3px; bottom: 1px; font-size: 11px; font-weight: 800; color: var(--primary); }
+  .pv-mods { display: flex; flex-direction: column; gap: 6px; }
+  .pv-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+
+  /* ── buttons ── */
+  .btn { font-size: 12px; font-weight: 600; padding: 8px 10px; border-radius: var(--radius); border: 1px solid transparent; cursor: pointer; transition: all .15s; text-align: center; }
+  .btn-primary { background: var(--primary); color: var(--primary-ink); }
+  .btn-accent  { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-ghost   { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+  .btn:hover { filter: brightness(1.07); }
+  .btn.is-hover { filter: brightness(1.07); }
+  .btn.is-active { filter: brightness(.9); transform: translateY(1px); }
+  .mod { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .mod.is-on { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
+
+  /* ── map card ── */
+  .pv-card { width: 240px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+  .pv-card .mini { padding: 14px 14px 0; display: flex; justify-content: center; }
+  .pv-card .body { padding: 12px 16px 16px; }
+  .pv-card h4 { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.4px; }
+  .pv-card .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pv-card .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .pv-pill { font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 6px; color: #fff; background: var(--diff-normal); }
+  .pv-react { margin-left: auto; display: flex; gap: 10px; font-size: 13px; font-weight: 700; }
+  .pv-react .ok { color: var(--success); }
+  .pv-react .god { color: var(--accent); }
+
+  /* ── token strip ── */
+  .tokens { margin-top: 20px; padding-top: 18px; border-top: 1px dashed var(--border); display: flex; gap: 26px; flex-wrap: wrap; }
+  .tok-group { display: flex; flex-direction: column; gap: 8px; }
+  .tok-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .swatches { display: flex; gap: 6px; }
+  .sw { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(127,127,127,.25); display: flex; align-items: flex-end; justify-content: center; }
+  .sw span { font-size: 8px; color: rgba(127,127,127,.9); padding-bottom: 1px; }
+  .type-scale { color: var(--text); }
+  .type-scale .t1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .type-scale .t2 { font-size: 14px; }
+  .type-scale .t3 { font-size: 12px; color: var(--muted); }
+  .btn-states { display: flex; gap: 8px; align-items: center; }
+  .radii { display: flex; gap: 8px; align-items: center; }
+  .radii .r { width: 30px; height: 30px; background: var(--surface-2); border: 1px solid var(--border); }
+  .radii .r.s { border-radius: 6px; } .radii .r.m { border-radius: var(--radius); } .radii .r.l { border-radius: var(--radius-lg); }
+
+  /* ════ THEME TOKENS ════ */
+  .theme-clean .theme-label { background: #1b2230; }
+  .theme-clean .stage {
+    --bg:#eef2f7; --surface:#ffffff; --surface-2:#f6f8fb; --border:#e2e8f0; --text:#1e293b; --muted:#64748b;
+    --primary:#2563eb; --primary-ink:#ffffff; --success:#16a34a; --danger:#dc2626; --warning:#d97706;
+    --accent:#7c3aed; --accent-soft:#f3e8ff; --diff-normal:#f59e0b;
+    --grid-bg:#f8fafc; --cell-bg:#ffffff; --cell-border:#e2e8f0;
+    --laser:#ef4444; --laser-glow: drop-shadow(0 0 3px rgba(239,68,68,.45));
+    --radius:8px; --radius-lg:12px; --shadow:0 2px 10px rgba(15,23,42,.06); --piece-filter:none;
+  }
+  .theme-dark .theme-label { background: #0c1326; }
+  .theme-dark .stage {
+    --bg:#070b16; --surface:#111a30; --surface-2:#0d1426; --border:#22304c; --text:#e6edf6; --muted:#8595b3;
+    --primary:#22d3ee; --primary-ink:#04121a; --success:#4ade80; --danger:#fb7185; --warning:#fbbf24;
+    --accent:#e879f9; --accent-soft:#2c1840; --diff-normal:#f59e0b;
+    --grid-bg:#0a1124; --cell-bg:#0f1830; --cell-border:#1d2a46;
+    --laser:#ff3b6b; --laser-glow: drop-shadow(0 0 5px #ff3b6b) drop-shadow(0 0 11px rgba(255,59,107,.65));
+    --radius:8px; --radius-lg:12px; --shadow:0 6px 24px rgba(0,0,0,.55); --piece-filter: brightness(0) invert(1);
+  }
+  .theme-playful .theme-label { background: #2a2018; }
+  .theme-playful .stage {
+    --bg:#fff5ea; --surface:#ffffff; --surface-2:#fff0e2; --border:#fadcc2; --text:#3a2c23; --muted:#a08775;
+    --primary:#f97316; --primary-ink:#ffffff; --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+    --accent:#8b5cf6; --accent-soft:#ede9fe; --diff-normal:#f59e0b;
+    --grid-bg:#fffaf3; --cell-bg:#ffffff; --cell-border:#f4ddc6;
+    --laser:#fb5d3b; --laser-glow: drop-shadow(0 2px 5px rgba(251,93,59,.4));
+    --radius:14px; --radius-lg:20px; --shadow:0 8px 22px rgba(180,120,60,.16); --piece-filter:none;
+  }
+
+  @media (max-width: 760px) { .frags { flex-direction: column; } .pv-panel, .pv-card { width: 100%; max-width: 320px; } }
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>RayTracer — 디자인 시안</h1>
+    <p>같은 UI 조각(① 5×5 보드 + 레이저, ② 팔레트 패널, ③ 라이브러리 맵카드)을 세 가지 비주얼 방향으로 렌더했어. 실제 기물 SVG 그대로 사용. 색·타이포·버튼 상태·radius 토큰은 각 방향 아래에 같이 표기 — 고른 게 바로 디자인 토큰이 됨.</p>
+    <p class="hint">→ 한 방향을 고르거나, "보드는 다크 / 카드는 클린" 식으로 섞어서 알려줘. 세부(색 하나 바꿔 등)도 환영.</p>
+  </div>
+
+  <div class="themes">
+    <div class="theme theme-clean">
+      <div class="theme-label">A · 클린 라이트 <small>뉴트럴 + 포인트색. 차분·정돈, 가독성 우선. 현재 톤의 정제 버전.</small></div>
+      <div class="stage"></div>
+    </div>
+    <div class="theme theme-dark">
+      <div class="theme-label">B · 다크 테크 / 네온 레이저 <small>어두운 배경 + 네온 빔 글로우. 레이저 정체성 극대화, 대비 강함.</small></div>
+      <div class="stage"></div>
+    </div>
+    <div class="theme theme-playful">
+      <div class="theme-label">C · 플레이풀 소프트 <small>둥근 radius·생동 색·부드러운 그림자. 가벼운 퍼즐게임 느낌.</small></div>
+      <div class="stage"></div>
+    </div>
+  </div>
+
+<script>
+  const ART = {
+    ray: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="none" stroke="#333" stroke-width="8"/><path d="M50 45.67 v-41.03" fill="#040000" stroke="#333" stroke-width="8" stroke-linecap="square"/></svg>`,
+    target: `<svg viewBox="0 0 100 100"><path d="M50 12 l38 38 -38 38 -38 -38 38 -38 Z" fill="none" stroke="#333" stroke-width="8" stroke-linejoin="miter"/><path d="M40.5 23 l9 -9 10 9 -10 9 -9 -9 Z" fill="none" stroke="#333" stroke-width="8" stroke-linejoin="miter"/></svg>`,
+    mirror: `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+    half_mirror: `<svg viewBox="0 0 100 100"><path d="M10 80 L70 20 M30 90 L90 30" stroke="#333" stroke-width="8" stroke-linecap="square"/></svg>`,
+    block: `<svg viewBox="0 0 100 100"><path d="M15 15 L85 85 M85 15 L15 85" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+    tunnel: `<svg viewBox="0 0 100 100"><path d="M11.75 20 v60 M88.25 20 v60" fill="none" stroke="#333" stroke-width="10" stroke-linecap="square"/></svg>`,
+    single_mirror: `<svg viewBox="0 0 100 100"><path d="M15 85 L85 15 L85 85 Z" fill="none" stroke="#333" stroke-width="10" stroke-linejoin="miter"/></svg>`,
+  };
+
+  // 샘플 맵: ray(2,0) → mirror(2,2) → target(0,2). 나머지는 장식.
+  const layout = {
+    '2,0': 'ray', '2,2': 'mirror', '0,2': 'target',
+    '2,4': 'half_mirror', '4,4': 'block', '4,0': 'single_mirror', '0,4': 'tunnel',
+  };
+
+  function gridHTML(cs, withLaser) {
+    let cells = '';
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+      const t = layout[r + ',' + c];
+      cells += `<div class="pv-cell">${t ? `<div class="pv-piece">${ART[t]}</div>` : ''}</div>`;
+    }
+    const laser = withLaser
+      ? `<svg class="pv-laser" viewBox="0 0 280 280" preserveAspectRatio="none"><polyline points="28,140 140,140 140,28"/></svg>`
+      : '';
+    return `<div class="pv-grid" style="--cs:${cs}px">${cells}${laser}</div>`;
+  }
+
+  function tool(t, sel, badge) {
+    return `<div class="pv-tool${sel ? ' sel' : ''}">${ART[t]}${badge ? `<span class="badge">×${badge}</span>` : ''}</div>`;
+  }
+
+  const headerHTML = `
+    <div class="pv-header">
+      <div class="pv-logo">◈ PROJECT <span class="dot">RAY</span></div>
+      <button class="btn btn-ghost">+ 새 맵</button>
+      <button class="btn btn-ghost">📚 라이브러리</button>
+      <button class="btn btn-primary">▶ 테스트 모드</button>
+      <button class="btn btn-accent">로그인</button>
+    </div>`;
+
+  const paletteHTML = `
+    <div>
+      <div class="frag-title">② 팔레트</div>
+      <div class="pv-panel">
+        <div class="pv-tabs">
+          <button class="pv-tab active">초급</button>
+          <button class="pv-tab">중급</button>
+          <button class="pv-tab">상급</button>
+        </div>
+        <div class="pv-tools">
+          ${tool('ray', true)}${tool('target')}${tool('mirror')}
+          ${tool('half_mirror')}${tool('block')}${tool('tunnel')}
+        </div>
+        <div class="pv-mods">
+          <button class="btn mod">🔄 회전 가능</button>
+          <button class="btn mod is-on">🔒 회전 불가</button>
+          <button class="btn mod">🎒 유저 지급</button>
+        </div>
+        <div class="pv-acts">
+          <button class="btn btn-ghost">🗑 전체 지우기</button>
+          <button class="btn btn-success">📥 불러오기</button>
+          <button class="btn btn-ghost">📤 추출</button>
+          <button class="btn btn-accent">☁️ 등록</button>
+        </div>
+      </div>
+    </div>`;
+
+  const cardHTML = `
+    <div>
+      <div class="frag-title">③ 맵 카드</div>
+      <div class="pv-card">
+        <div class="mini">${gridHTML(34, false)}</div>
+        <div class="body">
+          <h4>거울의 방</h4>
+          <div class="meta">by RayMaster · 2일 전</div>
+          <div class="row">
+            <span class="pv-pill">NORMAL</span>
+            <div class="pv-react"><span class="ok">✅ 24</span><span class="god">👑 7</span></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const boardHTML = `
+    <div>
+      <div class="frag-title">① 보드 + 레이저</div>
+      ${gridHTML(56, true)}
+      <div class="pv-solved">✔ 타겟 명중 — 클리어!</div>
+    </div>`;
+
+  function tokensHTML() {
+    const sw = (v, n) => `<div class="sw" style="background:${v}"><span>${n}</span></div>`;
+    return `
+    <div class="tokens">
+      <div class="tok-group">
+        <div class="tok-label">색 토큰</div>
+        <div class="swatches">
+          ${sw('var(--surface)','surf')}${sw('var(--border)','bord')}${sw('var(--primary)','pri')}
+          ${sw('var(--success)','ok')}${sw('var(--danger)','dgr')}${sw('var(--accent)','acc')}
+        </div>
+      </div>
+      <div class="tok-group">
+        <div class="tok-label">타이포</div>
+        <div class="type-scale"><div class="t1">제목 Title</div><div class="t2">본문 Body 14</div><div class="t3">캡션 Caption 12</div></div>
+      </div>
+      <div class="tok-group">
+        <div class="tok-label">버튼 상태</div>
+        <div class="btn-states">
+          <button class="btn btn-primary">기본</button>
+          <button class="btn btn-primary is-hover">호버</button>
+          <button class="btn btn-primary is-active">활성</button>
+        </div>
+      </div>
+      <div class="tok-group">
+        <div class="tok-label">Radius</div>
+        <div class="radii"><div class="r s"></div><div class="r m"></div><div class="r l"></div></div>
+      </div>
+    </div>`;
+  }
+
+  const stageHTML = headerHTML
+    + `<div class="frags">${boardHTML}${paletteHTML}${cardHTML}</div>`
+    + tokensHTML();
+
+  document.querySelectorAll('.stage').forEach(el => { el.innerHTML = stageHTML; });
+</script>
+</body>
+</html>
