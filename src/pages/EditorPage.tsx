@@ -30,7 +30,7 @@ export function EditorPage() {
   })));
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-canvas text-ink">
       <Header />
 
       <main className="flex-1 overflow-hidden">
@@ -46,7 +46,7 @@ export function EditorPage() {
             </div>
 
             {/* ② RIGHT: palette-area (~380px) */}
-            <div className="w-96 shrink-0 bg-white border-l border-gray-200 p-3 overflow-y-auto flex flex-col gap-2">
+            <div className="w-96 shrink-0 bg-surface border-l border-line p-3 overflow-y-auto flex flex-col gap-2">
               {/* 레이저 버튼 (항상 표시) */}
               <button
                 onClick={toggleLaser}

@@ -7,7 +7,7 @@ export function Header() {
   const {
     currentUserUid, currentUserNickname, isEditorMode, isLibraryMode,
     toggleMode, setLibraryMode, openModal, showNotification, resetEditorState,
-    currentLoadedMapObj, isMapEditMode,
+    currentLoadedMapObj, isMapEditMode, theme, toggleTheme,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -20,6 +20,8 @@ export function Header() {
     resetEditorState: s.resetEditorState,
     currentLoadedMapObj: s.currentLoadedMapObj,
     isMapEditMode: s.isMapEditMode,
+    theme: s.theme,
+    toggleTheme: s.toggleTheme,
   })));
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -82,6 +84,15 @@ export function Header() {
           {isEditorMode ? '▶ 테스트 모드' : '✏️ 에디터 모드'}
         </button>
       )}
+
+      <button
+        onClick={toggleTheme}
+        aria-label="테마 전환"
+        title={theme === 'dark' ? '라이트 모드로' : '다크 모드로'}
+        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors"
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
 
       {currentUserUid ? (
         <div className="relative" ref={dropdownRef}>
