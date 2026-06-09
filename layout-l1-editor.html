@@ -51,10 +51,12 @@
 
   /* ── PALETTE (left) ── */
   .palette{width:248px;display:flex;flex-direction:column;}
-  .pal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:12px;display:flex;flex-direction:column;gap:12px;}
-  .tabs{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-  .tabs button{flex:1;padding:8px 4px;font-size:12px;font-weight:700;background:var(--surface);color:var(--muted);border:none;cursor:pointer;}
-  .tabs button.on{background:#1f2937;color:#fff;}
+  .pal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;display:flex;flex-direction:column;}
+  .tabs{display:flex;}
+  .tabs button{flex:1;padding:10px 4px;font-size:12px;font-weight:700;background:var(--surface);color:var(--muted);border:none;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;}
+  .tabs button:last-child{border-right:none;}
+  .tabs button.on{background:#1f2937;color:#fff;border-bottom-color:#1f2937;}
+  .pal-inner{padding:12px;display:flex;flex-direction:column;gap:12px;}
   .tool-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
   .tile{aspect-ratio:1;border:2px solid var(--border);border-radius:var(--r);background:var(--surface);display:flex;align-items:center;justify-content:center;padding:10px;cursor:pointer;}
   .tile:hover{border-color:#aab6c6;}
@@ -122,15 +124,17 @@
           <div class="palette">
             <div class="pal-card">
               <div class="tabs"><button class="on">초급 기물</button><button>중급 기물</button><button>상급 기물</button></div>
-              <div class="tool-grid" id="edTools"></div>
-              <div class="mods-h">특성 부여 옵션 (선택 후 포인터로 덧칠)</div>
-              <div class="mods">
-                <div class="mod rot">🔄 회전 가능</div>
-                <div class="mod lock on">🔒 회전 불가</div>
-                <div class="mod inv">🎒 유저 지급</div>
-              </div>
-              <div class="pal-acts">
-                <button class="mini-btn">🗑 전체 지우기</button><button class="mini-btn">📥 JSON</button>
+              <div class="pal-inner">
+                <div class="tool-grid" id="edTools"></div>
+                <div class="mods-h">특성 부여 옵션 (선택 후 포인터로 덧칠)</div>
+                <div class="mods">
+                  <div class="mod rot">🔄 회전 가능</div>
+                  <div class="mod lock on">🔒 회전 불가</div>
+                  <div class="mod inv">🎒 유저 지급</div>
+                </div>
+                <div class="pal-acts">
+                  <button class="mini-btn">🗑 전체 지우기</button><button class="mini-btn">📥 JSON</button>
+                </div>
               </div>
             </div>
           </div>
@@ -174,12 +178,14 @@
           <div class="palette">
             <div class="pal-card">
               <div class="tabs"><button class="on">초급 기물</button><button>중급 기물</button><button>상급 기물</button></div>
-              <div class="tool-grid" id="nmTools"></div>
-              <div class="mods-h">특성 부여 옵션 (선택 후 포인터로 덧칠)</div>
-              <div class="mods">
-                <div class="mod rot">🔄 회전 가능</div>
-                <div class="mod lock">🔒 회전 불가</div>
-                <div class="mod inv on">🎒 유저 지급</div>
+              <div class="pal-inner">
+                <div class="tool-grid" id="nmTools"></div>
+                <div class="mods-h">특성 부여 옵션 (선택 후 포인터로 덧칠)</div>
+                <div class="mods">
+                  <div class="mod rot">🔄 회전 가능</div>
+                  <div class="mod lock">🔒 회전 불가</div>
+                  <div class="mod inv on">🎒 유저 지급</div>
+                </div>
               </div>
             </div>
           </div>
