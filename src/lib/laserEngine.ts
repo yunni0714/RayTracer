@@ -53,7 +53,19 @@ interface BeamOutcome {
 
 interface PieceBehavior {
   isTarget?: boolean; // 승리 판정에 포함되는 필수 표적
-  interact: (inDir: number, cell: CellData) => BeamOutcome;
+  // 조건부(상태형) 기물: 고정점 루프가 incidence 기반으로 활성 상태를 재평가한다.
+  // resolve 는 직전 패스의 입사 방향(기물 기준 상대각 집합)만 본다 → 큐 순서 무관, 결정적.
+  conditional?: {
+    init: boolean;
+    resolve: (relDirs: Set<number>) => boolean;
+  };
+  emits?: boolean; // 활성 상태에서 (rotation+270)% 방향으로 빔 발사
+  interact: (inDir: number, cell: CellData, active?: boolean) => BeamOutcome;
+}
+
+// 기물 기준 상대각: rel = (inDir - rotation + 360) % 360
+function relDir(inDir: number, rotation: number): number {
+  return (inDir - rotation + 360) % 360;
 }
 
 const fullMirror = (saBase: number): PieceBehavior['interact'] =>
@@ -149,11 +161,94 @@ export const REGISTRY: Partial<Record<PieceType, PieceBehavior>> = {
   },
   // 높은 블럭: 빔 완전 차단 (기존 block 은 통과 — 별개 타입)
   high_block: { interact: () => ({ partial: true }) },
+
+  /* ── Group B: 조건부/상태형 기믹 기물 (고정점 루프 필요) ── */
+
+  // 관문: 아래(제어축, rel 270) 피격 시 좌우(수직축, rel 0/180) 통과 개방
+  transistor_gate: {
+    conditional: {
+      init: false,
+      resolve: (rels) => rels.has(270),
+    },
+    interact: (inDir, cell, active) => {
+      const rel = relDir(inDir, cell.rotation);
+      if (rel === 270) return {};                          // 제어 빔 흡수
+      if (rel === 0 || rel === 180) {
+        return active ? { outDirs: [inDir] } : { partial: true };
+      }
+      return { partial: true };                            // 위/대각 차단
+    },
+  },
+  // 교차 관문: H·V 둘 다 있어야 둘 다 통과 (AND)
+  cross_gate: {
+    conditional: {
+      init: false,
+      resolve: (rels) =>
+        (rels.has(0) || rels.has(180)) && (rels.has(90) || rels.has(270)),
+    },
+    interact: (inDir, cell, active) => {
+      const rel = relDir(inDir, cell.rotation);
+      if (rel % 90 !== 0) return { partial: true };        // 대각 차단
+      return active ? { outDirs: [inDir] } : { partial: true };
+    },
+  },
+  // 우선순위 관문: 둘 다 오면 직선축(rel 0/180)만 통과, 하나만 오면 그대로 통과
+  priority_gate: {
+    conditional: {
+      init: false, // active = "양 축 동시 입사" 상태
+      resolve: (rels) =>
+        (rels.has(0) || rels.has(180)) && (rels.has(90) || rels.has(270)),
+    },
+    interact: (inDir, cell, active) => {
+      const rel = relDir(inDir, cell.rotation);
+      if (rel % 90 !== 0) return { partial: true };        // 대각 차단
+      if (!active) return { outDirs: [inDir] };            // 단독 축은 통과
+      return rel === 0 || rel === 180 ? { outDirs: [inDir] } : { partial: true };
+    },
+  },
+  // 표적 프로젝터(광집기): 측면(rel 0/180) 피격 시에만 정면으로 발사 + 충족
+  target_projector: {
+    isTarget: true,
+    emits: true,
+    conditional: {
+      init: false,
+      resolve: (rels) => rels.has(0) || rels.has(180),
+    },
+    interact: (inDir, cell) => {
+      const rel = relDir(inDir, cell.rotation);
+      if (rel === 0 || rel === 180) return { satisfied: true }; // 측면 흡수 + 충족
+      return { partial: true };                                  // 그 외 차단
+    },
+  },
+  // 반전 프로젝터(가변추출기): 기본 발사, 다른 3면(rel 0/180/270) 피격 시 꺼짐
+  inverting_projector: {
+    emits: true,
+    conditional: {
+      init: true,
+      resolve: (rels) => !(rels.has(0) || rels.has(180) || rels.has(270)),
+    },
+    interact: (inDir, cell) => {
+      const rel = relDir(inDir, cell.rotation);
+      if (rel === 0 || rel === 180 || rel === 270) return {};    // 흡수 (소등 제어)
+      return { partial: true };                                  // 정면/대각 차단
+    },
+  },
 };
 
-/* ── 순수 계산 ─────────────────────────────────────────── */
+/* ── 순수 계산 (고정점 루프) ───────────────────────────── */
 
-export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
+const MAX_ITERS = 8;
+
+interface TraceResult {
+  segments: BeamSegment[];
+  incidence: Map<string, CellIncidence>;
+}
+
+// 주어진 조건부 상태(states)로 전체 빔을 1패스 추적한다.
+function trace(
+  mapData: (CellData | null)[][],
+  states: Map<string, boolean>,
+): TraceResult {
   const gridSize = mapData.length;
   const segments: BeamSegment[] = [];
   const incidence = new Map<string, CellIncidence>();
@@ -169,11 +264,15 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
     if (satisfied) inc.satisfied = true;
   }
 
+  // 빔 소스: 발사기 + 활성 상태의 프로젝터
   const beams: { x: number; y: number; dir: number }[] = [];
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       const cell = mapData[r][c];
-      if (cell?.type === 'ray') {
+      if (!cell) continue;
+      if (cell.type === 'ray') {
+        beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
+      } else if (REGISTRY[cell.type]?.emits && states.get(`${c},${r}`)) {
         beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
       }
     }
@@ -198,7 +297,7 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
 
     const item = mapData[nextY][nextX];
     const outcome: BeamOutcome = item
-      ? (REGISTRY[item.type] ?? PASSIVE).interact(cDir, item)
+      ? (REGISTRY[item.type] ?? PASSIVE).interact(cDir, item, states.get(`${nextX},${nextY}`))
       : { outDirs: [cDir] };
 
     record(nextX, nextY, cDir, !!outcome.satisfied);
@@ -206,6 +305,54 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
 
     for (const d of outcome.outDirs ?? []) {
       beams.push({ x: nextX, y: nextY, dir: d });
+    }
+  }
+
+  return { segments, incidence };
+}
+
+export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
+  const gridSize = mapData.length;
+
+  // 조건부 기물 수집 + 초기 상태
+  const conditionals: { key: string; cell: CellData; behavior: PieceBehavior }[] = [];
+  let states = new Map<string, boolean>();
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const cell = mapData[r][c];
+      const behavior = cell ? REGISTRY[cell.type] : undefined;
+      if (cell && behavior?.conditional) {
+        const key = `${c},${r}`;
+        conditionals.push({ key, cell, behavior });
+        states.set(key, behavior.conditional.init);
+      }
+    }
+  }
+
+  // 고정점 반복: 직전 패스의 incidence 로 상태 재평가, 수렴 시 종료.
+  // MAX_ITERS 내 미수렴(진동)이면 전부 OFF 강제 후 최종 1패스 → 결정적 종결.
+  let result = trace(mapData, states);
+  if (conditionals.length > 0) {
+    let converged = false;
+    for (let iter = 0; iter < MAX_ITERS; iter++) {
+      const next = new Map<string, boolean>();
+      for (const { key, cell, behavior } of conditionals) {
+        const dirs = result.incidence.get(key)?.dirs ?? new Set<number>();
+        const rels = new Set<number>();
+        for (const d of dirs) rels.add(relDir(d, cell.rotation));
+        next.set(key, behavior.conditional!.resolve(rels));
+      }
+      let same = true;
+      for (const [k, v] of next) {
+        if (states.get(k) !== v) { same = false; break; }
+      }
+      if (same) { converged = true; break; }
+      states = next;
+      result = trace(mapData, states);
+    }
+    if (!converged) {
+      states = new Map([...states.keys()].map(k => [k, false]));
+      result = trace(mapData, states);
     }
   }
 
@@ -217,14 +364,14 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
       const cell = mapData[r][c];
       if (cell && REGISTRY[cell.type]?.isTarget) {
         targetsTotal++;
-        if (incidence.get(`${c},${r}`)?.satisfied) targetsHit++;
+        if (result.incidence.get(`${c},${r}`)?.satisfied) targetsHit++;
       }
     }
   }
 
   return {
-    segments,
-    incidence,
+    segments: result.segments,
+    incidence: result.incidence,
     targetsTotal,
     targetsHit,
     solved: targetsTotal > 0 && targetsHit === targetsTotal,

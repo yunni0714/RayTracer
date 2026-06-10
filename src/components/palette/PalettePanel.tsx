@@ -7,7 +7,10 @@ import { Button, Tabs, TextArea, cx } from '../ui';
 import type { PieceType, CellData } from '../../types/game';
 
 const BASIC_TOOLS: PieceType[] = ['ray', 'target', 'mirror', 'half_mirror', 'block', 'tunnel', 'single_mirror', 'target_mirror_a', 'target_mirror_b'];
-const INTERMEDIATE_TOOLS: PieceType[] = ['diode', 'v_mirror_double', 'v_half_mirror_double', 'small_target', 'omni_target', 'high_block'];
+const INTERMEDIATE_TOOLS: PieceType[] = [
+  'diode', 'v_mirror_double', 'v_half_mirror_double', 'small_target', 'omni_target', 'high_block',
+  'transistor_gate', 'cross_gate', 'priority_gate', 'target_projector', 'inverting_projector',
+];
 const ADVANCED_TOOLS: PieceType[] = ['mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'diag_single_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror', 'v_target_mirror_a', 'v_target_mirror_b'];
 
 type Tab = 'basic' | 'intermediate' | 'advanced';
