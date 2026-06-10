@@ -26,10 +26,17 @@ export default {
         primary: {
           DEFAULT: 'var(--primary)',
           ink:     'var(--primary-ink)',
+          soft:    'var(--primary-soft)',
         },
         success:   'var(--success)',
-        danger:    'var(--danger)',
-        warning:   'var(--warning)',
+        danger: {
+          DEFAULT: 'var(--danger)',
+          soft:    'var(--danger-soft)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          soft:    'var(--warning-soft)',
+        },
         accent: {
           DEFAULT: 'var(--accent)',
           soft:    'var(--accent-soft)',

@@ -21,9 +21,12 @@
   /* 시맨틱 */
   --primary:     #2563eb;
   --primary-ink: #ffffff;
+  --primary-soft:#dbeafe;
   --success:     #16a34a;
   --danger:      #dc2626;
+  --danger-soft: #fee2e2;
   --warning:     #f59e0b;
+  --warning-soft:#fef3c7;
   --accent:      #7c3aed;
   --accent-soft: #f3e8ff;
   /* 보드 / 레이저 */
@@ -57,9 +60,12 @@
   --text-muted:  #8a99b8;
   --primary:     #3b82f6;
   --primary-ink: #ffffff;
+  --primary-soft:#16284a;
   --success:     #22c55e;
   --danger:      #f87171;
+  --danger-soft: #441b1b;
   --warning:     #fbbf24;
+  --warning-soft:#3a2e12;
   --accent:      #a78bfa;
   --accent-soft: #2a1f45;
   --grid-bg:     #0d1426;
