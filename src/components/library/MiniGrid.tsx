@@ -24,7 +24,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
     const cellSize = size / GRID_SIZE;
     return (
       <div
-        className="grid border border-gray-300 bg-white shrink-0"
+        className="grid border border-[var(--cell-border)] bg-[var(--cell)] shrink-0"
         style={{
           gridTemplateColumns: `repeat(${GRID_SIZE}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${GRID_SIZE}, ${cellSize}px)`,
@@ -38,7 +38,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
             return (
               <div
                 key={`${row}-${col}`}
-                className="border border-gray-200 flex items-center justify-center overflow-hidden"
+                className="border border-[var(--cell-border)] flex items-center justify-center overflow-hidden"
                 style={{ width: cellSize, height: cellSize }}
               >
                 {item && (

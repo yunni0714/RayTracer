@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSuggestionsFromDB, deleteSuggestionFromDB } from '../../lib/firebaseService';
 import { MiniGrid } from './MiniGrid';
+import { Button, Pill } from '../ui';
 import type { SuggestionDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
 import { GRID_SIZE } from '../../lib/svgArt';
@@ -72,24 +73,19 @@ export function SuggestionPanel() {
     }
   }
 
-  const btnBase: React.CSSProperties = {
-    border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
-    fontSize: 12, whiteSpace: 'nowrap', transition: 'background 0.2s', fontFamily: 'inherit',
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #e2e8f0', paddingBottom: 10 }}>
+    <div className="flex flex-col gap-3">
+      <p className="mb-1 pb-2.5 text-[13px] font-extrabold text-ink border-b-2 border-line">
         {panelTitle}
       </p>
 
       {loading ? (
-        <div style={{ padding: '30px 0', textAlign: 'center' }}>
-          <p style={{ color: '#94a3b8', fontSize: 14, fontWeight: 500 }}>불러오는 중...</p>
+        <div className="py-8 text-center">
+          <p className="text-sm font-medium text-ink-muted">불러오는 중...</p>
         </div>
       ) : suggestions.length === 0 ? (
-        <div style={{ padding: '40px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: 12, marginTop: 15 }}>
-          <p style={{ color: '#64748b', fontSize: 14, fontWeight: 500, lineHeight: 1.6, margin: 0 }}>
+        <div className="mt-4 px-5 py-10 text-center bg-surface-2 rounded-card">
+          <p className="text-sm font-medium text-ink-muted leading-relaxed">
             아직 등록된 제안이 없습니다.<br />첫 번째로 풀이를 뽐내보세요!
           </p>
         </div>
@@ -102,47 +98,41 @@ export function SuggestionPanel() {
             return (
               <div key={sug.id} className="suggestion-item">
                 {/* 미니 그리드 38% */}
-                <div style={{ width: '38%', flexShrink: 0 }}>
+                <div className="w-[38%] shrink-0">
                   <MiniGrid mapData={sugMapToDTO(sug.mapData)} variant="v2" />
                 </div>
 
                 {/* 내용 */}
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5 justify-center">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {sug.category === 'NG' ? (
-                      <span style={{ background: '#ef4444', color: 'white', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800 }}>🆖 기물 줄임</span>
+                      <Pill tone="danger">🆖 기물 줄임</Pill>
                     ) : (
-                      <span style={{ background: '#3b82f6', color: 'white', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800 }}>🔠 복수정답</span>
+                      <Pill tone="info">🔠 복수정답</Pill>
                     )}
-                    <span style={{ color: '#94a3b8', fontSize: 11 }}>{dateStr}</span>
+                    <span className="text-[11px] text-ink-muted">{dateStr}</span>
                   </div>
-                  <p style={{
-                    margin: 0, fontSize: 12, fontWeight: 600, color: '#1e293b', lineHeight: 1.5,
-                    display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>
+                  <p
+                    className="text-xs font-semibold text-ink leading-normal overflow-hidden"
+                    style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}
+                  >
                     {sug.comment}
                   </p>
                 </div>
 
                 {/* 액션 버튼 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, alignSelf: 'center' }}>
-                  <button
-                    onClick={() => testSuggestion(sug)}
-                    style={{ ...btnBase, padding: '9px 12px', background: '#10b981', color: 'white' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#059669')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#10b981')}
-                  >
+                <div className="flex flex-col gap-2 shrink-0 self-center">
+                  <Button variant="success" className="!text-xs whitespace-nowrap" onClick={() => testSuggestion(sug)}>
                     ▶ 이 풀이로 테스트
-                  </button>
+                  </Button>
                   {canDelete && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      className="!text-xs !bg-transparent !text-danger !border !border-danger whitespace-nowrap"
                       onClick={() => deleteSuggestion(sug.id)}
-                      style={{ ...btnBase, padding: '7px 12px', background: 'transparent', color: '#ef4444', border: '1px solid #f87171' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
                     >
                       🗑️ 삭제
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

@@ -2,12 +2,19 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { useMapReactions } from '../../hooks/useMapReactions';
 import { deleteMapFromDB } from '../../lib/firebaseService';
+import { Button, Pill, cx, type PillTone } from '../ui';
 import type { Difficulty } from '../../types/game';
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 
-const DIFF_COLORS: Record<Difficulty, string> = {
-  Tutor: '#3498db', Easy: '#2ecc71', Normal: '#f39c12', Hard: '#e67e22', Insane: '#e74c3c',
+const DIFF_TONE: Record<Difficulty, PillTone> = {
+  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
+};
+
+// 난이도 투표 칩 — 토큰 var 색으로 활성/비활성 표현
+const DIFF_VAR: Record<Difficulty, string> = {
+  Tutor: '--diff-tutor', Easy: '--diff-easy', Normal: '--diff-normal',
+  Hard: '--diff-hard', Insane: '--diff-insane',
 };
 
 function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>> | undefined | null): Difficulty | null {
@@ -43,7 +50,6 @@ export function LoadedMapInfo() {
   const map = currentLoadedMapObj;
   const isMapOwner = !!currentUserUid && currentUserUid === currentLoadedMapAuthorUid;
   const userDiff = calculateUserDifficulty(map.diffVotes);
-  const evalLabel = userDiff ?? 'None';
 
   const version = map.version ?? 1;
   const title = `🗺️ ${map.title}${version >= 2 ? ` (ver. ${version})` : ''}`;
@@ -59,77 +65,60 @@ export function LoadedMapInfo() {
     }
   }
 
-  const btnBase: React.CSSProperties = {
-    width: '100%', padding: '7px 10px', border: 'none', borderRadius: 6,
-    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'opacity 0.15s',
-  };
-
   return (
-    <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-gray-200 text-sm">
+    <div className="flex flex-col gap-2 pt-3 border-t border-line text-sm">
       {/* 제목 + 작성자 */}
-      <p className="font-bold text-gray-800 truncate text-xs" title={title}>{title}</p>
-      <p className="text-xs text-gray-500">{map.author}</p>
+      <p className="font-bold text-ink truncate text-xs" title={title}>{title}</p>
+      <p className="text-xs text-ink-muted">{map.author}</p>
 
       {/* 난이도 배지 */}
       <div className="flex gap-1.5 flex-wrap">
-        <span className={`diff-pill diff-${map.difficulty}`} style={{ fontSize: 11 }}>
-          {map.difficulty}
-        </span>
-        <span className={`diff-pill diff-${evalLabel}`} style={{ fontSize: 11 }}>
-          {userDiff ?? '평가 부족'}
-        </span>
+        <Pill tone={DIFF_TONE[map.difficulty]}>{map.difficulty}</Pill>
+        <Pill tone={userDiff ? DIFF_TONE[userDiff] : 'none'}>{userDiff ?? '평가 부족'}</Pill>
       </div>
 
       {/* 반응 버튼 */}
       <div className="flex gap-1.5">
-        <button
+        <Button
+          variant="secondary"
+          block
+          className={cx('!text-xs !border !border-success', localState.ok
+            ? '!bg-success !text-white'
+            : '!bg-transparent !text-success')}
           onClick={() => toggleReaction('reactionOk')}
-          style={{
-            ...btnBase,
-            background: localState.ok ? '#27ae60' : 'transparent',
-            color: localState.ok ? 'white' : '#27ae60',
-            border: `1.5px solid #27ae60`,
-          }}
         >
           ✅ {currentMapReactions.ok}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          block
+          className={cx('!text-xs !border !border-danger', localState.god
+            ? '!bg-danger !text-white'
+            : '!bg-transparent !text-danger')}
           onClick={() => toggleReaction('reactionGod')}
-          style={{
-            ...btnBase,
-            background: localState.god ? '#ef4444' : 'transparent',
-            color: localState.god ? 'white' : '#ef4444',
-            border: `1.5px solid #ef4444`,
-          }}
         >
           👍 {currentMapReactions.god}
-        </button>
+        </Button>
       </div>
 
       {/* 체감 난이도 투표 */}
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-gray-500 font-medium">체감 난이도 투표</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">체감 난이도 투표</p>
         <div className="flex gap-1 flex-wrap">
           {DIFFICULTIES.map(level => (
-            <button
+            <Button
               key={level}
-              onClick={() => voteDifficulty(level)}
+              variant="secondary"
+              className="!text-[11px] !px-1.5 !py-1 !border"
               style={{
-                padding: '4px 7px',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 5,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                border: `1.5px solid ${DIFF_COLORS[level]}`,
-                background: localState.diff === level ? DIFF_COLORS[level] : 'transparent',
-                color: localState.diff === level ? 'white' : DIFF_COLORS[level],
-                transition: 'all 0.15s',
+                borderColor: `var(${DIFF_VAR[level]})`,
+                background: localState.diff === level ? `var(${DIFF_VAR[level]})` : 'transparent',
+                color: localState.diff === level ? 'white' : `var(${DIFF_VAR[level]})`,
               }}
+              onClick={() => voteDifficulty(level)}
             >
               {level}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -138,49 +127,48 @@ export function LoadedMapInfo() {
       <div className="flex flex-col gap-1.5 mt-1">
         {isMapOwner && isMapEditMode ? (
           <>
-            <button
-              onClick={() => openModal('upload')}
-              style={{ ...btnBase, background: '#10b981', color: 'white' }}
-            >
+            <Button variant="success" block onClick={() => openModal('upload')}>
               💾 수정 완료 (업로드)
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              block
+              className="!bg-transparent !text-danger !border !border-danger"
               onClick={async () => {
                 if (await requestConfirm({ message: '수정한 내용을 모두 버리고 원래 맵으로 돌아가시겠습니까?' })) {
                   exitMapEditMode({ restore: true });
                   showNotification('수정이 취소되었습니다.', '#7f8c8d');
                 }
               }}
-              style={{ ...btnBase, background: 'transparent', color: '#ef4444', border: '1.5px solid #ef4444' }}
             >
               ❌ 수정 취소
-            </button>
+            </Button>
           </>
         ) : isMapOwner ? (
           <>
-            <button
+            <Button
+              variant="success"
+              block
               onClick={() => {
                 enterMapEditMode();
                 showNotification('✏️ 수정 모드입니다. 그리드를 자유롭게 배치한 뒤 저장하세요.', '#f59e0b');
               }}
-              style={{ ...btnBase, background: '#10b981', color: 'white' }}
             >
               ✏️ 맵 수정하기
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              block
+              className="!bg-transparent !text-danger !border !border-danger"
               onClick={handleDeleteMap}
-              style={{ ...btnBase, background: 'transparent', color: '#ef4444', border: '1.5px solid #ef4444' }}
             >
               🗑️ 맵 삭제
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            onClick={() => openModal('suggestion')}
-            style={{ ...btnBase, background: '#f59e0b', color: 'white' }}
-          >
+          <Button variant="warning" block onClick={() => openModal('suggestion')}>
             내 풀이 제안하기
-          </button>
+          </Button>
         )}
       </div>
     </div>
