@@ -139,11 +139,10 @@ html { transition: background-color .2s ease, color .2s ease; }
 
 /* ── 미니 그리드 v2 ──────────────────────────────────── */
 .mini-grid-v2 {
+  /* grid-template 은 gridSize 에 따라 인라인으로 지정한다 */
   width: 100%;
   aspect-ratio: 1 / 1;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(5, 1fr);
   background-color: var(--grid-bg);
   border: 2px solid var(--cell-border);
   border-radius: 8px;

@@ -68,6 +68,7 @@ export interface MapDocument {
   difficulty: Difficulty;
   description?: string;
   mapData: MapItemDTO[];
+  gridSize?: number; // 균일 NxN. 없으면 5 (하위호환)
   reactionOk: number;
   reactionGod: number;
   diffVotes: Partial<Record<Difficulty, number>>;

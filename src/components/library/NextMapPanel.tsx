@@ -4,7 +4,6 @@ import { useGameStore } from '../../store/gameStore';
 import { MiniGrid } from './MiniGrid';
 import type { MapDocument, Difficulty } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 
 const LS_KEY = 'ray_map_states';
 
@@ -49,9 +48,10 @@ function formatDate(iso: string): string {
 }
 
 function mapDocToGrid(map: MapDocument): (CellData | null)[][] {
-  const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+  const size = map.gridSize ?? 5;
+  const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
   for (const item of map.mapData) {
-    if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE && !item.isInventory) {
+    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size && !item.isInventory) {
       grid[item.y][item.x] = { type: item.type, rotation: item.rotation as Rotation, canMove: item.canMove, canRotate: item.canRotate, isInventory: false };
     }
   }
@@ -79,9 +79,10 @@ export function NextMapPanel() {
     if (s.isAnswerShown) s.hideAnswer();
     if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
 
-    const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    const size = map.gridSize ?? 5;
+    const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
     for (const item of map.mapData) {
-      if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+      if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
         grid[item.y][item.x] = {
           type: item.type,
           rotation: item.rotation as Rotation,
@@ -122,7 +123,7 @@ export function NextMapPanel() {
           <div key={map.id} className="next-map-card" onClick={() => playMap(map)}>
             {/* 좌측: 미니 그리드 44% */}
             <div className="w-[44%] shrink-0">
-              <MiniGrid mapData={mapItems.length > 0 ? map.mapData : gridAsDTO} hideInventory variant="v2" />
+              <MiniGrid mapData={mapItems.length > 0 ? map.mapData : gridAsDTO} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
             </div>
 
             {/* 우측: 정보 */}

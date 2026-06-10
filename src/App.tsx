@@ -7,7 +7,6 @@ import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
 import { EditorPage } from './pages/EditorPage';
 import type { CellData, Rotation } from './types/game';
-import { GRID_SIZE } from './lib/svgArt';
 
 function useUrlMapLoader() {
   const [searchParams] = useSearchParams();
@@ -24,9 +23,10 @@ function useUrlMapLoader() {
     fetchFromDB(mapId).then(map => {
       if (!map) return;
 
-      const grid = emptyGrid();
+      const size = map.gridSize ?? 5;
+      const grid = emptyGrid(size);
       for (const item of map.mapData) {
-        if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+        if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
           grid[item.y][item.x] = {
             type: item.type,
             rotation: item.rotation as Rotation,

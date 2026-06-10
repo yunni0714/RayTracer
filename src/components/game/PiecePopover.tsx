@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import { GRID_SIZE } from '../../lib/svgArt';
 import {
   NON_ROTATABLE, rotatePiece, deletePiece, refundPiece,
   toggleRotateLock, toggleUserSupply, clearTraits,
@@ -42,15 +41,16 @@ export function PiecePopover() {
   if (!selectedCell || !cell) return null;
 
   const { row, col } = selectedCell;
+  const gridSize = mapData.length;
   const canRotateHere = isEditorMode
     ? !NON_ROTATABLE.includes(cell.type)
     : cell.canRotate && !NON_ROTATABLE.includes(cell.type);
 
   // 위치: 기물 위, 첫 행은 아래로 flip. 좌우 경계는 정렬 클램프.
   const flipDown = row === 0;
-  const top = flipDown ? `${((row + 1) / GRID_SIZE) * 100}%` : `${(row / GRID_SIZE) * 100}%`;
-  const left = `${((col + 0.5) / GRID_SIZE) * 100}%`;
-  const tx = col === 0 ? '-15%' : col === GRID_SIZE - 1 ? '-85%' : '-50%';
+  const top = flipDown ? `${((row + 1) / gridSize) * 100}%` : `${(row / gridSize) * 100}%`;
+  const left = `${((col + 0.5) / gridSize) * 100}%`;
+  const tx = col === 0 ? '-15%' : col === gridSize - 1 ? '-85%' : '-50%';
   const ty = flipDown ? '6px' : 'calc(-100% - 6px)';
 
   return (

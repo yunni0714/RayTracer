@@ -35,7 +35,7 @@ export function MapCard({ map, onClick }: Props) {
     <div className="map-card-v2" onClick={() => onClick(map)}>
       {/* 상단: 미니 그리드 */}
       <div className="px-[18px] pt-[18px]">
-        <MiniGrid mapData={map.mapData} hideInventory variant="v2" />
+        <MiniGrid mapData={map.mapData} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
       </div>
 
       {/* 메타: 제목 + 작성자 */}

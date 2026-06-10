@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { uploadSuggestionToDB } from '../../lib/firebaseService';
 import type { MapItemDTO } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 import { Modal, Button, Label, TextArea, Select } from '../ui';
 
 export function SuggestionModal() {
@@ -25,8 +24,9 @@ export function SuggestionModal() {
 
   function buildMapData(): MapItemDTO[] {
     const items: MapItemDTO[] = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
+    const size = mapData.length;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
         const cell = mapData[r][c];
         if (cell) items.push({ x: c, y: r, ...cell });
       }

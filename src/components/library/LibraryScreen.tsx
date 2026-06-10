@@ -7,14 +7,14 @@ import { MapCard } from './MapCard';
 import { Button, TextInput, Select } from '../ui';
 import type { MapDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 
 function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
-  const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () =>
-    Array(GRID_SIZE).fill(null)
+  const size = mapObj.gridSize ?? 5;
+  const grid: (CellData | null)[][] = Array.from({ length: size }, () =>
+    Array(size).fill(null)
   );
   for (const item of mapObj.mapData) {
-    if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
       grid[item.y][item.x] = {
         type: item.type,
         rotation: item.rotation as Rotation,

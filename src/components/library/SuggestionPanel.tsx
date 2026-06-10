@@ -6,7 +6,6 @@ import { MiniGrid } from './MiniGrid';
 import { Button, Pill } from '../ui';
 import type { SuggestionDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 
 function sugMapToDTO(mapData: SuggestionDocument['mapData']) {
   return mapData;
@@ -45,9 +44,10 @@ export function SuggestionPanel() {
     : `💡 다른 풀이 제안 (${suggestions.length}건)`;
 
   function testSuggestion(sug: SuggestionDocument) {
-    const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    const size = currentLoadedMapObj?.gridSize ?? 5;
+    const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
     for (const item of sug.mapData) {
-      if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+      if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
         grid[item.y][item.x] = {
           type: item.type,
           rotation: item.rotation as Rotation,
@@ -99,7 +99,7 @@ export function SuggestionPanel() {
               <div key={sug.id} className="suggestion-item">
                 {/* 미니 그리드 38% */}
                 <div className="w-[38%] shrink-0">
-                  <MiniGrid mapData={sugMapToDTO(sug.mapData)} variant="v2" />
+                  <MiniGrid mapData={sugMapToDTO(sug.mapData)} variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
                 </div>
 
                 {/* 내용 */}

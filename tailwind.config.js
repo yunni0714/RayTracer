@@ -66,17 +66,7 @@ export default {
         cardhover: 'var(--shadow-md)',
       },
       gridTemplateColumns: {
-        'game-grid': 'repeat(5, 100px)',
-        'palette':   'repeat(3, 1fr)',
-      },
-      gridTemplateRows: {
-        'game-grid': 'repeat(5, 100px)',
-      },
-      width: {
-        'game-grid': '500px',
-      },
-      height: {
-        'game-grid': '500px',
+        'palette': 'repeat(3, 1fr)',
       },
     },
   },

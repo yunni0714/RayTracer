@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
-import { GRID_SIZE } from '../../lib/svgArt';
 import { Button, Tabs, TextArea, cx } from '../ui';
 import type { PieceType, CellData } from '../../types/game';
 
@@ -85,8 +84,9 @@ export function PalettePanel() {
 
   function handleExport() {
     const rows: object[] = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
+    const size = mapData.length;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
         const cell = mapData[r][c];
         if (!cell) continue;
         rows.push({
@@ -104,9 +104,10 @@ export function PalettePanel() {
       let parsed = JSON.parse(jsonText);
       if (!Array.isArray(parsed) && parsed.mapData) parsed = parsed.mapData;
       if (!Array.isArray(parsed)) throw new Error('invalid');
-      const newGrid = emptyGrid();
+      const size = mapData.length;
+      const newGrid = emptyGrid(size);
       for (const item of parsed) {
-        if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+        if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
           newGrid[item.y][item.x] = {
             type: item.type, rotation: item.rotation ?? 0,
             canMove: item.canMove ?? true, canRotate: item.canRotate ?? false,

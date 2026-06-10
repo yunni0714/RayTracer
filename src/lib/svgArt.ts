@@ -36,5 +36,7 @@ export const SVG_ART: Record<PieceType, string> = {
   inverting_projector: `<svg viewBox="0 0 100 100"><circle cx="50" cy="58" r="24" fill="none" stroke="currentColor" stroke-width="8"/><path d="M50 8 V34" stroke="currentColor" stroke-width="8" stroke-linecap="square"/><path d="M38 58 H62" stroke="currentColor" stroke-width="8" stroke-linecap="square"/></svg>`,
 };
 
+// 레거시 상수 — 런타임은 store gridSize / mapData.length 를 쓴다.
+// (e2e 헬퍼와 기본값 호환을 위해 유지)
 export const GRID_SIZE = 5;
 export const CELL_SIZE = 100;
