@@ -39,7 +39,7 @@ test.describe('인벤토리 배치·환수', () => {
     expect(countAfter).toBe(0);
   });
 
-  test('배치한 isInventory 기물을 우클릭하면 인벤토리로 환수된다', async ({ page }) => {
+  test('배치한 isInventory 기물을 클릭해 팝오버의 회수 버튼을 누르면 인벤토리로 환수된다', async ({ page }) => {
     await setupWithInventory(page);
 
     // 인벤토리 선택 후 배치
@@ -49,8 +49,10 @@ test.describe('인벤토리 배치·환수', () => {
 
     expect(await getCell(page, 2, 2)).not.toBeNull();
 
-    // 우클릭 환수
-    await page.mouse.click(x, y, { button: 'right' });
+    // 배치 직후 팝오버 자동 표시 → 회수
+    const popover = page.getByTestId('piece-popover');
+    await expect(popover).toBeVisible();
+    await popover.getByRole('button', { name: '인벤토리로 회수' }).click();
 
     expect(await getCell(page, 2, 2)).toBeNull();
     expect(await getInvCount(page, INV_KEY)).toBe(1);

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { GRID_SIZE, SVG_ART } from '../lib/svgArt';
+import { rotatePiece } from '../lib/pieceActions';
 import type { CellData, PieceType, Rotation, SelectedTool } from '../types/game';
 
 interface DragSource {
@@ -10,26 +11,6 @@ interface DragSource {
   fromCol?: number;
   rotation: Rotation;
   justPlaced?: boolean;
-}
-
-const ADVANCED_TYPES: PieceType[] = [
-  'mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'v_target_mirror_a',
-  'diag_single_mirror_b', 'v_target_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror',
-];
-
-function isAdvancedMap(
-  mapData: (CellData | null)[][],
-  inventory: Record<string, { type: PieceType; count: number }>,
-): boolean {
-  for (const row of mapData) {
-    for (const cell of row) {
-      if (cell && ADVANCED_TYPES.includes(cell.type)) return true;
-    }
-  }
-  for (const key in inventory) {
-    if (ADVANCED_TYPES.includes(inventory[key].type) && inventory[key].count > 0) return true;
-  }
-  return false;
 }
 
 export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>) {
@@ -71,32 +52,6 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     const row = Math.floor((y - rect.top) / cellSize);
     if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) return { row, col };
     return null;
-  }
-
-  function getRotationStep(type: PieceType): 45 | 90 {
-    if (type === 'mirror_45' || type === 'half_mirror_45') return 45;
-    if (type === 'ray' || type === 'target') {
-      const { mapData, playerInventory } = useGameStore.getState();
-      return isAdvancedMap(mapData, playerInventory) ? 45 : 90;
-    }
-    return 90;
-  }
-
-  function executeRotation(row: number, col: number): boolean {
-    const state = useGameStore.getState();
-    const cell = state.mapData[row][col];
-    if (!cell || cell.type === 'block') return false;
-    if (!state.isEditorMode && !cell.canRotate) return false;
-    state.saveUndoSnapshot();
-    const step = getRotationStep(cell.type);
-    let newRotation: number;
-    if (step === 90 && cell.rotation % 90 !== 0) {
-      newRotation = (Math.floor(cell.rotation / 90) * 90 + 90) % 360;
-    } else {
-      newRotation = (cell.rotation + step) % 360;
-    }
-    state.setCell(row, col, { ...cell, rotation: newRotation as Rotation });
-    return true;
   }
 
   function restoreLastActiveTool(): void {
@@ -245,10 +200,12 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
           if (isEditor) {
             state.saveUndoSnapshot();
             state.setCell(src.fromRow, src.fromCol!, null);
+            state.setSelectedCell(null);
           } else if (sourceItem?.isInventory) {
             state.saveUndoSnapshot();
             state.refundToInventory(sourceItem);
             state.setCell(src.fromRow, src.fromCol!, null);
+            state.setSelectedCell(null);
           }
         }
         restoreLastActiveTool();
@@ -260,39 +217,18 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
       if (src.origin === 'grid' && src.fromRow !== undefined && src.fromCol !== undefined) {
         if (src.fromRow === row && src.fromCol === col) {
-          // 같은 셀
+          // 같은 셀 클릭
           if (!src.justPlaced && existing) {
-            const last = lastActiveToolRef.current;
-            if (last) {
-              if (last.type === existing.type) {
-                if (isEditor || existing.canRotate) {
-                  executeRotation(row, col);
-                }
-              } else if (isEditor) {
-                // 다른 타입 덮어쓰기 (에디터)
-                state.saveUndoSnapshot();
-                state.setCell(row, col, {
-                  type: last.type, rotation: 0,
-                  isInventory: state.isModInvActive, canMove: state.isModInvActive,
-                  canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
-                });
-              } else if (
-                existing.isInventory && last.isInvTool && last.inventoryKey
-                && (state.playerInventory[last.inventoryKey]?.count ?? 0) > 0
-              ) {
-                // 테스트 모드: 인벤토리 기물 위에 다른 인벤토리 기물 덮어쓰기 (기존 환수)
-                state.saveUndoSnapshot();
-                state.refundToInventory(existing);
-                state.setCell(row, col, {
-                  type: last.type, rotation: last.rotation ?? 0,
-                  canMove: true, canRotate: last.canRotate ?? false, isInventory: true,
-                });
-                state.adjustInventoryCount(last.inventoryKey, -1);
-              }
-            } else if (isEditor || existing.canRotate) {
-              // 빈손 클릭 회전
-              executeRotation(row, col);
+            if (lastActiveToolRef.current) {
+              // 도구 해제 우선: 도구만 내려놓고 기물은 건드리지 않는다 (덮어쓰기/회전 없음)
+              lastActiveToolRef.current = null;
+              return;
             }
+            // 빈손 클릭: 기물 선택 → 팝오버(데스크탑)/인스펙터(모바일)
+            state.setSelectedCell({ row, col });
+          } else if (src.justPlaced) {
+            // 배치 직후 자동 표시
+            state.setSelectedCell({ row, col });
           }
         } else {
           // 다른 셀로 이동/스왑
@@ -303,6 +239,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
             state.saveUndoSnapshot();
             state.swapCells(src.fromRow, src.fromCol, row, col);
           }
+          state.setSelectedCell(null);
         }
         restoreLastActiveTool();
         return;
@@ -315,6 +252,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
           isInventory: state.isModInvActive, canMove: state.isModInvActive,
           canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
         });
+        state.setSelectedCell({ row, col }); // 배치 직후 자동 표시
         restoreLastActiveTool();
         return;
       }
@@ -336,17 +274,8 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       if (!cellEl) return;
       const row = parseInt(cellEl.dataset['row']!);
       const col = parseInt(cellEl.dataset['col']!);
-      const state = useGameStore.getState();
-      const cell = state.mapData[row][col];
-      if (!cell) return;
-      if (state.isEditorMode) {
-        state.saveUndoSnapshot();
-        state.setCell(row, col, null);
-      } else if (cell.isInventory) {
-        state.saveUndoSnapshot();
-        state.refundToInventory(cell);
-        state.setCell(row, col, null);
-      }
+      // 우클릭 = 회전 (삭제/회수는 팝오버·인스펙터로 이동)
+      rotatePiece(row, col);
     }
 
     function onKeyDown(e: KeyboardEvent): void {

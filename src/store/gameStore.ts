@@ -68,6 +68,7 @@ interface GameStore {
   isEditorMode: boolean;
   isMapEditMode: boolean;
   selectedTool: SelectedTool | null;
+  selectedCell: { row: number; col: number } | null;
   editorMapDataBackup: (CellData | null)[][] | null;
   editorInventoryBackup: Record<string, InventoryItem> | null;
   mapEditOriginalBackup: (CellData | null)[][] | null;
@@ -133,6 +134,7 @@ interface GameStore {
 
   // ── 액션: 도구 선택 ──────────────────────────
   setSelectedTool: (tool: SelectedTool | null) => void;
+  setSelectedCell: (cell: { row: number; col: number } | null) => void;
   setModRotatable: (v: boolean) => void;
   setModLock: (v: boolean) => void;
   setModInv: (v: boolean) => void;
@@ -175,6 +177,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isEditorMode: true,
   isMapEditMode: false,
   selectedTool: null,
+  selectedCell: null,
   editorMapDataBackup: null,
   editorInventoryBackup: null,
   mapEditOriginalBackup: null,
@@ -280,6 +283,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerInventory: newInv,
         undoStack: [],
         selectedTool: null,
+        selectedCell: null,
       };
     } else {
       // 테스트 → 에디터
@@ -292,6 +296,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         undoStack: [],
         isLaserOn: false,
         selectedTool: null,
+        selectedCell: null,
       };
     }
   }),
@@ -316,6 +321,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerMapBackup: null,
       answerInventoryBackup: null,
       selectedTool: null,
+      selectedCell: null,
       currentLoadedMapObj: mapDoc,
       currentLoadedMapAuthorUid: mapDoc?.authorUid ?? null,
       currentMapReactions: mapDoc
@@ -336,6 +342,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerInventory: {},
       mapEditOriginalBackup: fullGrid.map(r => r.map(c => c ? { ...c } : null)),
       selectedTool: null,
+      selectedCell: null,
       isLaserOn: false,
       isAnswerShown: false,
       answerMapBackup: null,
@@ -358,6 +365,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       editorMapDataBackup: finalGrid.map(r => r.map(c => c ? { ...c } : null)),
       mapEditOriginalBackup: null,
       selectedTool: null,
+      selectedCell: null,
       undoStack: [],
       isLaserOn: true,
       isAnswerShown: false,
@@ -384,12 +392,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     answerInventoryBackup: null,
     isLaserOn: false,
     selectedTool: null,
+    selectedCell: null,
     currentLoadedMapObj: null,
     currentLoadedMapAuthorUid: null,
   }),
 
   // ── 도구 선택 ─────────────────────────────────
   setSelectedTool: (tool) => set({ selectedTool: tool }),
+  setSelectedCell: (cell) => set({ selectedCell: cell }),
   setModRotatable: (v) => set({ isModRotatableActive: v }),
   setModLock: (v) => set({ isModLockActive: v }),
   setModInv: (v) => set({ isModInvActive: v }),
@@ -441,7 +451,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (isEditorMode) {
       if (!(await get().requestConfirm({ message: '맵의 모든 기물을 삭제하시겠습니까?', danger: true }))) return;
       get().saveUndoSnapshot();
-      set({ mapData: emptyGrid(), playerInventory: {} });
+      set({ mapData: emptyGrid(), playerInventory: {}, selectedCell: null });
     } else {
       if (!(await get().requestConfirm({ message: '배치한 모든 기물을 인벤토리로 회수하시겠습니까?' }))) return;
       get().saveUndoSnapshot();
@@ -464,7 +474,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
         }
       }
-      set({ mapData: newMap, playerInventory: refunded });
+      set({ mapData: newMap, playerInventory: refunded, selectedCell: null });
     }
   },
 
@@ -495,6 +505,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerInventoryBackup,
       mapData: originalGrid,
       playerInventory: {},
+      selectedCell: null,
     });
   },
 
@@ -506,6 +517,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerInventory: answerInventoryBackup ?? {},
       answerMapBackup: null,
       answerInventoryBackup: null,
+      selectedCell: null,
     });
   },
 }));

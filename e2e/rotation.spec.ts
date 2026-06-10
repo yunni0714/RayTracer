@@ -7,7 +7,7 @@ test.describe('테스트 모드 기물 회전', () => {
     await waitForGrid(page);
   });
 
-  test('canRotate=true 기물을 클릭하면 rotation이 증가한다', async ({ page }) => {
+  test('canRotate=true 기물을 우클릭하면 rotation이 증가한다', async ({ page }) => {
     const grid = emptyGrid5();
     grid[2][2] = { type: 'mirror', rotation: 0, canMove: false, canRotate: true, isInventory: false };
 
@@ -17,20 +17,39 @@ test.describe('테스트 모드 기물 회전', () => {
     expect(before?.rotation).toBe(0);
 
     const { x, y } = await cellCenter(page, 2, 2);
-    await page.mouse.click(x, y);
+    await page.mouse.click(x, y, { button: 'right' });
 
     const after = await getCell(page, 2, 2);
     expect(after?.rotation).toBeGreaterThan(0);
   });
 
-  test('canRotate=false 고정 기물을 클릭해도 rotation이 변하지 않는다', async ({ page }) => {
+  test('canRotate=true 기물을 좌클릭하면 즉시 회전하지 않고 팝오버가 열리며, 팝오버 회전 버튼이 동작한다', async ({ page }) => {
+    const grid = emptyGrid5();
+    grid[2][2] = { type: 'mirror', rotation: 0, canMove: false, canRotate: true, isInventory: false };
+
+    await loadPlayMap(page, grid, makeMapDoc({ id: 'test-popover-rotate', title: '팝오버 회전 테스트' }));
+
+    const { x, y } = await cellCenter(page, 2, 2);
+    await page.mouse.click(x, y);
+
+    // 좌클릭은 더 이상 즉시 회전하지 않는다 (선택 → 팝오버)
+    expect((await getCell(page, 2, 2))?.rotation).toBe(0);
+
+    const popover = page.getByTestId('piece-popover');
+    await expect(popover).toBeVisible();
+
+    await popover.getByRole('button', { name: '회전', exact: true }).click();
+    expect((await getCell(page, 2, 2))?.rotation).toBeGreaterThan(0);
+  });
+
+  test('canRotate=false 고정 기물은 우클릭해도 rotation이 변하지 않는다', async ({ page }) => {
     const grid = emptyGrid5();
     grid[1][1] = { type: 'mirror', rotation: 45, canMove: false, canRotate: false, isInventory: false };
 
     await loadPlayMap(page, grid, makeMapDoc({ id: 'test-fixed', title: '고정 기물 테스트' }));
 
     const { x, y } = await cellCenter(page, 1, 1);
-    await page.mouse.click(x, y);
+    await page.mouse.click(x, y, { button: 'right' });
 
     const after = await getCell(page, 1, 1);
     expect(after?.rotation).toBe(45);

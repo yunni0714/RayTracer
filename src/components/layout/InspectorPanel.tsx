@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
+import { SelectedPieceInfo } from '../game/SelectedPieceInfo';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -45,7 +46,7 @@ export function InspectorPanel() {
 
       <div className="border-t border-line pt-3 flex flex-col gap-2">
         <SectionTitle>선택 기물</SectionTitle>
-        <p className="text-xs text-ink-muted">기물을 클릭하면 정보가 표시됩니다.</p>
+        <SelectedPieceInfo />
       </div>
     </div>
   );

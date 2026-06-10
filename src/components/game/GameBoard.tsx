@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import { useLaserCanvas } from '../../hooks/useLaserCanvas';
 import { GridContainer } from './GridContainer';
 import { LaserCanvas } from './LaserCanvas';
+import { PiecePopover } from './PiecePopover';
 
 export function GameBoard() {
   const { isEditorMode } = useGameStore(useShallow(s => ({ isEditorMode: s.isEditorMode })));
@@ -14,13 +15,14 @@ export function GameBoard() {
       <div className="relative w-full aspect-square">
         <GridContainer />
         <LaserCanvas ref={canvasRef} />
+        <PiecePopover />
       </div>
 
       {isEditorMode && (
         <div className="text-xs text-ink-muted leading-5">
-          🖱️ <strong>기물 잡고 이동:</strong> 드래그 후 도구 자동 재선택<br />
-          🖱️ <strong>기물 든 상태 클릭:</strong> 같은 기물이면 <span className="text-danger font-semibold">회전</span>, 다른 기물이면 <span className="text-danger font-semibold">덮어쓰기</span><br />
-          🖱️ <strong>빈손 상태 클릭:</strong> 특성 덧칠 및 회전
+          🖱️ <strong>좌클릭(기물):</strong> 옵션 메뉴 — 특성·삭제 <span className="text-ink-muted">(도구를 들고 있으면 <span className="text-danger font-semibold">도구 해제</span>부터)</span><br />
+          🖱️ <strong>우클릭(기물):</strong> <span className="text-danger font-semibold">회전</span><br />
+          🖱️ <strong>드래그:</strong> 이동/스왑
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../store/gameStore';
 import { Header } from '../components/layout/Header';
@@ -6,6 +6,7 @@ import { Notification } from '../components/layout/Notification';
 import { StatusBar } from '../components/layout/StatusBar';
 import { InspectorPanel } from '../components/layout/InspectorPanel';
 import { GameBoard } from '../components/game/GameBoard';
+import { SelectedPieceInfo } from '../components/game/SelectedPieceInfo';
 import { PalettePanel } from '../components/palette/PalettePanel';
 import { TestModeInventory } from '../components/palette/TestModeInventory';
 import { LibraryScreen } from '../components/library/LibraryScreen';
@@ -21,13 +22,14 @@ type SheetTab = 'tools' | 'info';
 export function EditorPage() {
   const {
     isLibraryMode, activeModal, isEditorMode,
-    currentLoadedMapObj,
+    currentLoadedMapObj, selectedCell,
     isAnswerShown, showAnswer, hideAnswer,
   } = useGameStore(useShallow(s => ({
     isLibraryMode: s.isLibraryMode,
     activeModal: s.activeModal,
     isEditorMode: s.isEditorMode,
     currentLoadedMapObj: s.currentLoadedMapObj,
+    selectedCell: s.selectedCell,
     isAnswerShown: s.isAnswerShown,
     showAnswer: s.showAnswer,
     hideAnswer: s.hideAnswer,
@@ -35,6 +37,13 @@ export function EditorPage() {
 
   // 모바일 하단 시트 탭 (lg 미만에서만 표시)
   const [sheetTab, setSheetTab] = useState<SheetTab>('tools');
+
+  // 모바일: 기물 선택 시 인스펙터가 메인이므로 정보 탭으로 자동 전환
+  useEffect(() => {
+    if (selectedCell && window.matchMedia('(max-width: 1023px)').matches) {
+      setSheetTab('info');
+    }
+  }, [selectedCell]);
 
   // 좌 존 콘텐츠: 팔레트(편집) / 인벤토리(플레이)
   const toolsZone = isEditorMode ? <PalettePanel /> : <TestModeInventory />;
@@ -52,6 +61,12 @@ export function EditorPage() {
         </Button>
       )}
       {isEditorMode && <InspectorPanel />}
+      {!isEditorMode && (
+        <div className="flex flex-col gap-2">
+          <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">선택 기물</h5>
+          <SelectedPieceInfo />
+        </div>
+      )}
       {!isEditorMode && currentLoadedMapObj && <LoadedMapInfo />}
       {!isEditorMode && !currentLoadedMapObj && (
         <p className="text-xs text-ink-muted">로드된 맵이 없습니다.</p>
