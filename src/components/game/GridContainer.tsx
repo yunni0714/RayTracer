@@ -13,7 +13,7 @@ export function GridContainer() {
   return (
     <div
       ref={gridRef}
-      className="grid border-2 border-gray-400 bg-gray-100"
+      className="grid border-2 border-[var(--cell-border)] bg-[var(--grid-bg)]"
       style={{
         gridTemplateColumns: `repeat(${GRID_SIZE}, 100px)`,
         gridTemplateRows: `repeat(${GRID_SIZE}, 100px)`,

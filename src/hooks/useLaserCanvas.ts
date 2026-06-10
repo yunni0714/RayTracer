@@ -8,6 +8,7 @@ export function useLaserCanvas() {
 
   const isLaserOn = useGameStore(s => s.isLaserOn);
   const mapData = useGameStore(s => s.mapData);
+  const theme = useGameStore(s => s.theme); // 레이저 색 토큰이 테마를 따라가므로 재그리기 필요
 
   // Canvas 초기 설정 (마운트 시 1회)
   useEffect(() => {
@@ -27,7 +28,7 @@ export function useLaserCanvas() {
     } else {
       clearLaser(ctx, canvas);
     }
-  }, [isLaserOn, mapData]);
+  }, [isLaserOn, mapData, theme]);
 
   return canvasRef;
 }

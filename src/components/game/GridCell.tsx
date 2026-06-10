@@ -12,7 +12,7 @@ export function GridCell({ row, col, cell }: Props) {
     <div
       data-row={row}
       data-col={col}
-      className="grid-cell relative border border-gray-300 bg-white cursor-pointer select-none overflow-hidden hover:bg-gray-50"
+      className="grid-cell relative border border-[var(--cell-border)] bg-[var(--cell)] cursor-pointer select-none overflow-hidden hover:bg-surface-2"
       style={{ width: CELL_SIZE, height: CELL_SIZE }}
     >
       {cell && (

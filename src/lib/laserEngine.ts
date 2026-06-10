@@ -70,11 +70,13 @@ export function simulateLaser(
   }
   if (beams.length === 0) return;
 
+  const laserColor =
+    getComputedStyle(document.documentElement).getPropertyValue('--laser').trim() || '#ff3333';
   ctx.lineWidth = 4;
-  ctx.strokeStyle = '#ff3333';
+  ctx.strokeStyle = laserColor;
   ctx.lineCap = 'round';
   ctx.shadowBlur = 10;
-  ctx.shadowColor = 'red';
+  ctx.shadowColor = laserColor;
 
   while (beams.length > 0) {
     const beam = beams.shift()!;
