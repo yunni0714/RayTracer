@@ -22,7 +22,7 @@ export function LoadedMapInfo() {
   const {
     currentLoadedMapObj, currentUserUid, currentLoadedMapAuthorUid,
     currentMapReactions, openModal, showNotification,
-    isMapEditMode, enterMapEditMode, exitMapEditMode,
+    isMapEditMode, enterMapEditMode, exitMapEditMode, requestConfirm,
   } = useGameStore(useShallow(s => ({
     currentLoadedMapObj: s.currentLoadedMapObj,
     currentUserUid: s.currentUserUid,
@@ -33,6 +33,7 @@ export function LoadedMapInfo() {
     isMapEditMode: s.isMapEditMode,
     enterMapEditMode: s.enterMapEditMode,
     exitMapEditMode: s.exitMapEditMode,
+    requestConfirm: s.requestConfirm,
   })));
 
   const { toggleReaction, voteDifficulty, localState } = useMapReactions();
@@ -48,7 +49,7 @@ export function LoadedMapInfo() {
   const title = `🗺️ ${map.title}${version >= 2 ? ` (ver. ${version})` : ''}`;
 
   async function handleDeleteMap() {
-    if (!window.confirm('정말로 이 맵을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 제안과 평가도 함께 삭제됩니다.')) return;
+    if (!(await requestConfirm({ message: '정말로 이 맵을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 모든 제안과 평가도 함께 삭제됩니다.', danger: true }))) return;
     try {
       await deleteMapFromDB(map.id);
       showNotification('맵이 성공적으로 삭제되었습니다.', '#e74c3c');
@@ -144,8 +145,8 @@ export function LoadedMapInfo() {
               💾 수정 완료 (업로드)
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('수정한 내용을 모두 버리고 원래 맵으로 돌아가시겠습니까?')) {
+              onClick={async () => {
+                if (await requestConfirm({ message: '수정한 내용을 모두 버리고 원래 맵으로 돌아가시겠습니까?' })) {
                   exitMapEditMode({ restore: true });
                   showNotification('수정이 취소되었습니다.', '#7f8c8d');
                 }

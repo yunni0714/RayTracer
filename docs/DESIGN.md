@@ -125,8 +125,8 @@ CSS 변수. `<html>.dark` 클래스가 붙으면 다크값으로 전환. Tailwin
 ## 7. 진행 상태
 
 - [x] **Phase 1** — 토큰 시스템(라이트+다크) + 다크 토글(헤더 버튼·no-flash·localStorage). 셸 배경 토큰화. `global.css`/`tailwind.config.js`/store `theme`/`useTheme`.
-- [ ] Phase 2 — 공용 컴포넌트(`src/components/ui/`).
-- [ ] Phase 3 — 화면별 L1 + 토큰 마이그레이션(헤더·팔레트·보드·라이브러리·모달).
+- [x] **Phase 2** — 공용 컴포넌트(`src/components/ui/`: Button·IconButton·Field·Modal·ConfirmModal·ConfirmHost·Pill/DifficultyPill·Tabs). 네이티브 `window.confirm` 6곳 → 스토어 `requestConfirm`+`ConfirmHost`. 모달 3개 → `Modal`+`Field`+`Button`(다크 대응).
+- [ ] **Phase 3 (Fable)** — 화면별 L1 + 토큰 마이그레이션(헤더·팔레트·보드·라이브러리·카드). 공용 컴포넌트만 사용, 인라인 hover·hex 금지.
 - [ ] Phase 4 — 완전 반응형 + 터치.
 - [ ] Phase 5 — UX 정리(네이티브 confirm 교체, 숨은 기능 노출, 승리판정 등; 사용자 카탈로그 마킹 후 확정).
 

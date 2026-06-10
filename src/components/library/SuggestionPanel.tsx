@@ -14,7 +14,7 @@ function sugMapToDTO(mapData: SuggestionDocument['mapData']) {
 export function SuggestionPanel() {
   const {
     currentLoadedMapObj, currentUserUid, currentLoadedMapAuthorUid,
-    showNotification, setMapData, suggestions, setSuggestions,
+    showNotification, setMapData, suggestions, setSuggestions, requestConfirm,
   } = useGameStore(useShallow(s => ({
     currentLoadedMapObj: s.currentLoadedMapObj,
     currentUserUid: s.currentUserUid,
@@ -23,6 +23,7 @@ export function SuggestionPanel() {
     setMapData: s.setMapData,
     suggestions: s.suggestions,
     setSuggestions: s.setSuggestions,
+    requestConfirm: s.requestConfirm,
   })));
 
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ export function SuggestionPanel() {
   }
 
   async function deleteSuggestion(sugId: string) {
-    if (!window.confirm('이 제안을 삭제하시겠습니까?')) return;
+    if (!(await requestConfirm({ message: '이 제안을 삭제하시겠습니까?', danger: true }))) return;
     try {
       await deleteSuggestionFromDB(currentLoadedMapObj!.id, sugId);
       showNotification('제안이 삭제되었습니다.', '#e74c3c');

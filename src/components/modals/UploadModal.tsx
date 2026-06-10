@@ -4,6 +4,7 @@ import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
 import type { CellData, Difficulty, MapDocument, MapItemDTO } from '../../types/game';
 import { GRID_SIZE } from '../../lib/svgArt';
+import { Modal, Button, Label, TextInput, TextArea, Select } from '../ui';
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 
@@ -109,73 +110,61 @@ export function UploadModal() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-96 flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-gray-800">
-          {isEdit ? '✏️ 맵 수정하기' : '📤 맵 공유하기'}
-        </h3>
-
-        <div className="flex flex-col gap-3">
-          <label className="text-sm font-medium text-gray-700">
-            제목 *
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              readOnly={isEdit}
-              placeholder="맵 제목"
-              maxLength={40}
-              className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ray-purple disabled:bg-gray-50"
-            />
-          </label>
-
-          <label className="text-sm font-medium text-gray-700">
-            작성자
-            <input
-              type="text"
-              value={currentUserNickname ?? ''}
-              readOnly
-              className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
-            />
-          </label>
-
-          <label className="text-sm font-medium text-gray-700">
-            난이도
-            <select
-              value={difficulty}
-              onChange={e => setDifficulty(e.target.value as Difficulty)}
-              className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none"
-            >
-              {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-
-          <label className="text-sm font-medium text-gray-700">
-            설명 (선택)
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="맵에 대한 설명을 입력하세요."
-              rows={3}
-              maxLength={200}
-              className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ray-purple resize-none"
-            />
-          </label>
-        </div>
-
-        <div className="flex gap-2 justify-end">
-          <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors">
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-4 py-2 bg-ray-purple text-white text-sm rounded hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
+    <Modal
+      title={isEdit ? '✏️ 맵 수정하기' : '📤 맵 공유하기'}
+      onClose={closeModal}
+      width="md"
+      footer={
+        <>
+          <Button variant="ghost" onClick={closeModal}>취소</Button>
+          <Button variant="accent" onClick={handleSubmit} disabled={loading}>
             {loading ? '처리 중...' : isEdit ? '수정' : '공유'}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <Label>
+          제목 *
+          <TextInput
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            readOnly={isEdit}
+            placeholder="맵 제목"
+            maxLength={40}
+            className="mt-1"
+          />
+        </Label>
+
+        <Label>
+          작성자
+          <TextInput type="text" value={currentUserNickname ?? ''} readOnly className="mt-1" />
+        </Label>
+
+        <Label>
+          난이도
+          <Select
+            value={difficulty}
+            onChange={e => setDifficulty(e.target.value as Difficulty)}
+            className="mt-1"
+          >
+            {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+          </Select>
+        </Label>
+
+        <Label>
+          설명 (선택)
+          <TextArea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="맵에 대한 설명을 입력하세요."
+            rows={3}
+            maxLength={200}
+            className="mt-1"
+          />
+        </Label>
       </div>
-    </div>
+    </Modal>
   );
 }

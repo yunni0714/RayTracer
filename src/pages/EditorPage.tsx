@@ -11,6 +11,7 @@ import { RightSidePanel } from '../components/library/RightSidePanel';
 import { NicknameModal } from '../components/modals/NicknameModal';
 import { UploadModal } from '../components/modals/UploadModal';
 import { SuggestionModal } from '../components/modals/SuggestionModal';
+import { ConfirmHost } from '../components/ui';
 
 export function EditorPage() {
   const {
@@ -91,6 +92,7 @@ export function EditorPage() {
       {activeModal === 'suggestion' && <SuggestionModal />}
 
       <Notification />
+      <ConfirmHost />
     </div>
   );
 }

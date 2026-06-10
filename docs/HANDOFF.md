@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 요약
 
-순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업 중. 방향 확정·**Phase 1(디자인 토큰 + 다크 토글) 완료**. 다음은 Phase 2(공용 컴포넌트) → Phase 3(화면별 L1 마이그레이션).
+순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업 중. 방향 확정·**Phase 1(토큰+다크) + Phase 2(공용 컴포넌트·confirm·모달) 완료**. **다음 = Phase 3 — 화면별 L1 마이그레이션, Fable에 인계 예정**(§4).
 
 ---
 
@@ -26,6 +26,13 @@
 |------|------|
 | `feat(ui): Phase 1 design tokens + dark mode` | 토큰 시스템 + 다크 토글 |
 | `docs: consolidate chosen design ... remove mockups` | DESIGN.md, 목업 HTML 4개 삭제 |
+| `feat(ui): Phase 2 shared components + confirm/modal` | `src/components/ui/` 프리미티브, confirm 6곳·모달 3개 교체 |
+
+**Phase 2 산출물 (Fable이 Phase 3에서 사용):**
+- `src/components/ui/` — `Button`(variant/size, CSS hover) · `IconButton` · `Field`(Label/TextInput/TextArea/Select) · `Modal` · `ConfirmModal` · `ConfirmHost`(EditorPage에 1회 마운트됨) · `Pill`/`DifficultyPill` · `Tabs`(folder/segment) · 배럴 `index.ts`. 전부 토큰만 사용, 다크 자동 대응.
+- 스토어 `requestConfirm(opts):Promise<boolean>` + `resolveConfirm` + `confirmState`. 네이티브 `window.confirm` 전부 제거(clearGrid는 async). 사용법: `if (await requestConfirm({message, danger})) {...}`.
+- 모달 3개(Nickname/Upload/Suggestion)는 `Modal`+`Field`+`Button` 기반 — 새 모달 추가 시 패턴 그대로 복제.
+- **Phase 3 규칙**: 버튼=`Button`/`IconButton`(인라인 `onMouseEnter`·`style` hover 금지), 다이얼로그=`Modal`, 확인=`requestConfirm`, 배지=`Pill`, 탭=`Tabs`. 하드코딩 hex 금지·토큰 클래스만.
 
 **Phase 1 구현 파일:**
 - `src/styles/global.css` — `:root`(라이트) + `.dark`(다크) CSS 변수 토큰. 기존 하드코딩 색(카드·diff-pill·스크롤바·미니그리드) 변수로 마이그레이션 완료.
@@ -47,15 +54,9 @@
 
 ---
 
-## 4. 다음 시작점 — 여기서부터
+## 4. 다음 시작점 — 여기서부터 (= Phase 3, Fable 담당)
 
-**열린 결정(사용자에게 물어본 상태)**: Phase 2→3 전체 진행 vs 에디터 화면 하나만 끝까지(L1+토큰) 뽑아 방향 확정 후 확산. → 새 세션 시작 시 사용자에게 재확인.
-
-### Phase 2 — 공용 컴포넌트 (`src/components/ui/` 신설)
-인라인 스타일·수동 hover·네이티브 confirm 중복 제거용. 우선순위:
-1. **`Button`** — variant(primary/ghost/danger/accent/success)·size, **CSS `hover:`로 기존 `onMouseEnter/Leave` 전부 대체**. (PalettePanel·RightSidePanel·SuggestionPanel·LoadedMapInfo에 수동 hover 산재.)
-2. **`ConfirmModal`** — 네이티브 `window.confirm` 6곳 교체: `gameStore.ts`(clearGrid 2곳), `LibraryScreen`(새맵), `LoadedMapInfo`(맵삭제·수정취소), `SuggestionPanel`(제안삭제).
-3. `Modal`(공통 셸)·`Pill`(난이도/카테고리)·`Tabs`(폴더탭)·`Panel/Card`·`IconButton`.
+Phase 1·2 완료. **다음은 Phase 3 — 화면별 L1 레이아웃 + 토큰 마이그레이션.** Phase 2에서 만든 `src/components/ui/` 컴포넌트만 사용하면 됨(§2 Phase 2 산출물 참고). 시작 전 `docs/DESIGN.md` 필독.
 
 ### Phase 3 — 화면별 L1 + 토큰 마이그레이션 (권장 순서)
 1. **Header** — `bg-ray-dark`→토큰, 버튼들 `Button`으로, 상단 `[편집|플레이]` 세그먼트 토글로 정리.
@@ -73,7 +74,8 @@
 ## 5. 소스 오브 트루스 / 키 파일
 
 - **디자인 기준**: `docs/DESIGN.md`(레이아웃·색토큰·타이포) + `src/styles/global.css`(토큰 실값).
-- **테마 인프라**: `gameStore.ts`(theme), `useTheme.ts`, `index.html`(no-flash), `Header.tsx`(버튼).
+- **공용 컴포넌트**: `src/components/ui/`(배럴 `index.ts`) — Phase 3는 여기서 import.
+- **테마 인프라**: `gameStore.ts`(theme·confirmState), `useTheme.ts`, `index.html`(no-flash), `Header.tsx`(버튼).
 - **게임 로직**(건드리지 말 것 — 재설계는 UI만): `src/lib/laserEngine.ts`, `src/store/gameStore.ts`(상태), `src/hooks/useGridDragDrop.ts`.
 - 코드 구조 전체 지도: `PROJECT_HIERARCHY.md`.
 

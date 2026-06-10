@@ -28,12 +28,13 @@ function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
 
 export function LibraryScreen() {
   const {
-    allLibraryMaps, setAllLibraryMaps, setLibraryMode, resetEditorState,
+    allLibraryMaps, setAllLibraryMaps, setLibraryMode, resetEditorState, requestConfirm,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
     setAllLibraryMaps: s.setAllLibraryMaps,
     setLibraryMode: s.setLibraryMode,
     resetEditorState: s.resetEditorState,
+    requestConfirm: s.requestConfirm,
   })));
 
   const [, setSearchParams] = useSearchParams();
@@ -58,8 +59,8 @@ export function LibraryScreen() {
     s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }
 
-  function createNewMap() {
-    if (!window.confirm('진행 중인 맵이 모두 초기화되고 빈 에디터로 돌아갑니다. 새로 만드시겠습니까?')) return;
+  async function createNewMap() {
+    if (!(await requestConfirm({ message: '진행 중인 맵이 모두 초기화되고 빈 에디터로 돌아갑니다. 새로 만드시겠습니까?' }))) return;
     resetEditorState();
     setLibraryMode(false);
     setSearchParams({});
