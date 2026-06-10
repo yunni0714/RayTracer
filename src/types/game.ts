@@ -16,7 +16,20 @@ export type PieceType =
   | 'v_half_mirror'
   | 'v_single_mirror'
   | 'v_target_mirror_a'
-  | 'v_target_mirror_b';
+  | 'v_target_mirror_b'
+  // ── 중급(기믹) 기물 — Group A: 무상태 ──
+  | 'diode'
+  | 'v_mirror_double'
+  | 'v_half_mirror_double'
+  | 'small_target'
+  | 'omni_target'
+  | 'high_block'
+  // ── 중급(기믹) 기물 — Group B: 조건부/상태형 ──
+  | 'transistor_gate'
+  | 'cross_gate'
+  | 'priority_gate'
+  | 'target_projector'
+  | 'inverting_projector';
 
 export type Rotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 

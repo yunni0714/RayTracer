@@ -7,6 +7,7 @@ import { Button, Tabs, TextArea, cx } from '../ui';
 import type { PieceType, CellData } from '../../types/game';
 
 const BASIC_TOOLS: PieceType[] = ['ray', 'target', 'mirror', 'half_mirror', 'block', 'tunnel', 'single_mirror', 'target_mirror_a', 'target_mirror_b'];
+const INTERMEDIATE_TOOLS: PieceType[] = ['diode', 'v_mirror_double', 'v_half_mirror_double', 'small_target', 'omni_target', 'high_block'];
 const ADVANCED_TOOLS: PieceType[] = ['mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'diag_single_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror', 'v_target_mirror_a', 'v_target_mirror_b'];
 
 type Tab = 'basic' | 'intermediate' | 'advanced';
@@ -118,7 +119,9 @@ export function PalettePanel() {
     }
   }
 
-  const tools = activeTab === 'basic' ? BASIC_TOOLS : activeTab === 'advanced' ? ADVANCED_TOOLS : [];
+  const tools = activeTab === 'basic' ? BASIC_TOOLS
+    : activeTab === 'intermediate' ? INTERMEDIATE_TOOLS
+    : ADVANCED_TOOLS;
 
   return (
     <div className="flex flex-col gap-3">
@@ -136,22 +139,18 @@ export function PalettePanel() {
           onChange={(id) => setActiveTab(id as Tab)}
         />
         <div className="p-1.5 bg-surface">
-          {activeTab === 'intermediate' ? (
-            <p className="text-xs text-ink-muted text-center py-4">비어 있음</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-1.5">
-              {tools.map(type => (
-                <ToolItem
-                  key={type}
-                  type={type}
-                  selected={selectedTool?.type === type}
-                  onClick={() => setSelectedTool(
-                    selectedTool?.type === type ? null : { type, source: 'palette' }
-                  )}
-                />
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-3 gap-1.5">
+            {tools.map(type => (
+              <ToolItem
+                key={type}
+                type={type}
+                selected={selectedTool?.type === type}
+                onClick={() => setSelectedTool(
+                  selectedTool?.type === type ? null : { type, source: 'palette' }
+                )}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

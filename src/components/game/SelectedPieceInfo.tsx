@@ -2,7 +2,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { SVG_ART } from '../../lib/svgArt';
 import {
-  PIECE_LABELS, rotatePiece, deletePiece, refundPiece,
+  PIECE_LABELS, NON_ROTATABLE, rotatePiece, deletePiece, refundPiece,
   toggleRotateLock, toggleUserSupply, clearTraits,
 } from '../../lib/pieceActions';
 import { Button, Pill } from '../ui';
@@ -23,7 +23,9 @@ export function SelectedPieceInfo() {
   }
 
   const { row, col } = selectedCell;
-  const canRotateHere = isEditorMode ? cell.type !== 'block' : cell.canRotate;
+  const canRotateHere = isEditorMode
+    ? !NON_ROTATABLE.includes(cell.type)
+    : cell.canRotate && !NON_ROTATABLE.includes(cell.type);
 
   return (
     <div className="flex flex-col gap-2" data-testid="selected-piece-info">

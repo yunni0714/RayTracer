@@ -20,6 +20,17 @@ export const PIECE_LABELS: Record<PieceType, string> = {
   v_single_mirror: '수직 단면거울',
   v_target_mirror_a: '수직 표적거울 A',
   v_target_mirror_b: '수직 표적거울 B',
+  diode: '다이오드',
+  v_mirror_double: '수직 양면거울',
+  v_half_mirror_double: '수직 양면 반거울',
+  small_target: '소형 표적',
+  omni_target: '전방위 표적',
+  high_block: '높은 블럭',
+  transistor_gate: '관문',
+  cross_gate: '교차 관문',
+  priority_gate: '우선순위 관문',
+  target_projector: '표적 프로젝터',
+  inverting_projector: '반전 프로젝터',
 };
 
 const ADVANCED_TYPES: PieceType[] = [
@@ -51,11 +62,14 @@ export function getRotationStep(type: PieceType): 45 | 90 {
   return 90;
 }
 
-// 회전. 에디터: block 외 전부, 테스트: canRotate 기물만. 성공 여부 반환.
+// 회전이 무의미한 기물 (방향성 없음)
+export const NON_ROTATABLE: PieceType[] = ['block', 'high_block', 'omni_target'];
+
+// 회전. 에디터: 방향성 기물 전부, 테스트: canRotate 기물만. 성공 여부 반환.
 export function rotatePiece(row: number, col: number): boolean {
   const state = useGameStore.getState();
   const cell = state.mapData[row][col];
-  if (!cell || cell.type === 'block') return false;
+  if (!cell || NON_ROTATABLE.includes(cell.type)) return false;
   if (!state.isEditorMode && !cell.canRotate) return false;
   state.saveUndoSnapshot();
   const step = getRotationStep(cell.type);

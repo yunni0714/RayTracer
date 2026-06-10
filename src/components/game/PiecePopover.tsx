@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { GRID_SIZE } from '../../lib/svgArt';
 import {
-  rotatePiece, deletePiece, refundPiece,
+  NON_ROTATABLE, rotatePiece, deletePiece, refundPiece,
   toggleRotateLock, toggleUserSupply, clearTraits,
 } from '../../lib/pieceActions';
 import { IconButton } from '../ui';
@@ -42,7 +42,9 @@ export function PiecePopover() {
   if (!selectedCell || !cell) return null;
 
   const { row, col } = selectedCell;
-  const canRotateHere = isEditorMode ? cell.type !== 'block' : cell.canRotate;
+  const canRotateHere = isEditorMode
+    ? !NON_ROTATABLE.includes(cell.type)
+    : cell.canRotate && !NON_ROTATABLE.includes(cell.type);
 
   // 위치: 기물 위, 첫 행은 아래로 flip. 좌우 경계는 정렬 클램프.
   const flipDown = row === 0;

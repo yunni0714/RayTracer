@@ -105,6 +105,50 @@ export const REGISTRY: Partial<Record<PieceType, PieceBehavior>> = {
   v_single_mirror: { interact: oneSidedMirror(90, 0) },
   v_target_mirror_a: { interact: oneSidedMirror(270, 0) },
   v_target_mirror_b: { interact: oneSidedMirror(270, 0) },
+
+  /* ── Group A: 무상태 기믹 기물 ──────────────────────── */
+
+  // 일방터널: 화살표 방향(= ray 와 동일 규약, rotation+270)으로 진행하는 빔만 통과
+  diode: {
+    interact: (inDir, cell) =>
+      inDir === (cell.rotation + 270) % 360 ? { outDirs: [inDir] } : { partial: true },
+  },
+  // 수직 양면거울: 정면 축 빔 180° 되돌림, 대각 빔은 v_mirror 와 같은 면각 반사, 평행 축은 차단
+  v_mirror_double: {
+    interact: (inDir, cell) => {
+      const rel = (inDir - cell.rotation + 360) % 360;
+      if (rel === 0 || rel === 180) return { outDirs: [(inDir + 180) % 360] };
+      if (rel === 90 || rel === 270) return { partial: true };
+      return { outDirs: [calculateReflection(inDir, cell.rotation % 360)] };
+    },
+  },
+  // 수직 양면 반거울: 양면거울 + 통과 분기
+  v_half_mirror_double: {
+    interact: (inDir, cell) => {
+      const rel = (inDir - cell.rotation + 360) % 360;
+      if (rel === 0 || rel === 180) return { outDirs: [inDir, (inDir + 180) % 360] };
+      if (rel === 90 || rel === 270) return { outDirs: [inDir] };
+      return { outDirs: [inDir, calculateReflection(inDir, cell.rotation % 360)] };
+    },
+  },
+  // 소형 표적: 정면 피격만 충족, 수직 축·대각은 통과, 뒷면은 차단
+  small_target: {
+    isTarget: true,
+    interact: (inDir, cell) => {
+      const rel = (inDir - cell.rotation + 360) % 360;
+      if (rel === 90) return { satisfied: true };          // 정면 흡수+충족
+      if (rel === 270) return { partial: true };           // 뒷면 차단
+      if (rel === 0 || rel === 180) return { outDirs: [inDir] }; // 수직축 통과
+      return { outDirs: [inDir] };                         // 대각 통과 (상급)
+    },
+  },
+  // 전방위 표적: 어느 방향이든 흡수+충족
+  omni_target: {
+    isTarget: true,
+    interact: () => ({ satisfied: true }),
+  },
+  // 높은 블럭: 빔 완전 차단 (기존 block 은 통과 — 별개 타입)
+  high_block: { interact: () => ({ partial: true }) },
 };
 
 /* ── 순수 계산 ─────────────────────────────────────────── */
