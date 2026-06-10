@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { CELL_SIZE, GRID_SIZE, SVG_ART } from '../lib/svgArt';
+import { GRID_SIZE, SVG_ART } from '../lib/svgArt';
 import type { CellData, PieceType, Rotation, SelectedTool } from '../types/game';
 
 interface DragSource {
@@ -66,8 +66,9 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     const grid = gridRef.current;
     if (!grid) return null;
     const rect = grid.getBoundingClientRect();
-    const col = Math.floor((x - rect.left) / CELL_SIZE);
-    const row = Math.floor((y - rect.top) / CELL_SIZE);
+    const cellSize = rect.width / GRID_SIZE; // 보드가 유동 크기이므로 실측 기반
+    const col = Math.floor((x - rect.left) / cellSize);
+    const row = Math.floor((y - rect.top) / cellSize);
     if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) return { row, col };
     return null;
   }

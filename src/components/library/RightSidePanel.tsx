@@ -14,7 +14,7 @@ export function RightSidePanel() {
   const [activeTab, setActiveTab] = useState<Tab>('next-map');
 
   return (
-    <div className="flex flex-row w-[420px] shrink-0 bg-surface border border-line rounded-card overflow-hidden self-stretch">
+    <div className="flex flex-row w-full lg:w-[420px] shrink-0 bg-surface border border-line rounded-card overflow-hidden self-stretch">
       {/* 수직 탭 버튼 */}
       <div className="flex flex-col w-10 bg-surface-2 border-r border-line shrink-0">
         {TABS.map(tab => (

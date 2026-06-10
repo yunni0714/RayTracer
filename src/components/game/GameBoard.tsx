@@ -3,9 +3,6 @@ import { useGameStore } from '../../store/gameStore';
 import { useLaserCanvas } from '../../hooks/useLaserCanvas';
 import { GridContainer } from './GridContainer';
 import { LaserCanvas } from './LaserCanvas';
-import { CELL_SIZE, GRID_SIZE } from '../../lib/svgArt';
-
-const size = CELL_SIZE * GRID_SIZE;
 
 export function GameBoard() {
   const { isEditorMode } = useGameStore(useShallow(s => ({ isEditorMode: s.isEditorMode })));
@@ -13,8 +10,8 @@ export function GameBoard() {
   const canvasRef = useLaserCanvas();
 
   return (
-    <div className="flex flex-col items-start gap-2">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex flex-col items-start gap-2 w-full max-w-[500px]">
+      <div className="relative w-full aspect-square">
         <GridContainer />
         <LaserCanvas ref={canvasRef} />
       </div>

@@ -13,12 +13,10 @@ export function GridContainer() {
   return (
     <div
       ref={gridRef}
-      className="grid border-2 border-[var(--cell-border)] bg-[var(--grid-bg)]"
+      className="grid w-full h-full border-2 border-[var(--cell-border)] bg-[var(--grid-bg)] touch-none"
       style={{
-        gridTemplateColumns: `repeat(${GRID_SIZE}, 100px)`,
-        gridTemplateRows: `repeat(${GRID_SIZE}, 100px)`,
-        width: GRID_SIZE * 100,
-        height: GRID_SIZE * 100,
+        gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
+        gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)`,
       }}
     >
       {Array.from({ length: GRID_SIZE }, (_, row) =>

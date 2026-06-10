@@ -1,5 +1,5 @@
 import type { CellData } from '../types/game';
-import { GRID_SIZE, CELL_SIZE } from './svgArt';
+import { GRID_SIZE } from './svgArt';
 
 const DIRS: Record<number, { dx: number; dy: number }> = {
   0: { dx: 1, dy: 0 }, 45: { dx: 1, dy: 1 }, 90: { dx: 0, dy: 1 }, 135: { dx: -1, dy: 1 },
@@ -12,19 +12,20 @@ export function calculateReflection(inDir: number, surfaceAngle: number): number
 
 function drawLine(
   ctx: CanvasRenderingContext2D,
+  cellSize: number,
   startX: number, startY: number,
   endX: number, endY: number,
   stopAtEdge = false,
 ): void {
-  const offset = CELL_SIZE / 2;
-  const x1 = startX * CELL_SIZE + offset;
-  const y1 = startY * CELL_SIZE + offset;
-  let x2 = endX * CELL_SIZE + offset;
-  let y2 = endY * CELL_SIZE + offset;
+  const offset = cellSize / 2;
+  const x1 = startX * cellSize + offset;
+  const y1 = startY * cellSize + offset;
+  let x2 = endX * cellSize + offset;
+  let y2 = endY * cellSize + offset;
 
   if (stopAtEdge) {
-    x2 = (startX + endX) / 2 * CELL_SIZE + offset;
-    y2 = (startY + endY) / 2 * CELL_SIZE + offset;
+    x2 = (startX + endX) / 2 * cellSize + offset;
+    y2 = (startY + endY) / 2 * cellSize + offset;
   }
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -39,14 +40,14 @@ export function clearLaser(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElem
   ctx.restore();
 }
 
+// 컨테이너가 CSS 크기를 결정한다. 백킹스토어만 dpr 배율로 맞춘다.
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = CELL_SIZE * GRID_SIZE * dpr;
-  canvas.height = CELL_SIZE * GRID_SIZE * dpr;
-  canvas.style.width = `${CELL_SIZE * GRID_SIZE}px`;
-  canvas.style.height = `${CELL_SIZE * GRID_SIZE}px`;
+  const cssSize = canvas.clientWidth || 1;
+  canvas.width = Math.round(cssSize * dpr);
+  canvas.height = Math.round(cssSize * dpr);
   const ctx = canvas.getContext('2d')!;
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return ctx;
 }
 
@@ -57,6 +58,7 @@ export function simulateLaser(
 ): void {
   clearLaser(ctx, canvas);
 
+  const cellSize = (canvas.clientWidth || canvas.width) / GRID_SIZE;
   const beams: { x: number; y: number; dir: number }[] = [];
   const visited = new Set<string>();
 
@@ -86,7 +88,7 @@ export function simulateLaser(
     const nextY = cy + dirVec.dy;
 
     if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
-      drawLine(ctx, cx, cy, nextX, nextY, true);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       continue;
     }
 
@@ -97,16 +99,16 @@ export function simulateLaser(
     const item = mapData[nextY][nextX];
 
     if (!item || item.type === 'block') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       beams.push({ x: nextX, y: nextY, dir: cDir });
     } else if (item.type === 'ray' || item.type === 'target') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
     } else if (item.type === 'mirror_45') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = (337.5 + item.rotation) % 360;
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
     } else if (item.type === 'half_mirror_45') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = (337.5 + item.rotation) % 360;
       beams.push({ x: nextX, y: nextY, dir: cDir });
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
@@ -115,66 +117,66 @@ export function simulateLaser(
       const sa = (135 + item.rotation) % 360;
       const rel = (cDir - normal + 360) % 360;
       if (rel > 90 && rel < 270) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     } else if (item.type === 'diag_single_mirror_a') {
       const normal = (112.5 + item.rotation) % 360;
       const sa = (202.5 + item.rotation) % 360;
       const rel = (cDir - normal + 360) % 360;
       if (rel > 90 && rel < 270) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     } else if (item.type === 'diag_single_mirror_b') {
       const normal = (67.5 + item.rotation) % 360;
       const sa = (157.5 + item.rotation) % 360;
       const rel = (cDir - normal + 360) % 360;
       if (rel > 90 && rel < 270) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     } else if (['v_target_mirror_a', 'v_target_mirror_b'].includes(item.type)) {
       const normal = (270 + item.rotation) % 360;
       const sa = item.rotation % 360;
       const rel = (cDir - normal + 360) % 360;
       if (rel > 90 && rel < 270) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     } else if (item.type === 'v_single_mirror') {
       const normal = (90 + item.rotation) % 360;
       const sa = item.rotation % 360;
       const rel = (cDir - normal + 360) % 360;
       if (rel > 90 && rel < 270) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     } else if (item.type === 'mirror') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = (135 + item.rotation) % 360;
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
     } else if (item.type === 'half_mirror') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = (135 + item.rotation) % 360;
       beams.push({ x: nextX, y: nextY, dir: cDir });
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
     } else if (item.type === 'v_mirror') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = item.rotation % 360;
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
     } else if (item.type === 'v_half_mirror') {
-      drawLine(ctx, cx, cy, nextX, nextY, false);
+      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
       const sa = item.rotation % 360;
       beams.push({ x: nextX, y: nextY, dir: cDir });
       beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
@@ -183,10 +185,10 @@ export function simulateLaser(
       const passH = tunnelRot % 180 === 0 && (cDir === 90 || cDir === 270);
       const passV = tunnelRot % 180 === 90 && (cDir === 180 || cDir === 0);
       if (passH || passV) {
-        drawLine(ctx, cx, cy, nextX, nextY, false);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
         beams.push({ x: nextX, y: nextY, dir: cDir });
       } else {
-        drawLine(ctx, cx, cy, nextX, nextY, true);
+        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
       }
     }
   }
