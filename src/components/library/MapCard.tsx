@@ -1,10 +1,15 @@
 import { MiniGrid } from './MiniGrid';
+import { Pill, type PillTone } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
 
 interface Props {
   map: MapDocument;
   onClick: (map: MapDocument) => void;
 }
+
+const DIFF_TONE: Record<Difficulty, PillTone> = {
+  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
+};
 
 function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
   const entries = Object.entries(diffVotes) as [Difficulty, number][];
@@ -24,54 +29,38 @@ function formatDate(iso: string): string {
 
 export function MapCard({ map, onClick }: Props) {
   const userDiff = calculateUserDifficulty(map.diffVotes);
-  const evalLabel = userDiff ?? 'None';
   const dateStr = formatDate(map.createdAt);
 
   return (
     <div className="map-card-v2" onClick={() => onClick(map)}>
       {/* 상단: 미니 그리드 */}
-      <div style={{ padding: '18px 18px 0' }}>
-        <MiniGrid mapData={map.mapData} hideInventory variant="v2" />
+      <div className="px-[18px] pt-[18px]">
+        <MiniGrid mapData={map.mapData} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
       </div>
 
       {/* 메타: 제목 + 작성자 */}
-      <div style={{ padding: '14px 20px 0' }}>
-        <h4
-          title={map.title}
-          style={{
-            margin: '0 0 4px',
-            fontSize: 20,
-            fontWeight: 800,
-            color: '#1e293b',
-            letterSpacing: '-0.5px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
+      <div className="px-5 pt-3.5">
+        <h4 className="mb-1 text-xl font-extrabold tracking-tight text-ink whitespace-nowrap overflow-hidden text-ellipsis" title={map.title}>
           {map.title || '제목 없음'}
         </h4>
-        <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>
+        <p className="text-[13px] font-medium text-ink-muted">
           {map.author} · {dateStr}
         </p>
       </div>
 
-      {/* 구분선 자리 */}
-      <div style={{ height: 0 }} />
-
       {/* 하단: 배지 + 통계 */}
-      <div style={{ padding: '6px 20px 14px', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
-          <span className={`diff-pill diff-${map.difficulty}`} style={{ flex: '1 1 0' }}>
+      <div className="px-5 pt-1.5 pb-3.5 flex flex-col gap-2.5 mt-auto">
+        <div className="flex gap-1.5 min-w-0">
+          <Pill tone={DIFF_TONE[map.difficulty]} className="flex-1">
             공식: {map.difficulty}
-          </span>
-          <span className={`diff-pill diff-${evalLabel}`} style={{ flex: '1 1 0' }}>
-            평가: {evalLabel}
-          </span>
+          </Pill>
+          <Pill tone={userDiff ? DIFF_TONE[userDiff] : 'none'} className="flex-1">
+            평가: {userDiff ?? 'None'}
+          </Pill>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, fontSize: 15, fontWeight: 700 }}>
-          <span style={{ color: '#27ae60' }}>✅ {map.reactionOk}</span>
-          <span style={{ color: '#ef4444' }}>👍 {map.reactionGod}</span>
+        <div className="flex justify-end gap-3.5 text-[15px] font-bold">
+          <span className="text-success">✅ {map.reactionOk}</span>
+          <span className="text-danger">👍 {map.reactionGod}</span>
         </div>
       </div>
     </div>

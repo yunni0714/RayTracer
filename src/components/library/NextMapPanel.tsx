@@ -4,7 +4,6 @@ import { useGameStore } from '../../store/gameStore';
 import { MiniGrid } from './MiniGrid';
 import type { MapDocument, Difficulty } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 
 const LS_KEY = 'ray_map_states';
 
@@ -49,9 +48,10 @@ function formatDate(iso: string): string {
 }
 
 function mapDocToGrid(map: MapDocument): (CellData | null)[][] {
-  const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+  const size = map.gridSize ?? 5;
+  const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
   for (const item of map.mapData) {
-    if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE && !item.isInventory) {
+    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size && !item.isInventory) {
       grid[item.y][item.x] = { type: item.type, rotation: item.rotation as Rotation, canMove: item.canMove, canRotate: item.canRotate, isInventory: false };
     }
   }
@@ -79,9 +79,10 @@ export function NextMapPanel() {
     if (s.isAnswerShown) s.hideAnswer();
     if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
 
-    const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    const size = map.gridSize ?? 5;
+    const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
     for (const item of map.mapData) {
-      if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+      if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
         grid[item.y][item.x] = {
           type: item.type,
           rotation: item.rotation as Rotation,
@@ -98,15 +99,15 @@ export function NextMapPanel() {
 
   if (nextMaps.length === 0) {
     return (
-      <div style={{ padding: '20px 0', textAlign: 'center' }}>
-        <p style={{ color: '#94a3b8', fontSize: 13 }}>다른 맵이 없습니다.</p>
+      <div className="py-5 text-center">
+        <p className="text-[13px] text-ink-muted">다른 맵이 없습니다.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#1e293b', borderBottom: '2px solid #e2e8f0', paddingBottom: 10 }}>
+    <div className="flex flex-col gap-3">
+      <p className="mb-1 pb-2.5 text-[13px] font-extrabold text-ink border-b-2 border-line">
         다음 문제
       </p>
       {nextMaps.map(map => {
@@ -121,34 +122,30 @@ export function NextMapPanel() {
         return (
           <div key={map.id} className="next-map-card" onClick={() => playMap(map)}>
             {/* 좌측: 미니 그리드 44% */}
-            <div style={{ width: '44%', flexShrink: 0 }}>
-              <MiniGrid mapData={mapItems.length > 0 ? map.mapData : gridAsDTO} hideInventory variant="v2" />
+            <div className="w-[44%] shrink-0">
+              <MiniGrid mapData={mapItems.length > 0 ? map.mapData : gridAsDTO} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
             </div>
 
             {/* 우측: 정보 */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={map.title}>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              <h4 className="text-[15px] font-extrabold text-ink whitespace-nowrap overflow-hidden text-ellipsis" title={map.title}>
                 {map.title}
               </h4>
-              <p style={{ margin: 0, fontSize: 11, color: '#94a3b8' }}>
+              <p className="text-[11px] text-ink-muted">
                 {map.author} · {formatDate(map.createdAt)}
               </p>
               {map.description && (
-                <p style={{ margin: 0, fontSize: 12, color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
+                <p className="text-xs text-ink-muted flex-1 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {map.description}
                 </p>
               )}
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                <span className={`diff-pill diff-${map.difficulty}`} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, borderRadius: 6 }}>
-                  공식: {map.difficulty}
-                </span>
-                <span className={`diff-pill diff-${evalLabel}`} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 700, borderRadius: 6 }}>
-                  평가: {evalLabel}
-                </span>
+              <div className="flex gap-1 flex-wrap">
+                <span className={`diff-pill diff-${map.difficulty}`}>공식: {map.difficulty}</span>
+                <span className={`diff-pill diff-${evalLabel}`}>평가: {evalLabel}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, fontSize: 13, fontWeight: 700 }}>
-                <span style={{ color: '#27ae60' }}>✅ {map.reactionOk}</span>
-                <span style={{ color: '#ef4444' }}>🔥 {map.reactionGod}</span>
+              <div className="flex justify-end gap-2.5 text-[13px] font-bold">
+                <span className="text-success">✅ {map.reactionOk}</span>
+                <span className="text-danger">🔥 {map.reactionGod}</span>
               </div>
             </div>
           </div>

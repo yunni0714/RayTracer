@@ -26,10 +26,17 @@ export default {
         primary: {
           DEFAULT: 'var(--primary)',
           ink:     'var(--primary-ink)',
+          soft:    'var(--primary-soft)',
         },
         success:   'var(--success)',
-        danger:    'var(--danger)',
-        warning:   'var(--warning)',
+        danger: {
+          DEFAULT: 'var(--danger)',
+          soft:    'var(--danger-soft)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          soft:    'var(--warning-soft)',
+        },
         accent: {
           DEFAULT: 'var(--accent)',
           soft:    'var(--accent-soft)',
@@ -59,17 +66,7 @@ export default {
         cardhover: 'var(--shadow-md)',
       },
       gridTemplateColumns: {
-        'game-grid': 'repeat(5, 100px)',
-        'palette':   'repeat(3, 1fr)',
-      },
-      gridTemplateRows: {
-        'game-grid': 'repeat(5, 100px)',
-      },
-      width: {
-        'game-grid': '500px',
-      },
-      height: {
-        'game-grid': '500px',
+        'palette': 'repeat(3, 1fr)',
       },
     },
   },

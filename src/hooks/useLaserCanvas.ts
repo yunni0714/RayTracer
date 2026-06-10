@@ -8,15 +8,27 @@ export function useLaserCanvas() {
 
   const isLaserOn = useGameStore(s => s.isLaserOn);
   const mapData = useGameStore(s => s.mapData);
+  const theme = useGameStore(s => s.theme); // 레이저 색 토큰이 테마를 따라가므로 재그리기 필요
 
-  // Canvas 초기 설정 (마운트 시 1회)
+  // 컨테이너 유동 크기: 리사이즈 시 백킹스토어를 dpr 배율로 재설정하고 다시 그린다
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    ctxRef.current = setupCanvas(canvas);
+
+    function resize() {
+      if (!canvas) return;
+      ctxRef.current = setupCanvas(canvas);
+      const s = useGameStore.getState();
+      if (s.isLaserOn) simulateLaser(ctxRef.current, canvas, s.mapData);
+    }
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, []);
 
-  // isLaserOn 또는 mapData 변경 시마다 레이저 재계산
+  // isLaserOn / mapData / theme 변경 시마다 레이저 재계산
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
@@ -27,7 +39,7 @@ export function useLaserCanvas() {
     } else {
       clearLaser(ctx, canvas);
     }
-  }, [isLaserOn, mapData]);
+  }, [isLaserOn, mapData, theme]);
 
   return canvasRef;
 }

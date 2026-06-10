@@ -4,6 +4,12 @@ UI 리디자인(Phase 1~5)과 **무관한 별도 기능 트랙**. 게임 로직(
 
 > 설계 출처: 세션 초반 탐색 + Plan 에이전트 설계. 핵심만 박제.
 
+## ✅ 구현 완료 (2026-06)
+
+§3 엔진 재작성(계산/렌더 분리 `computeLaser`/`drawSegments` + `REGISTRY` + 고정점 루프 MAX_ITERS=8 + `LaserResult.solved`), §2 기물 11종(Group A 6: diode·v_mirror_double·v_half_mirror_double·small_target·omni_target·high_block / Group B 5: transistor_gate·cross_gate·priority_gate·target_projector·inverting_projector — 팔레트 중급 탭), §4 넓은 그리드(`MapDocument.gridSize?` 하위호환 5, store `gridSize`+`setGridSize` 리사이즈, 역직렬화 전부 동적, `MiniGrid gridSize` prop, CSS `repeat(5)` 제거, 인스펙터 5~9 셀렉터), §5 Vitest(41 tests: 거울 골든·고정점·진동 결정성·solved·리사이즈). StatusBar 에 타겟 명중/해결 표시 연결.
+
+**미구현 잔여**: §6 firestore.rules 레포 커밋(보안 별건), 표적거울(target_mirror_*)의 표적 판정(원본 의미 불명 — 현재 미러로만 동작, solved 미포함).
+
 ---
 
 ## 1. 왜 (문제)

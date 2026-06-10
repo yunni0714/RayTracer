@@ -54,16 +54,22 @@
 
 ---
 
-## 4. 다음 시작점 — 여기서부터 (= Phase 3, Fable 담당)
+## 4. 다음 시작점
 
-Phase 1·2 완료. **다음은 Phase 3 — 화면별 L1 레이아웃 + 토큰 마이그레이션.** Phase 2에서 만든 `src/components/ui/` 컴포넌트만 사용하면 됨(§2 Phase 2 산출물 참고). 시작 전 `docs/DESIGN.md` 필독.
+**Phase 3 완료(2026-06).** 산출물:
+- `Header` — 토큰 + `Button`/`IconButton`/`Tabs(segment)` `[편집|플레이]` 토글.
+- `EditorPage` — L1 3-존(좌 `PalettePanel`/`TestModeInventory` · 중앙 보드 · 우 `InspectorPanel`(편집: 맵 통계+선택기물 자리)/`LoadedMapInfo`(플레이)) + 하단 `StatusBar`(기물수·그리드·실행취소·레이저 토글). 맵 로드 시 부가 존 `RightSidePanel` 유지.
+- `PalettePanel` — 폴더탭(`Tabs`), 44px 직사각 `ToolItem`, 특성 칩(soft 토큰 `--primary/warning/danger-soft` 신설), 섹션 h5 헤더.
+- 보드 — 셀/그리드 `--cell`/`--cell-border`/`--grid-bg`, 기물 SVG `currentColor`(다크 대응), 레이저 `--laser`(테마 변경 시 재그리기).
+- 라이브러리 일체 토큰화(인라인 hex·onMouseEnter hover 전부 제거).
 
-### Phase 3 — 화면별 L1 + 토큰 마이그레이션 (권장 순서)
-1. **Header** — `bg-ray-dark`→토큰, 버튼들 `Button`으로, 상단 `[편집|플레이]` 세그먼트 토글로 정리.
-2. **EditorPage 레이아웃** — 현재 2~3컬럼 → L1 3-존(좌 팔레트 / 중앙 보드 / 우 인스펙터 / 하단 상태바). `docs/DESIGN.md §2` 구조대로.
-3. **PalettePanel** — 좌 존으로 이동. 폴더탭(붙은 탭)·직사각 타일(높이 44px)·특성부여 섹션화. (목업 스펙은 DESIGN.md.)
-4. **GameBoard/GridContainer/GridCell/LaserCanvas** — `bg-gray-*` 토큰화(`--cell`,`--cell-border`,`--grid-bg`,`--laser`).
-5. **Library/MapCard/MiniGrid/모달** — 토큰화 + 공용 컴포넌트 적용.
+**Phase 4 + Phase 5 완료(2026-06).** 산출물:
+- 반응형: lg 미만에서 좌·우 존이 하단 시트([팔레트|정보] 세그먼트 탭)로, 보드 전체폭. 보드 유동 크기 — 셀 fr 트랙 + `aspect-square` 컨테이너, 레이저 캔버스는 ResizeObserver로 백킹스토어 재동기화(dpr 유지), `getCellFromPoint`는 rect 실측.
+- 입력: `useGridDragDrop` mouse* → Pointer Events(pointercancel 처리, 그리드 `touch-action:none`).
+- 기물 조작: 스토어 `selectedCell` + `setSelectedCell`(모드 전환 시 초기화). 좌클릭(빈손)=선택 → 데스크탑 `PiecePopover`(lg+, 외부클릭/Esc/삭제 시 닫힘, 첫 행 아래로 flip, 배치 직후 자동 표시) / 모바일 인스펙터 메인(선택 시 정보탭 자동 전환). 도구 든 채 기물 클릭=도구 해제만. 우클릭=회전. 삭제·회수·특성(잠금/유저지급/초기화)은 팝오버+인스펙터(`SelectedPieceInfo`) — 같은 스토어 편집이라 동기화. 공용 액션 `src/lib/pieceActions.ts`(`rotatePiece` 등, `useGridDragDrop`의 회전 로직 이동).
+- e2e: rotation(우클릭 회전+팝오버 회전)·inventory(팝오버 회수)·piece-popover(도구해제 우선·특성·삭제·Esc) — **이 컨테이너는 Playwright 브라우저 다운로드가 차단되어 미실행. 로컬에서 `npx playwright install chromium` 후 `npm run test:e2e` 필요.**
+
+**별개 엔진 트랙도 완료(2026-06)** — 상세는 `docs/FEATURE_PIECES_GRID.md` 상단 "구현 완료" 블록. 요지: 순수 `computeLaser` + 레지스트리 + 고정점 시뮬 + `solved` 판정, 기믹 기물 11종(중급 탭), `gridSize` 런타임화(하위호환 5), Vitest 41건(`npm run test`). 잔여: firestore.rules 커밋, 표적거울 판정 정의.
 
 ### 그 다음
 - Phase 4: 완전 반응형 + 터치(`useGridDragDrop`의 `mouse*`→Pointer Events).

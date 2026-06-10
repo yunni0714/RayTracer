@@ -4,16 +4,17 @@ import { useSearchParams } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { fetchLibraryList } from '../../lib/firebaseService';
 import { MapCard } from './MapCard';
+import { Button, TextInput, Select } from '../ui';
 import type { MapDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 
 function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
-  const grid: (CellData | null)[][] = Array.from({ length: GRID_SIZE }, () =>
-    Array(GRID_SIZE).fill(null)
+  const size = mapObj.gridSize ?? 5;
+  const grid: (CellData | null)[][] = Array.from({ length: size }, () =>
+    Array(size).fill(null)
   );
   for (const item of mapObj.mapData) {
-    if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
       grid[item.y][item.x] = {
         type: item.type,
         rotation: item.rotation as Rotation,
@@ -85,14 +86,12 @@ export function LibraryScreen() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <div className="flex flex-col h-full p-6 overflow-y-auto" style={{ background: '#f8fafc' }}>
+    <div className="flex flex-col h-full p-6 overflow-y-auto bg-canvas text-ink">
 
       {/* ── Featured 섹션 ──────────────────────────── */}
       {featured.length > 0 && (
-        <div style={{ marginBottom: 45 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.5px', textTransform: 'capitalize', paddingLeft: 4 }}>
-            featured
-          </h2>
+        <div className="mb-11">
+          <h2 className="text-2xl font-extrabold tracking-tight capitalize pl-1 mb-4">featured</h2>
           <div className="horizontal-scroll-section">
             {featured.map(map => (
               <MapCard key={map.id} map={map} onClick={playMap} />
@@ -103,10 +102,8 @@ export function LibraryScreen() {
 
       {/* ── Original 섹션 ──────────────────────────── */}
       {original.length > 0 && (
-        <div style={{ marginBottom: 45 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', margin: '0 0 16px', letterSpacing: '-0.5px', textTransform: 'capitalize', paddingLeft: 4 }}>
-            original
-          </h2>
+        <div className="mb-11">
+          <h2 className="text-2xl font-extrabold tracking-tight capitalize pl-1 mb-4">original</h2>
           <div className="horizontal-scroll-section">
             {original.map(map => (
               <MapCard key={map.id} map={map} onClick={playMap} />
@@ -116,47 +113,35 @@ export function LibraryScreen() {
       )}
 
       {/* ── Recent Maps 헤더 ───────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        margin: '0 0 20px', padding: '16px 20px',
-        background: 'white', borderRadius: 10,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.05)', flexWrap: 'wrap',
-      }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0, flexShrink: 0, letterSpacing: '-0.5px', textTransform: 'capitalize' }}>
-          recent maps
-        </h2>
-        <input
+      <div className="flex items-center gap-3 mb-5 px-5 py-4 bg-surface rounded-card shadow-card flex-wrap">
+        <h2 className="text-[22px] font-extrabold tracking-tight capitalize shrink-0">recent maps</h2>
+        <TextInput
           type="text"
           placeholder="맵 제목, 제작자 이름으로 검색..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 180, padding: '10px 14px', fontSize: 14, border: '2px solid #e2e8f0', borderRadius: 8, outline: 'none', fontFamily: 'inherit' }}
-          onFocus={e => (e.target.style.borderColor = '#2980b9')}
-          onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+          className="flex-1 !w-auto min-w-[180px]"
         />
-        <select
+        <Select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as typeof sortBy)}
-          style={{ padding: '10px 14px', fontSize: 14, border: '2px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', background: 'white', fontFamily: 'inherit' }}
+          className="!w-auto cursor-pointer"
         >
           <option value="createdAt">최신 등록순</option>
           <option value="reactionGod">갓맵(👍)순</option>
-        </select>
-        <button
-          onClick={createNewMap}
-          style={{ padding: '10px 18px', background: '#e67e22', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 14, fontFamily: 'inherit' }}
-        >
+        </Select>
+        <Button variant="warning" size="md" onClick={createNewMap}>
           ✨ 새 맵 만들기
-        </button>
+        </Button>
       </div>
 
       {/* ── Recent Maps 그리드 ─────────────────────── */}
       {loading ? (
-        <div className="flex justify-center py-12 text-gray-400">불러오는 중...</div>
+        <div className="flex justify-center py-12 text-ink-muted">불러오는 중...</div>
       ) : filtered.length === 0 ? (
-        <div className="flex justify-center py-12 text-gray-400">맵이 없습니다.</div>
+        <div className="flex justify-center py-12 text-ink-muted">맵이 없습니다.</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24, marginBottom: 60 }}>
+        <div className="grid gap-6 mb-16" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
           {filtered.map(map => (
             <MapCard key={map.id} map={map} onClick={playMap} />
           ))}

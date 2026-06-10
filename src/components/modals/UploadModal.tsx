@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
 import type { CellData, Difficulty, MapDocument, MapItemDTO } from '../../types/game';
-import { GRID_SIZE } from '../../lib/svgArt';
 import { Modal, Button, Label, TextInput, TextArea, Select } from '../ui';
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
@@ -33,8 +32,9 @@ export function UploadModal() {
 
   function buildMapData(): MapItemDTO[] {
     const items: MapItemDTO[] = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
+    const size = mapData.length;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
         const cell = mapData[r][c];
         if (cell) {
           items.push({ x: c, y: r, ...cell, rotation: cell.canRotate ? 0 : cell.rotation });
@@ -63,6 +63,7 @@ export function UploadModal() {
           description: trimmedDescription,
           difficulty,
           mapData: builtMapData,
+          gridSize: mapData.length,
           version: nextVersion,
         };
         await updateMapInDB(currentLoadedMapObj!.id, editPatch);
@@ -77,6 +78,7 @@ export function UploadModal() {
           description: trimmedDescription,
           difficulty,
           mapData: builtMapData,
+          gridSize: mapData.length,
           reactionOk: 0,
           reactionGod: 0,
           diffVotes: {} as MapDocument['diffVotes'],
@@ -87,9 +89,10 @@ export function UploadModal() {
         const shareUrl = `${window.location.origin}${window.location.pathname}?mapId=${newId}`;
         await navigator.clipboard.writeText(shareUrl).catch(() => {});
         const newDoc: MapDocument = { id: newId, ...newDocBody };
-        const grid = emptyGrid();
+        const size = mapData.length;
+        const grid = emptyGrid(size);
         for (const item of builtMapData) {
-          if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+          if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
             grid[item.y][item.x] = {
               type: item.type, rotation: item.rotation,
               canMove: item.canMove, canRotate: item.canRotate,

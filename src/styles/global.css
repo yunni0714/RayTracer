@@ -21,9 +21,12 @@
   /* 시맨틱 */
   --primary:     #2563eb;
   --primary-ink: #ffffff;
+  --primary-soft:#dbeafe;
   --success:     #16a34a;
   --danger:      #dc2626;
+  --danger-soft: #fee2e2;
   --warning:     #f59e0b;
+  --warning-soft:#fef3c7;
   --accent:      #7c3aed;
   --accent-soft: #f3e8ff;
   /* 보드 / 레이저 */
@@ -57,9 +60,12 @@
   --text-muted:  #8a99b8;
   --primary:     #3b82f6;
   --primary-ink: #ffffff;
+  --primary-soft:#16284a;
   --success:     #22c55e;
   --danger:      #f87171;
+  --danger-soft: #441b1b;
   --warning:     #fbbf24;
+  --warning-soft:#3a2e12;
   --accent:      #a78bfa;
   --accent-soft: #2a1f45;
   --grid-bg:     #0d1426;
@@ -133,11 +139,10 @@ html { transition: background-color .2s ease, color .2s ease; }
 
 /* ── 미니 그리드 v2 ──────────────────────────────────── */
 .mini-grid-v2 {
+  /* grid-template 은 gridSize 에 따라 인라인으로 지정한다 */
   width: 100%;
   aspect-ratio: 1 / 1;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(5, 1fr);
   background-color: var(--grid-bg);
   border: 2px solid var(--cell-border);
   border-radius: 8px;

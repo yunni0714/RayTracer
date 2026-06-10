@@ -16,10 +16,10 @@ export function TestModeInventory() {
   const items = Object.entries(playerInventory).filter(([, v]) => v.count > 0);
 
   return (
-    <div className="flex flex-col gap-2 w-52">
-      <p className="text-sm font-medium text-gray-700">🎒 인벤토리</p>
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">🎒 인벤토리</p>
       {items.length === 0 ? (
-        <p className="text-xs text-gray-400">인벤토리가 비어있습니다.</p>
+        <p className="text-xs text-ink-muted">인벤토리가 비어있습니다.</p>
       ) : (
         <div className="grid grid-cols-3 gap-1.5">
           {items.map(([key, item]) => (

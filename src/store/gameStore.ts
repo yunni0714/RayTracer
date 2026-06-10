@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import type {
   CellData, InventoryItem, MapDocument, SuggestionDocument, GameSnapshot, SelectedTool,
 } from '../types/game';
-import { GRID_SIZE } from '../lib/svgArt';
+export const DEFAULT_GRID_SIZE = 5;
 
-export function emptyGrid(): (CellData | null)[][] {
-  return Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+export function emptyGrid(size: number = DEFAULT_GRID_SIZE): (CellData | null)[][] {
+  return Array.from({ length: size }, () => Array(size).fill(null));
 }
 
 // 인벤토리 key: 원본 dragAndDrop.js와 동일하게 type + canRotate + 고정회전값으로 식별
@@ -19,8 +19,9 @@ export function invKey(type: CellData['type'], canRotate: boolean, rotation: num
 // 그리드에서 isInventory 기물을 모아 playerInventory를 구성
 function buildInventory(grid: (CellData | null)[][]): Record<string, InventoryItem> {
   const inv: Record<string, InventoryItem> = {};
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
+  const size = grid.length;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
       const cell = grid[r][c];
       if (cell?.isInventory) {
         const key = invKey(cell.type, cell.canRotate, cell.rotation);
@@ -61,6 +62,7 @@ export type ActiveModal = 'upload' | 'suggestion' | 'nickname' | 'changeNickname
 interface GameStore {
   // ── 게임 그리드 ──────────────────────────────
   mapData: (CellData | null)[][];
+  gridSize: number;
   playerInventory: Record<string, InventoryItem>;
   undoStack: GameSnapshot[];
 
@@ -68,6 +70,7 @@ interface GameStore {
   isEditorMode: boolean;
   isMapEditMode: boolean;
   selectedTool: SelectedTool | null;
+  selectedCell: { row: number; col: number } | null;
   editorMapDataBackup: (CellData | null)[][] | null;
   editorInventoryBackup: Record<string, InventoryItem> | null;
   mapEditOriginalBackup: (CellData | null)[][] | null;
@@ -106,6 +109,7 @@ interface GameStore {
 
   // ── 액션: 그리드 ─────────────────────────────
   setMapData: (data: (CellData | null)[][]) => void;
+  setGridSize: (size: number) => void;
   setCell: (row: number, col: number, item: CellData | null) => void;
   swapCells: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
 
@@ -133,6 +137,7 @@ interface GameStore {
 
   // ── 액션: 도구 선택 ──────────────────────────
   setSelectedTool: (tool: SelectedTool | null) => void;
+  setSelectedCell: (cell: { row: number; col: number } | null) => void;
   setModRotatable: (v: boolean) => void;
   setModLock: (v: boolean) => void;
   setModInv: (v: boolean) => void;
@@ -170,11 +175,13 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set, get) => ({
   // ── 초기값 ───────────────────────────────────
   mapData: emptyGrid(),
+  gridSize: DEFAULT_GRID_SIZE,
   playerInventory: {},
   undoStack: [],
   isEditorMode: true,
   isMapEditMode: false,
   selectedTool: null,
+  selectedCell: null,
   editorMapDataBackup: null,
   editorInventoryBackup: null,
   mapEditOriginalBackup: null,
@@ -200,7 +207,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   confirmState: null,
 
   // ── 그리드 ───────────────────────────────────
-  setMapData: (data) => set({ mapData: data }),
+  setMapData: (data) => set({ mapData: data, gridSize: data.length }),
+
+  // 에디터 그리드 리사이즈: 겹치는 영역 보존, 범위 밖 기물은 버려진다.
+  // mapData.length 가 곳곳의 소스 오브 트루스라 undo 스택은 비운다(크기 불일치 방지).
+  setGridSize: (size) => set((s) => {
+    if (!s.isEditorMode) return {};
+    const next: (CellData | null)[][] = Array.from({ length: size }, (_, r) =>
+      Array.from({ length: size }, (_, c) => {
+        const cell = s.mapData[r]?.[c];
+        return cell ? { ...cell } : null;
+      }),
+    );
+    return { gridSize: size, mapData: next, selectedCell: null, undoStack: [] };
+  }),
 
   setCell: (row, col, item) => set((s) => {
     const next = s.mapData.map(r => [...r]);
@@ -280,18 +300,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerInventory: newInv,
         undoStack: [],
         selectedTool: null,
+        selectedCell: null,
       };
     } else {
       // 테스트 → 에디터
       return {
         isEditorMode: true,
-        mapData: s.editorMapDataBackup ?? emptyGrid(),
+        mapData: s.editorMapDataBackup ?? emptyGrid(s.gridSize),
         playerInventory: s.editorInventoryBackup ?? {},
         editorMapDataBackup: null,
         editorInventoryBackup: null,
         undoStack: [],
         isLaserOn: false,
         selectedTool: null,
+        selectedCell: null,
       };
     }
   }),
@@ -305,6 +327,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return {
       isEditorMode: false,
       mapData: newMapData,
+      gridSize: grid.length,
       playerInventory: newInv,
       editorMapDataBackup: fullGrid,
       editorInventoryBackup: {},
@@ -316,6 +339,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerMapBackup: null,
       answerInventoryBackup: null,
       selectedTool: null,
+      selectedCell: null,
       currentLoadedMapObj: mapDoc,
       currentLoadedMapAuthorUid: mapDoc?.authorUid ?? null,
       currentMapReactions: mapDoc
@@ -336,6 +360,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerInventory: {},
       mapEditOriginalBackup: fullGrid.map(r => r.map(c => c ? { ...c } : null)),
       selectedTool: null,
+      selectedCell: null,
       isLaserOn: false,
       isAnswerShown: false,
       answerMapBackup: null,
@@ -358,6 +383,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       editorMapDataBackup: finalGrid.map(r => r.map(c => c ? { ...c } : null)),
       mapEditOriginalBackup: null,
       selectedTool: null,
+      selectedCell: null,
       undoStack: [],
       isLaserOn: true,
       isAnswerShown: false,
@@ -370,8 +396,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     currentLoadedMapObj: s.currentLoadedMapObj ? { ...s.currentLoadedMapObj, ...patch } : null,
   })),
 
-  resetEditorState: () => set({
-    mapData: emptyGrid(),
+  resetEditorState: () => set((s) => ({
+    mapData: emptyGrid(s.gridSize),
     playerInventory: {},
     undoStack: [],
     isEditorMode: true,
@@ -384,12 +410,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     answerInventoryBackup: null,
     isLaserOn: false,
     selectedTool: null,
+    selectedCell: null,
     currentLoadedMapObj: null,
     currentLoadedMapAuthorUid: null,
-  }),
+  })),
 
   // ── 도구 선택 ─────────────────────────────────
   setSelectedTool: (tool) => set({ selectedTool: tool }),
+  setSelectedCell: (cell) => set({ selectedCell: cell }),
   setModRotatable: (v) => set({ isModRotatableActive: v }),
   setModLock: (v) => set({ isModLockActive: v }),
   setModInv: (v) => set({ isModInvActive: v }),
@@ -441,7 +469,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (isEditorMode) {
       if (!(await get().requestConfirm({ message: '맵의 모든 기물을 삭제하시겠습니까?', danger: true }))) return;
       get().saveUndoSnapshot();
-      set({ mapData: emptyGrid(), playerInventory: {} });
+      set({ mapData: emptyGrid(get().gridSize), playerInventory: {}, selectedCell: null });
     } else {
       if (!(await get().requestConfirm({ message: '배치한 모든 기물을 인벤토리로 회수하시겠습니까?' }))) return;
       get().saveUndoSnapshot();
@@ -449,8 +477,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newMap = mapData.map(r => r.map(c => (!c || c.isInventory) ? null : c));
 
       const refunded = { ...playerInventory };
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
+      const size = mapData.length;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
           const cell = mapData[r][c];
           if (cell?.isInventory) {
             const key = invKey(cell.type, cell.canRotate, cell.rotation);
@@ -464,7 +493,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
         }
       }
-      set({ mapData: newMap, playerInventory: refunded });
+      set({ mapData: newMap, playerInventory: refunded, selectedCell: null });
     }
   },
 
@@ -476,9 +505,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const answerMapBackup = mapData.map(r => r.map(c => c ? { ...c } : null));
     const answerInventoryBackup = JSON.parse(JSON.stringify(playerInventory));
 
-    const originalGrid = emptyGrid();
+    const answerSize = currentLoadedMapObj.gridSize ?? DEFAULT_GRID_SIZE;
+    const originalGrid = emptyGrid(answerSize);
     for (const item of currentLoadedMapObj.mapData) {
-      if (item.y >= 0 && item.y < GRID_SIZE && item.x >= 0 && item.x < GRID_SIZE) {
+      if (item.y >= 0 && item.y < answerSize && item.x >= 0 && item.x < answerSize) {
         originalGrid[item.y][item.x] = {
           type: item.type,
           rotation: item.rotation,
@@ -495,6 +525,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerInventoryBackup,
       mapData: originalGrid,
       playerInventory: {},
+      selectedCell: null,
     });
   },
 
@@ -502,10 +533,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { answerMapBackup, answerInventoryBackup } = get();
     set({
       isAnswerShown: false,
-      mapData: answerMapBackup ?? emptyGrid(),
+      mapData: answerMapBackup ?? emptyGrid(get().gridSize),
       playerInventory: answerInventoryBackup ?? {},
       answerMapBackup: null,
       answerInventoryBackup: null,
+      selectedCell: null,
     });
   },
 }));
