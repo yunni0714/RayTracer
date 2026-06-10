@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { signInWithGoogle, signOutUser } from '../../lib/firebaseService';
+import { Button, IconButton, Tabs } from '../ui';
 
 export function Header() {
   const {
@@ -56,77 +57,73 @@ export function Header() {
     setLibraryMode(false);
   }
 
+  // [편집|플레이] 세그먼트: 모드 전환 가능 상태에서만 표시
+  const canToggleMode = !isLibraryMode && (!currentLoadedMapObj || isMapEditMode);
+
   return (
-    <header className="flex items-center gap-3 px-4 py-2 bg-ray-dark text-white shadow-md">
-      <h1 className="text-lg font-bold tracking-wide mr-auto">⚡ Project Ray</h1>
+    <header className="flex items-center gap-2 px-4 py-2 bg-surface text-ink border-b border-line shadow-card">
+      <h1 className="text-lg font-extrabold tracking-tight mr-auto">⚡ Project Ray</h1>
 
-      <button
-        onClick={handleNewMap}
-        className="px-3 py-1.5 bg-ray-purple hover:opacity-90 rounded text-sm font-medium transition-opacity"
-      >
-        + 새 맵
-      </button>
+      <Button variant="accent" onClick={handleNewMap}>+ 새 맵</Button>
 
-      <button
-        onClick={() => setLibraryMode(!isLibraryMode)}
-        className="px-3 py-1.5 bg-ray-blue hover:opacity-90 rounded text-sm font-medium transition-opacity"
-      >
+      <Button variant="secondary" onClick={() => setLibraryMode(!isLibraryMode)}>
         {isLibraryMode ? '✏️ 에디터' : '📚 라이브러리'}
-      </button>
+      </Button>
 
-      {!isLibraryMode && (!currentLoadedMapObj || isMapEditMode) && (
-        <button
-          onClick={toggleMode}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-opacity hover:opacity-90 ${
-            isEditorMode ? 'bg-ray-green' : 'bg-ray-orange'
-          }`}
-        >
-          {isEditorMode ? '▶ 테스트 모드' : '✏️ 에디터 모드'}
-        </button>
+      {canToggleMode && (
+        <Tabs
+          variant="segment"
+          items={[
+            { id: 'edit', label: '✏️ 편집' },
+            { id: 'play', label: '▶ 플레이' },
+          ]}
+          value={isEditorMode ? 'edit' : 'play'}
+          onChange={(id) => {
+            if ((id === 'edit') !== isEditorMode) toggleMode();
+          }}
+        />
       )}
 
-      <button
+      <IconButton
+        variant="secondary"
         onClick={toggleTheme}
         aria-label="테마 전환"
         title={theme === 'dark' ? '라이트 모드로' : '다크 모드로'}
-        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors"
       >
         {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
+      </IconButton>
 
       {currentUserUid ? (
         <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen(v => !v)}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors"
-          >
+          <Button variant="secondary" onClick={() => setDropdownOpen(v => !v)}>
             👤 {currentUserNickname ?? '사용자'}
-          </button>
+          </Button>
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white text-gray-800 rounded shadow-lg min-w-[160px] z-50">
-              <button
+            <div className="absolute right-0 top-full mt-1 bg-surface text-ink border border-line rounded-tile shadow-cardhover min-w-[160px] z-50 overflow-hidden p-1">
+              <Button
+                variant="ghost"
+                block
+                className="justify-start"
                 onClick={() => { openModal('changeNickname'); setDropdownOpen(false); }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
               >
                 ✏️ 닉네임 변경
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                block
+                className="justify-start !text-danger"
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-ray-red transition-colors"
               >
                 🚪 로그아웃
-              </button>
+              </Button>
             </div>
           )}
         </div>
       ) : (
-        <button
-          onClick={handleLogin}
-          className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-800 rounded text-sm font-medium hover:bg-gray-100 transition-colors"
-        >
+        <Button variant="secondary" onClick={handleLogin}>
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-4 h-4" />
           구글 로그인
-        </button>
+        </Button>
       )}
     </header>
   );
