@@ -1,5 +1,16 @@
-import type { CellData } from '../types/game';
-import { GRID_SIZE } from './svgArt';
+import type { CellData, PieceType } from '../types/game';
+
+/* ════════════════════════════════════════════════════════
+   레이저 엔진 — 계산(순수)과 렌더(캔버스)의 분리
+
+   computeLaser(mapData)        : 순수 계산. BeamSegment 누적 + 셀별
+                                  incidence(입사 방향/충족) 기록 + 승리 판정.
+   drawSegments(ctx, segs, px)  : 세그먼트를 캔버스에 그리기만 한다.
+   simulateLaser(ctx, canvas, m): 둘을 잇는 얇은 래퍼(기존 시그니처 유지).
+
+   기물 동작은 데이터드리븐 레지스트리(REGISTRY)로 정의한다.
+   그리드 크기는 mapData.length에서 유도한다(NxN).
+   ════════════════════════════════════════════════════════ */
 
 const DIRS: Record<number, { dx: number; dy: number }> = {
   0: { dx: 1, dy: 0 }, 45: { dx: 1, dy: 1 }, 90: { dx: 0, dy: 1 }, 135: { dx: -1, dy: 1 },
@@ -10,28 +21,173 @@ export function calculateReflection(inDir: number, surfaceAngle: number): number
   return (2 * surfaceAngle - inDir + 720) % 360;
 }
 
-function drawLine(
-  ctx: CanvasRenderingContext2D,
-  cellSize: number,
-  startX: number, startY: number,
-  endX: number, endY: number,
-  stopAtEdge = false,
-): void {
-  const offset = cellSize / 2;
-  const x1 = startX * cellSize + offset;
-  const y1 = startY * cellSize + offset;
-  let x2 = endX * cellSize + offset;
-  let y2 = endY * cellSize + offset;
+/* ── 결과 타입 ─────────────────────────────────────────── */
 
-  if (stopAtEdge) {
-    x2 = (startX + endX) / 2 * cellSize + offset;
-    y2 = (startY + endY) / 2 * cellSize + offset;
-  }
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
+// 셀 인덱스 좌표계 세그먼트. partial=true 면 목적지 셀 경계(중간점)에서 멈춘다.
+export interface BeamSegment {
+  x1: number; y1: number;
+  x2: number; y2: number;
+  partial: boolean;
 }
+
+export interface CellIncidence {
+  dirs: Set<number>;   // 이 셀로 들어온 빔 방향들
+  satisfied: boolean;  // 표적 충족 여부
+}
+
+export interface LaserResult {
+  segments: BeamSegment[];
+  incidence: Map<string, CellIncidence>; // key: "x,y"
+  targetsTotal: number;
+  targetsHit: number;
+  solved: boolean;
+}
+
+/* ── 기물 동작 레지스트리 ──────────────────────────────── */
+
+interface BeamOutcome {
+  partial?: boolean;    // 표면에서 차단(절반 길이만 그림)
+  outDirs?: number[];   // 셀에서 이어 나가는 빔 방향들
+  satisfied?: boolean;  // 표적 충족
+}
+
+interface PieceBehavior {
+  isTarget?: boolean; // 승리 판정에 포함되는 필수 표적
+  interact: (inDir: number, cell: CellData) => BeamOutcome;
+}
+
+const fullMirror = (saBase: number): PieceBehavior['interact'] =>
+  (inDir, cell) => ({ outDirs: [calculateReflection(inDir, (saBase + cell.rotation) % 360)] });
+
+const halfMirror = (saBase: number): PieceBehavior['interact'] =>
+  (inDir, cell) => ({
+    outDirs: [inDir, calculateReflection(inDir, (saBase + cell.rotation) % 360)],
+  });
+
+const oneSidedMirror = (normalBase: number, saBase: number): PieceBehavior['interact'] =>
+  (inDir, cell) => {
+    const normal = (normalBase + cell.rotation) % 360;
+    const rel = (inDir - normal + 360) % 360;
+    if (rel > 90 && rel < 270) {
+      return { outDirs: [calculateReflection(inDir, (saBase + cell.rotation) % 360)] };
+    }
+    return { partial: true }; // 뒷면: 차단
+  };
+
+const absorb: PieceBehavior['interact'] = () => ({});
+
+// 미지 타입(구버전 클라이언트 보호): 통과
+const PASSIVE: PieceBehavior = { interact: (inDir) => ({ outDirs: [inDir] }) };
+
+export const REGISTRY: Partial<Record<PieceType, PieceBehavior>> = {
+  ray:    { interact: absorb },
+  target: { isTarget: true, interact: () => ({ satisfied: true }) },
+  block:  { interact: (inDir) => ({ outDirs: [inDir] }) }, // 기존 block은 통과
+  tunnel: {
+    interact: (inDir, cell) => {
+      const tunnelRot = cell.rotation % 180;
+      const passH = tunnelRot === 0 && (inDir === 90 || inDir === 270);
+      const passV = tunnelRot === 90 && (inDir === 180 || inDir === 0);
+      return passH || passV ? { outDirs: [inDir] } : { partial: true };
+    },
+  },
+  mirror:          { interact: fullMirror(135) },
+  half_mirror:     { interact: halfMirror(135) },
+  mirror_45:       { interact: fullMirror(337.5) },
+  half_mirror_45:  { interact: halfMirror(337.5) },
+  single_mirror:   { interact: oneSidedMirror(225, 135) },
+  target_mirror_a: { interact: oneSidedMirror(225, 135) },
+  target_mirror_b: { interact: oneSidedMirror(225, 135) },
+  diag_single_mirror_a: { interact: oneSidedMirror(112.5, 202.5) },
+  diag_single_mirror_b: { interact: oneSidedMirror(67.5, 157.5) },
+  v_mirror:        { interact: fullMirror(0) },
+  v_half_mirror:   { interact: halfMirror(0) },
+  v_single_mirror: { interact: oneSidedMirror(90, 0) },
+  v_target_mirror_a: { interact: oneSidedMirror(270, 0) },
+  v_target_mirror_b: { interact: oneSidedMirror(270, 0) },
+};
+
+/* ── 순수 계산 ─────────────────────────────────────────── */
+
+export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
+  const gridSize = mapData.length;
+  const segments: BeamSegment[] = [];
+  const incidence = new Map<string, CellIncidence>();
+
+  function record(x: number, y: number, dir: number, satisfied: boolean): void {
+    const key = `${x},${y}`;
+    let inc = incidence.get(key);
+    if (!inc) {
+      inc = { dirs: new Set(), satisfied: false };
+      incidence.set(key, inc);
+    }
+    inc.dirs.add(dir);
+    if (satisfied) inc.satisfied = true;
+  }
+
+  const beams: { x: number; y: number; dir: number }[] = [];
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const cell = mapData[r][c];
+      if (cell?.type === 'ray') {
+        beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
+      }
+    }
+  }
+
+  const visited = new Set<string>();
+
+  while (beams.length > 0) {
+    const { x: cx, y: cy, dir: cDir } = beams.shift()!;
+    const dirVec = DIRS[cDir];
+    const nextX = cx + dirVec.dx;
+    const nextY = cy + dirVec.dy;
+
+    if (nextX < 0 || nextX >= gridSize || nextY < 0 || nextY >= gridSize) {
+      segments.push({ x1: cx, y1: cy, x2: nextX, y2: nextY, partial: true });
+      continue;
+    }
+
+    const stateKey = `${nextX},${nextY},${cDir}`;
+    if (visited.has(stateKey)) continue;
+    visited.add(stateKey);
+
+    const item = mapData[nextY][nextX];
+    const outcome: BeamOutcome = item
+      ? (REGISTRY[item.type] ?? PASSIVE).interact(cDir, item)
+      : { outDirs: [cDir] };
+
+    record(nextX, nextY, cDir, !!outcome.satisfied);
+    segments.push({ x1: cx, y1: cy, x2: nextX, y2: nextY, partial: !!outcome.partial });
+
+    for (const d of outcome.outDirs ?? []) {
+      beams.push({ x: nextX, y: nextY, dir: d });
+    }
+  }
+
+  // 승리 판정: 필수 표적 전부 충족
+  let targetsTotal = 0;
+  let targetsHit = 0;
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const cell = mapData[r][c];
+      if (cell && REGISTRY[cell.type]?.isTarget) {
+        targetsTotal++;
+        if (incidence.get(`${c},${r}`)?.satisfied) targetsHit++;
+      }
+    }
+  }
+
+  return {
+    segments,
+    incidence,
+    targetsTotal,
+    targetsHit,
+    solved: targetsTotal > 0 && targetsHit === targetsTotal,
+  };
+}
+
+/* ── 렌더 ─────────────────────────────────────────────── */
 
 export function clearLaser(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
   ctx.save();
@@ -51,26 +207,12 @@ export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D
   return ctx;
 }
 
-export function simulateLaser(
+export function drawSegments(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  mapData: (CellData | null)[][],
+  segments: BeamSegment[],
+  cellSize: number,
 ): void {
-  clearLaser(ctx, canvas);
-
-  const cellSize = (canvas.clientWidth || canvas.width) / GRID_SIZE;
-  const beams: { x: number; y: number; dir: number }[] = [];
-  const visited = new Set<string>();
-
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      const cell = mapData[r][c];
-      if (cell?.type === 'ray') {
-        beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
-      }
-    }
-  }
-  if (beams.length === 0) return;
+  if (segments.length === 0) return;
 
   const laserColor =
     getComputedStyle(document.documentElement).getPropertyValue('--laser').trim() || '#ff3333';
@@ -80,116 +222,33 @@ export function simulateLaser(
   ctx.shadowBlur = 10;
   ctx.shadowColor = laserColor;
 
-  while (beams.length > 0) {
-    const beam = beams.shift()!;
-    const { x: cx, y: cy, dir: cDir } = beam;
-    const dirVec = DIRS[cDir];
-    const nextX = cx + dirVec.dx;
-    const nextY = cy + dirVec.dy;
-
-    if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      continue;
+  const offset = cellSize / 2;
+  for (const seg of segments) {
+    const x1 = seg.x1 * cellSize + offset;
+    const y1 = seg.y1 * cellSize + offset;
+    let x2 = seg.x2 * cellSize + offset;
+    let y2 = seg.y2 * cellSize + offset;
+    if (seg.partial) {
+      x2 = ((seg.x1 + seg.x2) / 2) * cellSize + offset;
+      y2 = ((seg.y1 + seg.y2) / 2) * cellSize + offset;
     }
-
-    const stateKey = `${nextX},${nextY},${cDir}`;
-    if (visited.has(stateKey)) continue;
-    visited.add(stateKey);
-
-    const item = mapData[nextY][nextX];
-
-    if (!item || item.type === 'block') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      beams.push({ x: nextX, y: nextY, dir: cDir });
-    } else if (item.type === 'ray' || item.type === 'target') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-    } else if (item.type === 'mirror_45') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = (337.5 + item.rotation) % 360;
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (item.type === 'half_mirror_45') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = (337.5 + item.rotation) % 360;
-      beams.push({ x: nextX, y: nextY, dir: cDir });
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (['single_mirror', 'target_mirror_a', 'target_mirror_b'].includes(item.type)) {
-      const normal = (225 + item.rotation) % 360;
-      const sa = (135 + item.rotation) % 360;
-      const rel = (cDir - normal + 360) % 360;
-      if (rel > 90 && rel < 270) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    } else if (item.type === 'diag_single_mirror_a') {
-      const normal = (112.5 + item.rotation) % 360;
-      const sa = (202.5 + item.rotation) % 360;
-      const rel = (cDir - normal + 360) % 360;
-      if (rel > 90 && rel < 270) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    } else if (item.type === 'diag_single_mirror_b') {
-      const normal = (67.5 + item.rotation) % 360;
-      const sa = (157.5 + item.rotation) % 360;
-      const rel = (cDir - normal + 360) % 360;
-      if (rel > 90 && rel < 270) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    } else if (['v_target_mirror_a', 'v_target_mirror_b'].includes(item.type)) {
-      const normal = (270 + item.rotation) % 360;
-      const sa = item.rotation % 360;
-      const rel = (cDir - normal + 360) % 360;
-      if (rel > 90 && rel < 270) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    } else if (item.type === 'v_single_mirror') {
-      const normal = (90 + item.rotation) % 360;
-      const sa = item.rotation % 360;
-      const rel = (cDir - normal + 360) % 360;
-      if (rel > 90 && rel < 270) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    } else if (item.type === 'mirror') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = (135 + item.rotation) % 360;
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (item.type === 'half_mirror') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = (135 + item.rotation) % 360;
-      beams.push({ x: nextX, y: nextY, dir: cDir });
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (item.type === 'v_mirror') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = item.rotation % 360;
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (item.type === 'v_half_mirror') {
-      drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-      const sa = item.rotation % 360;
-      beams.push({ x: nextX, y: nextY, dir: cDir });
-      beams.push({ x: nextX, y: nextY, dir: calculateReflection(cDir, sa) });
-    } else if (item.type === 'tunnel') {
-      const tunnelRot = item.rotation % 180;
-      const passH = tunnelRot % 180 === 0 && (cDir === 90 || cDir === 270);
-      const passV = tunnelRot % 180 === 90 && (cDir === 180 || cDir === 0);
-      if (passH || passV) {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, false);
-        beams.push({ x: nextX, y: nextY, dir: cDir });
-      } else {
-        drawLine(ctx, cellSize, cx, cy, nextX, nextY, true);
-      }
-    }
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
   }
+}
+
+/* ── 래퍼 (기존 시그니처 유지) ─────────────────────────── */
+
+export function simulateLaser(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  mapData: (CellData | null)[][],
+): LaserResult {
+  clearLaser(ctx, canvas);
+  const result = computeLaser(mapData);
+  const cellSize = (canvas.clientWidth || canvas.width) / mapData.length;
+  drawSegments(ctx, result.segments, cellSize);
+  return result;
 }
