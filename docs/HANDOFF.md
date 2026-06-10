@@ -54,16 +54,16 @@
 
 ---
 
-## 4. 다음 시작점 — 여기서부터 (= Phase 3, Fable 담당)
+## 4. 다음 시작점
 
-Phase 1·2 완료. **다음은 Phase 3 — 화면별 L1 레이아웃 + 토큰 마이그레이션.** Phase 2에서 만든 `src/components/ui/` 컴포넌트만 사용하면 됨(§2 Phase 2 산출물 참고). 시작 전 `docs/DESIGN.md` 필독.
+**Phase 3 완료(2026-06).** 산출물:
+- `Header` — 토큰 + `Button`/`IconButton`/`Tabs(segment)` `[편집|플레이]` 토글.
+- `EditorPage` — L1 3-존(좌 `PalettePanel`/`TestModeInventory` · 중앙 보드 · 우 `InspectorPanel`(편집: 맵 통계+선택기물 자리)/`LoadedMapInfo`(플레이)) + 하단 `StatusBar`(기물수·그리드·실행취소·레이저 토글). 맵 로드 시 부가 존 `RightSidePanel` 유지.
+- `PalettePanel` — 폴더탭(`Tabs`), 44px 직사각 `ToolItem`, 특성 칩(soft 토큰 `--primary/warning/danger-soft` 신설), 섹션 h5 헤더.
+- 보드 — 셀/그리드 `--cell`/`--cell-border`/`--grid-bg`, 기물 SVG `currentColor`(다크 대응), 레이저 `--laser`(테마 변경 시 재그리기).
+- 라이브러리 일체 토큰화(인라인 hex·onMouseEnter hover 전부 제거).
 
-### Phase 3 — 화면별 L1 + 토큰 마이그레이션 (권장 순서)
-1. **Header** — `bg-ray-dark`→토큰, 버튼들 `Button`으로, 상단 `[편집|플레이]` 세그먼트 토글로 정리.
-2. **EditorPage 레이아웃** — 현재 2~3컬럼 → L1 3-존(좌 팔레트 / 중앙 보드 / 우 인스펙터 / 하단 상태바). `docs/DESIGN.md §2` 구조대로.
-3. **PalettePanel** — 좌 존으로 이동. 폴더탭(붙은 탭)·직사각 타일(높이 44px)·특성부여 섹션화. (목업 스펙은 DESIGN.md.)
-4. **GameBoard/GridContainer/GridCell/LaserCanvas** — `bg-gray-*` 토큰화(`--cell`,`--cell-border`,`--grid-bg`,`--laser`).
-5. **Library/MapCard/MiniGrid/모달** — 토큰화 + 공용 컴포넌트 적용.
+**다음 = Phase 4 + Phase 5 (아래).**
 
 ### 그 다음
 - Phase 4: 완전 반응형 + 터치(`useGridDragDrop`의 `mouse*`→Pointer Events).
