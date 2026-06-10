@@ -69,7 +69,7 @@
 - 기물 조작: 스토어 `selectedCell` + `setSelectedCell`(모드 전환 시 초기화). 좌클릭(빈손)=선택 → 데스크탑 `PiecePopover`(lg+, 외부클릭/Esc/삭제 시 닫힘, 첫 행 아래로 flip, 배치 직후 자동 표시) / 모바일 인스펙터 메인(선택 시 정보탭 자동 전환). 도구 든 채 기물 클릭=도구 해제만. 우클릭=회전. 삭제·회수·특성(잠금/유저지급/초기화)은 팝오버+인스펙터(`SelectedPieceInfo`) — 같은 스토어 편집이라 동기화. 공용 액션 `src/lib/pieceActions.ts`(`rotatePiece` 등, `useGridDragDrop`의 회전 로직 이동).
 - e2e: rotation(우클릭 회전+팝오버 회전)·inventory(팝오버 회수)·piece-popover(도구해제 우선·특성·삭제·Esc) — **이 컨테이너는 Playwright 브라우저 다운로드가 차단되어 미실행. 로컬에서 `npx playwright install chromium` 후 `npm run test:e2e` 필요.**
 
-**다음 = 별개 엔진 트랙(`docs/FEATURE_PIECES_GRID.md`).**
+**별개 엔진 트랙도 완료(2026-06)** — 상세는 `docs/FEATURE_PIECES_GRID.md` 상단 "구현 완료" 블록. 요지: 순수 `computeLaser` + 레지스트리 + 고정점 시뮬 + `solved` 판정, 기믹 기물 11종(중급 탭), `gridSize` 런타임화(하위호환 5), Vitest 41건(`npm run test`). 잔여: firestore.rules 커밋, 표적거울 판정 정의.
 
 ### 그 다음
 - Phase 4: 완전 반응형 + 터치(`useGridDragDrop`의 `mouse*`→Pointer Events).
