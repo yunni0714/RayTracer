@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { createUserProfile, updateUserNickname } from '../../lib/firebaseService';
+import { Modal, Button, TextInput } from '../ui';
 
 interface Props {
   mode: 'set' | 'change';
@@ -10,12 +11,6 @@ interface Props {
 export function NicknameModal({ mode }: Props) {
   const [value, setValue] = useState('');
 
-  useEffect(() => {
-    if (mode !== 'set') return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') e.stopPropagation(); };
-    document.addEventListener('keydown', handler, true);
-    return () => document.removeEventListener('keydown', handler, true);
-  }, [mode]);
   const { currentUserUid, setNickname, closeModal, showNotification } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     setNickname: s.setNickname,
@@ -46,38 +41,29 @@ export function NicknameModal({ mode }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-80 flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-gray-800">
-          {mode === 'set' ? '👤 닉네임 설정' : '✏️ 닉네임 변경'}
-        </h3>
-        <p className="text-sm text-gray-500">
-          {mode === 'set' ? '처음 로그인하셨습니다! 사용할 닉네임을 설정해주세요.' : '새 닉네임을 입력해주세요.'}
-        </p>
-        <input
-          type="text"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder="2~16자"
-          maxLength={16}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ray-purple"
-          autoFocus
-        />
-        <div className="flex gap-2 justify-end">
-          {mode === 'change' && (
-            <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors">
-              취소
-            </button>
-          )}
-          <button
-            onClick={handleSubmit}
-            className="px-4 py-2 bg-ray-purple text-white text-sm rounded hover:opacity-90 transition-opacity"
-          >
-            저장
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      title={mode === 'set' ? '👤 닉네임 설정' : '✏️ 닉네임 변경'}
+      onClose={closeModal}
+      dismissable={mode !== 'set'}
+      footer={
+        <>
+          {mode === 'change' && <Button variant="ghost" onClick={closeModal}>취소</Button>}
+          <Button variant="accent" onClick={handleSubmit}>저장</Button>
+        </>
+      }
+    >
+      <p className="text-sm text-ink-muted">
+        {mode === 'set' ? '처음 로그인하셨습니다! 사용할 닉네임을 설정해주세요.' : '새 닉네임을 입력해주세요.'}
+      </p>
+      <TextInput
+        type="text"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+        placeholder="2~16자"
+        maxLength={16}
+        autoFocus
+      />
+    </Modal>
   );
 }

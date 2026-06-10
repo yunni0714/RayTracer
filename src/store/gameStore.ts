@@ -45,6 +45,12 @@ function initialTheme(): 'light' | 'dark' {
   return 'light';
 }
 
+// ConfirmModal 표시 옵션. resolver 는 직렬화 회피 위해 모듈 변수에 보관.
+type ConfirmOpts = {
+  title?: string; message: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean;
+};
+let confirmResolver: ((v: boolean) => void) | null = null;
+
 interface NotificationState {
   message: string;
   color: string;
@@ -96,6 +102,7 @@ interface GameStore {
   activeModal: ActiveModal;
   isUnlocked: boolean; // 이스터에그 상급 기물 해금
   theme: 'light' | 'dark';
+  confirmState: ConfirmOpts | null;
 
   // ── 액션: 그리드 ─────────────────────────────
   setMapData: (data: (CellData | null)[][]) => void;
@@ -152,9 +159,11 @@ interface GameStore {
   setUnlocked: (v: boolean) => void;
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark') => void;
+  requestConfirm: (opts: ConfirmOpts) => Promise<boolean>;
+  resolveConfirm: (result: boolean) => void;
 
   // ── 액션: 맵 데이터 변환 ─────────────────────
-  clearGrid: () => void;
+  clearGrid: () => Promise<void>;
 }
 
 
@@ -188,6 +197,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   activeModal: null,
   isUnlocked: false,
   theme: initialTheme(),
+  confirmState: null,
 
   // ── 그리드 ───────────────────────────────────
   setMapData: (data) => set({ mapData: data }),
@@ -410,16 +420,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   setTheme: (t) => set({ theme: t }),
 
+  // ── 확인 다이얼로그 (네이티브 confirm 대체) ──
+  requestConfirm: (opts) => new Promise<boolean>((resolve) => {
+    // 이전 미해결 confirm 이 있으면 false 로 정리
+    confirmResolver?.(false);
+    confirmResolver = resolve;
+    set({ confirmState: opts });
+  }),
+  resolveConfirm: (result) => {
+    const resolver = confirmResolver;
+    confirmResolver = null;
+    set({ confirmState: null });
+    resolver?.(result);
+  },
+
   // ── 맵 초기화 ─────────────────────────────────
-  clearGrid: () => {
+  clearGrid: async () => {
     const { isEditorMode, mapData, playerInventory } = get();
 
     if (isEditorMode) {
-      if (!window.confirm('맵의 모든 기물을 삭제하시겠습니까?')) return;
+      if (!(await get().requestConfirm({ message: '맵의 모든 기물을 삭제하시겠습니까?', danger: true }))) return;
       get().saveUndoSnapshot();
       set({ mapData: emptyGrid(), playerInventory: {} });
     } else {
-      if (!window.confirm('배치한 모든 기물을 인벤토리로 회수하시겠습니까?')) return;
+      if (!(await get().requestConfirm({ message: '배치한 모든 기물을 인벤토리로 회수하시겠습니까?' }))) return;
       get().saveUndoSnapshot();
 
       const newMap = mapData.map(r => r.map(c => (!c || c.isInventory) ? null : c));
