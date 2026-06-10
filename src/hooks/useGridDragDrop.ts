@@ -115,8 +115,9 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     const grid = gridRef.current;
     if (!grid) return;
 
-    function onMouseDown(e: MouseEvent): void {
-      if (e.button !== 0) return; // 좌클릭만
+    function onPointerDown(e: PointerEvent): void {
+      if (!e.isPrimary) return; // 멀티터치 보조 포인터 무시
+      if (e.button !== 0) return; // 주 버튼(좌클릭/터치)만
 
       const target = e.target as HTMLElement;
       const cellEl = target.closest('[data-row]') as HTMLElement | null;
@@ -184,7 +185,8 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       }
     }
 
-    function onMouseMove(e: MouseEvent): void {
+    function onPointerMove(e: PointerEvent): void {
+      if (!e.isPrimary) return;
       const src = dragSourceRef.current;
       if (!src) return;
       const state = useGameStore.getState();
@@ -199,8 +201,9 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       moveGhost(e.clientX, e.clientY);
     }
 
-    function onMouseUp(e: MouseEvent): void {
-      if (e.button !== 0) return;
+    function onPointerUp(e: PointerEvent): void {
+      if (!e.isPrimary) return;
+      if (e.button !== 0 && e.button !== -1) return; // -1: 일부 브라우저의 touch pointerup
 
       // 수정자 덧칠 처리 (에디터)
       const pt = paintTargetRef.current;
@@ -355,16 +358,28 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
       }
     }
 
-    grid.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    // 드래그 중단(시스템 제스처·포커스 이탈 등) 시 취소 처리
+    function onPointerCancel(): void {
+      paintTargetRef.current = null;
+      if (dragSourceRef.current) {
+        dragSourceRef.current = null;
+        removeGhost();
+        restoreLastActiveTool();
+      }
+    }
+
+    grid.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
     grid.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
-      grid.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      grid.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
       grid.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown);
     };
