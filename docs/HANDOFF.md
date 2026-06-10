@@ -63,7 +63,13 @@
 - 보드 — 셀/그리드 `--cell`/`--cell-border`/`--grid-bg`, 기물 SVG `currentColor`(다크 대응), 레이저 `--laser`(테마 변경 시 재그리기).
 - 라이브러리 일체 토큰화(인라인 hex·onMouseEnter hover 전부 제거).
 
-**다음 = Phase 4 + Phase 5 (아래).**
+**Phase 4 + Phase 5 완료(2026-06).** 산출물:
+- 반응형: lg 미만에서 좌·우 존이 하단 시트([팔레트|정보] 세그먼트 탭)로, 보드 전체폭. 보드 유동 크기 — 셀 fr 트랙 + `aspect-square` 컨테이너, 레이저 캔버스는 ResizeObserver로 백킹스토어 재동기화(dpr 유지), `getCellFromPoint`는 rect 실측.
+- 입력: `useGridDragDrop` mouse* → Pointer Events(pointercancel 처리, 그리드 `touch-action:none`).
+- 기물 조작: 스토어 `selectedCell` + `setSelectedCell`(모드 전환 시 초기화). 좌클릭(빈손)=선택 → 데스크탑 `PiecePopover`(lg+, 외부클릭/Esc/삭제 시 닫힘, 첫 행 아래로 flip, 배치 직후 자동 표시) / 모바일 인스펙터 메인(선택 시 정보탭 자동 전환). 도구 든 채 기물 클릭=도구 해제만. 우클릭=회전. 삭제·회수·특성(잠금/유저지급/초기화)은 팝오버+인스펙터(`SelectedPieceInfo`) — 같은 스토어 편집이라 동기화. 공용 액션 `src/lib/pieceActions.ts`(`rotatePiece` 등, `useGridDragDrop`의 회전 로직 이동).
+- e2e: rotation(우클릭 회전+팝오버 회전)·inventory(팝오버 회수)·piece-popover(도구해제 우선·특성·삭제·Esc) — **이 컨테이너는 Playwright 브라우저 다운로드가 차단되어 미실행. 로컬에서 `npx playwright install chromium` 후 `npm run test:e2e` 필요.**
+
+**다음 = 별개 엔진 트랙(`docs/FEATURE_PIECES_GRID.md`).**
 
 ### 그 다음
 - Phase 4: 완전 반응형 + 터치(`useGridDragDrop`의 `mouse*`→Pointer Events).

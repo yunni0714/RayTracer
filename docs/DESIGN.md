@@ -127,8 +127,8 @@ CSS 변수. `<html>.dark` 클래스가 붙으면 다크값으로 전환. Tailwin
 - [x] **Phase 1** — 토큰 시스템(라이트+다크) + 다크 토글(헤더 버튼·no-flash·localStorage). 셸 배경 토큰화. `global.css`/`tailwind.config.js`/store `theme`/`useTheme`.
 - [x] **Phase 2** — 공용 컴포넌트(`src/components/ui/`: Button·IconButton·Field·Modal·ConfirmModal·ConfirmHost·Pill/DifficultyPill·Tabs). 네이티브 `window.confirm` 6곳 → 스토어 `requestConfirm`+`ConfirmHost`. 모달 3개 → `Modal`+`Field`+`Button`(다크 대응).
 - [x] **Phase 3** — 화면별 L1 + 토큰 마이그레이션 완료. Header(세그먼트 토글)·EditorPage L1 3-존(+하단 StatusBar·우측 InspectorPanel)·PalettePanel(폴더탭+44px 타일+soft 토큰 칩)·보드 셀/기물 SVG(currentColor)/레이저(--laser)·라이브러리(스크린·카드·미니그리드·다음문제·풀이제안·RightSidePanel·LoadedMapInfo). soft 토큰(--primary/warning/danger-soft) 추가.
-- [ ] **Phase 4 (Fable)** — 완전 반응형 + 터치(`useGridDragDrop` → Pointer Events).
-- [ ] **Phase 5 — 기물 조작 UX(확정 2건)**: ① 기물 클릭 시 '도구 해제 우선', ② 플로팅 미니 메뉴(말풍선 Popover, 배치직후+클릭, 회전/잠금/유저지급/삭제). 상세는 `docs/HANDOFF.md §4`. 그 외 UX 후보는 미확정.
+- [x] **Phase 4** — 완전 반응형 + 터치 완료. lg 미만: 좌·우 존 → 하단 시트([팔레트|정보] 세그먼트), 보드 전체폭. 보드 유동 크기(fr 트랙 + aspect-square, 캔버스 ResizeObserver + dpr 유지, 히트테스트 실측). `useGridDragDrop` Pointer Events 전환(pointercancel 포함, `touch-action:none`).
+- [x] **Phase 5 — 기물 조작 UX** 완료. ① 도구 든 채 기물 좌클릭 = 도구 해제 우선(덮어쓰기 안 함). ② 좌클릭=기물 선택(`selectedCell`) → 데스크탑 플로팅 `PiecePopover`(회전·🔒잠금·🎒유저지급·✨특성삭제·🗑삭제 / 테스트: 회전·♻회수, 배치 직후 자동 표시, 외부클릭/Esc 닫힘, 경계 flip), 모바일은 인스펙터(`SelectedPieceInfo`, 하단 시트 정보탭 자동 전환)가 메인 — 둘은 같은 스토어 상태 편집(동기화). ③ 우클릭=회전(삭제는 팝오버로 이동). 공용 액션 `src/lib/pieceActions.ts`. e2e 갱신 + `piece-popover.spec.ts` 신규.
 
 > **UI 트랙(Phase 1~5)과 별개**: 추가 기물(관문·프로젝터 등) + 넓은 그리드 + firestore.rules = `docs/FEATURE_PIECES_GRID.md`(엔진 재작성, 분리 진행).
 > 진행 메모는 `docs/HANDOFF.md` 참조.
