@@ -6,7 +6,7 @@ import { isAdminUid } from '../lib/admin';
 import { getSvgArt } from '../lib/svgArt';
 import { getPieceLabel } from '../lib/pieceActions';
 import {
-  getBehaviorDef,
+  getBehaviorDef, calculateReflection,
   type PieceBehaviorDef, type FaceSpec, type FaceEffect, type FaceEffectKind,
 } from '../lib/laserEngine';
 import {
@@ -15,7 +15,7 @@ import {
 } from '../lib/pieceConfig';
 import { savePieceConfigEntry, deletePieceConfigEntry } from '../lib/firebaseService';
 import { Notification } from '../components/layout/Notification';
-import { Button, Label, TextInput, TextArea, Select, Pill, ConfirmHost } from '../components/ui';
+import { Button, Label, TextInput, TextArea, Select, Pill, ConfirmHost, cx } from '../components/ui';
 import type { PieceType } from '../types/game';
 
 /* ════════════════════════════════════════════════════════
@@ -24,11 +24,35 @@ import type { PieceType } from '../types/game';
    쓰기 권한 강제는 firestore.rules (이 페이지 게이트는 UI 숨김일 뿐).
    ════════════════════════════════════════════════════════ */
 
-const KINDS: FaceEffectKind[] = ['pass', 'block', 'absorb', 'reflect', 'split', 'reverse'];
-const KIND_LABEL: Record<FaceEffectKind, string> = {
-  pass: '통과', block: '차단', absorb: '흡수', reflect: '반사', split: '분기', reverse: '되돌림',
+// UI 효과 4종 (엔진 kind 와의 매핑은 아래 toUiKind / setUiKind).
+//   통과=pass · 정지=흡수(satisfy)/차단(없음) · 반사=reflect(되돌림 흡수) · 분기=split
+type UiKind = 'pass' | 'stop' | 'reflect' | 'split';
+const UI_KINDS: UiKind[] = ['pass', 'stop', 'reflect', 'split'];
+const UI_KIND_LABEL: Record<UiKind, string> = { pass: '통과', stop: '정지', reflect: '반사', split: '분기' };
+
+function toUiKind(k: FaceEffectKind): UiKind {
+  if (k === 'absorb' || k === 'block') return 'stop';
+  if (k === 'reverse') return 'reflect'; // 되돌림 = 반대 방향 반사
+  return k as UiKind;
+}
+
+// 8방향 진행방향 → 화살표 글리프 (0=오른쪽, 90=아래 / dy+1 규약)
+const DIR_ARROW: Record<number, string> = {
+  0: '→', 45: '↘', 90: '↓', 135: '↙', 180: '←', 225: '↖', 270: '↑', 315: '↗',
 };
+// 출력 방향 화살표 3×3 배치 (중앙 비움). 칸 = "빔이 나가는 진행방향".
+const ARROW_GRID: (number | null)[][] = [
+  [225, 270, 315],
+  [180, null, 0],
+  [135, 90, 45],
+];
+// 입사 rel 빔이 out 방향으로 나가게 하는 면각: out = 2*sa - rel → sa = (rel+out)/2
+function outToSurface(rel: number, out: number): number {
+  return (((rel + out) / 2) % 360 + 360) % 360;
+}
+
 const RELS = [0, 45, 90, 135, 180, 225, 270, 315] as const;
+
 const TABS: { id: PieceTab; label: string }[] = [
   { id: 'basic', label: '초급' }, { id: 'intermediate', label: '중급' }, { id: 'advanced', label: '상급' },
 ];
@@ -80,47 +104,99 @@ function textToGroups(text: string): number[][] {
 
 /* ── 단일 효과 편집 폼 ──────────────────────────────────── */
 
+function ReflectArrows({
+  rel, surfaceAngle, onPick,
+}: { rel: number; surfaceAngle: number; onPick: (sa: number) => void }) {
+  const current = calculateReflection(rel, surfaceAngle); // 현재 출력(나가는) 방향
+  return (
+    <div className="grid grid-cols-3 gap-0.5 w-fit" title="빔이 나갈 방향 선택">
+      {ARROW_GRID.flat().map((d, i) =>
+        d === null ? (
+          <div key={i} className="w-6 h-6 flex items-center justify-center text-[10px] text-ink-muted">·</div>
+        ) : (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onPick(outToSurface(rel, d))}
+            className={cx(
+              'w-6 h-6 flex items-center justify-center rounded text-sm border',
+              current === d ? 'bg-primary text-primary-ink border-primary' : 'border-line hover:bg-surface-2',
+            )}
+            title={`→ ${d}° 로 반사`}
+          >
+            {DIR_ARROW[d]}
+          </button>
+        ),
+      )}
+    </div>
+  );
+}
+
 function EffectEditor({
-  value, onChange, allowInherit, inheritLabel = '(fallback)',
+  value, onChange, allowInherit, inheritLabel = '(fallback)', rel,
 }: {
   value: FaceEffect | undefined;
   onChange: (fx: FaceEffect | undefined) => void;
   allowInherit?: boolean;
   inheritLabel?: string;
+  rel?: number; // 이 면의 입사 방향 (있으면 반사 각도를 8방향 화살표로 선택)
 }) {
-  const kind = value?.kind;
+  const ui: UiKind | '' = value ? toUiKind(value.kind) : '';
+  const isRefl = !!value && (value.kind === 'reflect' || value.kind === 'split' || value.kind === 'reverse');
+  // 되돌림은 표시상 반사로 정규화 (반대 방향 출력 = 반대 화살표)
+  const surfaceAngle = value?.kind === 'reverse'
+    ? (rel != null ? outToSurface(rel, (rel + 180) % 360) : 0)
+    : (value?.surfaceAngle ?? 0);
+
+  function setUi(u: UiKind) {
+    const satisfy = value?.satisfy;
+    if (u === 'pass') onChange({ kind: 'pass', ...(satisfy && { satisfy: true }) });
+    else if (u === 'stop') onChange({ kind: satisfy ? 'absorb' : 'block', ...(satisfy && { satisfy: true }) });
+    else onChange({ kind: u, surfaceAngle, ...(satisfy && { satisfy: true }) }); // reflect / split
+  }
+  function setSatisfy(checked: boolean) {
+    if (!value) return;
+    // 정지(흡수/차단)는 충족 여부로 흡수↔차단이 갈린다.
+    const kind: FaceEffectKind = (value.kind === 'absorb' || value.kind === 'block')
+      ? (checked ? 'absorb' : 'block')
+      : value.kind;
+    onChange({ ...value, kind, satisfy: checked || undefined });
+  }
+  function setSurface(sa: number) {
+    if (!value) return;
+    const kind: FaceEffectKind = value.kind === 'reverse' ? 'reflect' : value.kind; // 되돌림 → 반사 확정
+    onChange({ ...value, kind, surfaceAngle: sa });
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <Select
-        value={kind ?? ''}
+        value={ui}
         onChange={e => {
-          const k = e.target.value as FaceEffectKind | '';
-          if (k === '') { onChange(undefined); return; }
-          onChange({ kind: k, ...(value?.satisfy && { satisfy: true }),
-            ...((k === 'reflect' || k === 'split') && { surfaceAngle: value?.surfaceAngle ?? 0 }) });
+          const v = e.target.value as UiKind | '';
+          if (v === '') { onChange(undefined); return; }
+          setUi(v);
         }}
         className="!text-xs !py-1 !px-1.5"
       >
         {allowInherit && <option value="">{inheritLabel}</option>}
-        {KINDS.map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+        {UI_KINDS.map(u => <option key={u} value={u}>{UI_KIND_LABEL[u]}</option>)}
       </Select>
-      {value && (value.kind === 'reflect' || value.kind === 'split') && (
-        <TextInput
-          type="number"
-          step={22.5}
-          value={value.surfaceAngle ?? 0}
-          onChange={e => onChange({ ...value, surfaceAngle: Number(e.target.value) })}
-          className="!text-xs !py-1 !px-1.5"
-          title="면각 (기물 기준, rotation 이 더해짐)"
-        />
+      {isRefl && (
+        rel != null
+          ? <ReflectArrows rel={rel} surfaceAngle={surfaceAngle} onPick={setSurface} />
+          : <TextInput
+              type="number"
+              step={22.5}
+              value={surfaceAngle}
+              onChange={e => setSurface(Number(e.target.value))}
+              className="!text-xs !py-1 !px-1.5"
+              title="면각 (기물 기준, rotation 이 더해짐)"
+            />
       )}
       {value && (
         <label className="flex items-center gap-1 text-[11px] text-ink-muted">
-          <input
-            type="checkbox"
-            checked={!!value.satisfy}
-            onChange={e => onChange({ ...value, satisfy: e.target.checked || undefined })}
-          />
+          <input type="checkbox" checked={!!value.satisfy} onChange={e => setSatisfy(e.target.checked)} />
           🎯 충족
         </label>
       )}
@@ -131,12 +207,13 @@ function EffectEditor({
 /* ── FaceSpec(단일 or open/closed) 편집 ─────────────────── */
 
 function FaceSpecEditor({
-  spec, onChange, conditional, allowInherit,
+  spec, onChange, conditional, allowInherit, rel,
 }: {
   spec: FaceSpec | undefined;
   onChange: (s: FaceSpec | undefined) => void;
   conditional: boolean; // 조건부 기물이면 open/closed 분기 허용
   allowInherit?: boolean;
+  rel?: number; // 이 면의 입사 방향 (반사 화살표용)
 }) {
   const dual = spec !== undefined && isDual(spec);
   return (
@@ -161,12 +238,13 @@ function FaceSpecEditor({
       {dual ? (
         <div className="flex flex-col gap-1">
           <span className="text-[10px] text-ink-muted">열림</span>
-          <EffectEditor value={(spec as DualSpec).open} onChange={fx => fx && onChange({ ...(spec as DualSpec), open: fx })} />
+          <EffectEditor rel={rel} value={(spec as DualSpec).open} onChange={fx => fx && onChange({ ...(spec as DualSpec), open: fx })} />
           <span className="text-[10px] text-ink-muted">닫힘</span>
-          <EffectEditor value={(spec as DualSpec).closed} onChange={fx => fx && onChange({ ...(spec as DualSpec), closed: fx })} />
+          <EffectEditor rel={rel} value={(spec as DualSpec).closed} onChange={fx => fx && onChange({ ...(spec as DualSpec), closed: fx })} />
         </div>
       ) : (
         <EffectEditor
+          rel={rel}
           value={spec as FaceEffect | undefined}
           onChange={fx => onChange(fx)}
           allowInherit={allowInherit}
@@ -334,17 +412,18 @@ export function AdminPage() {
           <div className="flex flex-col gap-1.5">
             <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">배치 기본 특성</h5>
             <div className="flex gap-4 text-xs">
-              {(['canRotate', 'canMove', 'isInventory'] as const).map(k => (
+              {(['canRotate', 'isInventory'] as const).map(k => (
                 <label key={k} className="flex items-center gap-1.5">
                   <input
                     type="checkbox"
                     checked={draft.defaults[k]}
                     onChange={e => patchDraft({ defaults: { ...draft.defaults, [k]: e.target.checked } })}
                   />
-                  {k === 'canRotate' ? '🔄 회전 가능' : k === 'canMove' ? '✋ 이동 가능' : '🎒 유저 지급'}
+                  {k === 'canRotate' ? '🔄 회전 가능' : '🎒 유저 지급'}
                 </label>
               ))}
             </div>
+            <p className="text-[10px] text-ink-muted">이동 가능(canMove)은 유저 지급에 종속 — 유저 지급 기물만 플레이 중 이동 가능.</p>
           </div>
 
           {/* 면 그리드 */}
@@ -366,6 +445,7 @@ export function AdminPage() {
                   <div key={i} className="border border-line rounded-tile p-1.5 bg-surface">
                     <p className="text-[10px] font-bold text-ink-muted mb-1">rel {rel}°</p>
                     <FaceSpecEditor
+                      rel={rel}
                       spec={def.faces[rel]}
                       conditional={hasConditional}
                       allowInherit
