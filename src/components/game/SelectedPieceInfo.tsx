@@ -40,31 +40,34 @@ export function SelectedPieceInfo() {
         </div>
       </div>
 
-      {/* 특성 배지 */}
+      {/* 특성 배지 — 맥락별 기본값은 무표시, 일탈만 표시 */}
       <div className="flex gap-1 flex-wrap">
         {cell.isInventory && <Pill tone="danger">🎒 유저지급</Pill>}
-        {!cell.canRotate && <Pill tone="normal">🔒 회전잠금</Pill>}
-        {cell.canRotate && <Pill tone="info">🔄 회전가능</Pill>}
+        {!cell.isInventory && cell.canRotate && <Pill tone="info">🔄 회전 가능</Pill>}
+        {cell.isInventory && !cell.canRotate && <Pill tone="normal">🔒 회전 불가</Pill>}
       </div>
 
       {/* 액션 */}
       <div className="flex flex-col gap-1.5">
         {canRotateHere && (
           <Button variant="secondary" block className="!text-xs" onClick={() => rotatePiece(row, col)}>
-            🔄 회전
+            ↻ 90° 회전
           </Button>
         )}
         {isEditorMode ? (
           <>
+            {/* 회전 트레잇 토글(canRotate). 맥락별 라벨 + 일탈 상태일 때 솔리드 강조. */}
             <Button
               variant="secondary"
               block
-              className={`!text-xs !border ${cell.canRotate
-                ? '!bg-warning-soft !text-warning !border-warning'
-                : '!bg-warning !text-white !border-warning'}`}
+              className={`!text-xs !border ${(cell.isInventory ? !cell.canRotate : cell.canRotate)
+                ? '!bg-warning !text-white !border-warning'
+                : '!bg-warning-soft !text-warning !border-warning'}`}
               onClick={() => toggleRotateLock(row, col)}
             >
-              🔒 회전잠금 {cell.canRotate ? 'OFF' : 'ON'}
+              {cell.isInventory
+                ? (cell.canRotate ? '🔒 회전 불가 지정' : '🔒 회전 불가 해제')
+                : (cell.canRotate ? '🔄 회전 가능 해제' : '🔄 회전 가능 부여')}
             </Button>
             <Button
               variant="secondary"

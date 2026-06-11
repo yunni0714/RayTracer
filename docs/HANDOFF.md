@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 요약
 
-순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업 중. 방향 확정·**Phase 1(토큰+다크) + Phase 2(공용 컴포넌트·confirm·모달) 완료**. **다음 = Phase 3 — 화면별 L1 마이그레이션, Fable에 인계 예정**(§4).
+순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업. **Phase 1~5 + 엔진트랙(추가 기물·NxN 그리드) 완료**(Fable). 이후 **보정 라운드 1 완료**(Opus, commit `6e3da5c`): 표적 정면판정·상급탭 상시노출·회전트레잇 표시·인벤타일·테스트 3열. **다음(Fable 인계) = B1 라이브러리 L1(`docs/LIBRARY_L1.md`) + B2 어드민/콘피그 패널(`docs/ADMIN_PANEL.md`, firestore.rules 선행).** 상세 진행상태 `docs/DESIGN.md` §7.
 
 ---
 

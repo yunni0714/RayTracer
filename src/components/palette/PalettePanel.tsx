@@ -46,7 +46,7 @@ export function PalettePanel() {
   const [jsonText, setJsonText] = useState('');
 
   const {
-    selectedTool, setSelectedTool, isUnlocked, setUnlocked,
+    selectedTool, setSelectedTool,
     isModRotatableActive, isModLockActive, isModInvActive,
     setModRotatable, setModLock, setModInv,
     clearGrid,
@@ -55,8 +55,6 @@ export function PalettePanel() {
   } = useGameStore(useShallow(s => ({
     selectedTool: s.selectedTool,
     setSelectedTool: s.setSelectedTool,
-    isUnlocked: s.isUnlocked,
-    setUnlocked: s.setUnlocked,
     isModRotatableActive: s.isModRotatableActive,
     isModLockActive: s.isModLockActive,
     isModInvActive: s.isModInvActive,
@@ -74,12 +72,7 @@ export function PalettePanel() {
   })));
 
   function handleJsonChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const text = e.target.value;
-    setJsonText(text);
-    if (!isUnlocked && text.includes('wheresmy8hours')) {
-      setUnlocked(true);
-      showNotification('팀장님 몰래 상급 기물 탭이 활성화되었습니다!', '#8e44ad');
-    }
+    setJsonText(e.target.value);
   }
 
   function handleExport() {
@@ -137,7 +130,7 @@ export function PalettePanel() {
           items={[
             { id: 'basic', label: '초급' },
             { id: 'intermediate', label: '중급' },
-            ...(isUnlocked ? [{ id: 'advanced', label: '상급' }] : []),
+            { id: 'advanced', label: '상급' },
           ]}
           value={activeTab}
           onChange={(id) => setActiveTab(id as Tab)}

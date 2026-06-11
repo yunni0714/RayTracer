@@ -21,13 +21,15 @@ export function TestModeInventory() {
       {items.length === 0 ? (
         <p className="text-xs text-ink-muted">인벤토리가 비어있습니다.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
           {items.map(([key, item]) => (
             <ToolItem
               key={key}
               type={item.type as PieceType}
               rotation={item.rotation as Rotation}
               count={item.count}
+              size="lg"
+              lock={!item.canRotate}
               selected={selectedTool?.source === 'inventory' && selectedTool.inventoryKey === key}
               onClick={() =>
                 setSelectedTool(

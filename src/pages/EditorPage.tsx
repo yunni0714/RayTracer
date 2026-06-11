@@ -68,6 +68,11 @@ export function EditorPage() {
         </div>
       )}
       {!isEditorMode && currentLoadedMapObj && <LoadedMapInfo />}
+      {!isEditorMode && currentLoadedMapObj && (
+        <div className="pt-3 border-t border-line">
+          <RightSidePanel />
+        </div>
+      )}
       {!isEditorMode && !currentLoadedMapObj && (
         <p className="text-xs text-ink-muted">로드된 맵이 없습니다.</p>
       )}
@@ -95,19 +100,12 @@ export function EditorPage() {
                 <GameBoard />
               </section>
 
-              {/* ③ 우 존 (데스크탑): 인스펙터/맵정보 */}
-              <aside className="hidden lg:flex w-56 shrink-0 bg-surface border-l border-line p-3 overflow-y-auto flex-col gap-3">
+              {/* ③ 우 존 (데스크탑): 인스펙터/맵정보 + (플레이) 다음문제·풀이제안 */}
+              <aside className="hidden lg:flex w-64 shrink-0 bg-surface border-l border-line p-3 overflow-y-auto flex-col gap-3">
                 {infoZone}
               </aside>
 
-              {/* ④ 부가 존 (데스크탑): 다음문제/풀이제안 (맵 로드 시) */}
-              {currentLoadedMapObj && (
-                <aside className="hidden lg:flex shrink-0 p-3 overflow-hidden items-stretch">
-                  <RightSidePanel />
-                </aside>
-              )}
-
-              {/* ⑤ 모바일/태블릿: 좌·우 존을 하단 시트 탭으로 */}
+              {/* ④ 모바일/태블릿: 좌·우 존을 하단 시트 탭으로 */}
               <div className="lg:hidden shrink-0 max-h-[45vh] flex flex-col bg-surface border-t border-line">
                 <div className="p-2 border-b border-line">
                   <Tabs
@@ -122,12 +120,7 @@ export function EditorPage() {
                   />
                 </div>
                 <div className="overflow-y-auto p-3 flex flex-col gap-3">
-                  {sheetTab === 'tools' ? toolsZone : (
-                    <>
-                      {infoZone}
-                      {currentLoadedMapObj && <RightSidePanel />}
-                    </>
-                  )}
+                  {sheetTab === 'tools' ? toolsZone : infoZone}
                 </div>
               </div>
             </div>
