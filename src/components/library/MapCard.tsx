@@ -5,6 +5,7 @@ import type { MapDocument, Difficulty } from '../../types/game';
 interface Props {
   map: MapDocument;
   onClick: (map: MapDocument) => void;
+  selected?: boolean;
 }
 
 const DIFF_TONE: Record<Difficulty, PillTone> = {
@@ -27,12 +28,15 @@ function formatDate(iso: string): string {
   }
 }
 
-export function MapCard({ map, onClick }: Props) {
+export function MapCard({ map, onClick, selected = false }: Props) {
   const userDiff = calculateUserDifficulty(map.diffVotes);
   const dateStr = formatDate(map.createdAt);
 
   return (
-    <div className="map-card-v2" onClick={() => onClick(map)}>
+    <div
+      className={`map-card-v2 ${selected ? '!border-accent ring-1 ring-accent' : ''}`}
+      onClick={() => onClick(map)}
+    >
       {/* 상단: 미니 그리드 */}
       <div className="px-[18px] pt-[18px]">
         <MiniGrid mapData={map.mapData} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
