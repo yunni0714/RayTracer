@@ -92,14 +92,22 @@ function defHasSatisfy(def: PieceBehaviorDef): boolean {
   return specs.some(s => isDual(s) ? !!s.open.satisfy || !!s.closed.satisfy : !!s.satisfy);
 }
 
-function groupsToText(groups: number[][]): string {
-  return groups.map(g => g.join(',')).join(';');
+// 조건부 트리거: groups(number[][]) ↔ 면→그룹번호(1-base) 매핑.
+// 같은 그룹 = OR, 다른 그룹 = AND. (예: cross_gate [[0,180],[90,270]])
+function groupsToFaceMap(groups: number[][]): Record<number, number> {
+  const m: Record<number, number> = {};
+  groups.forEach((g, gi) => g.forEach(f => { m[f] = gi + 1; }));
+  return m;
 }
 
-function textToGroups(text: string): number[][] {
-  return text.split(';')
-    .map(g => g.split(',').map(v => Number(v.trim())).filter(n => Number.isFinite(n)))
-    .filter(g => g.length > 0);
+function faceMapToGroups(map: Record<number, number>): number[][] {
+  const byGroup = new Map<number, number[]>();
+  for (const [faceStr, g] of Object.entries(map)) {
+    if (!byGroup.has(g)) byGroup.set(g, []);
+    byGroup.get(g)!.push(Number(faceStr));
+  }
+  return [...byGroup.keys()].sort((a, b) => a - b)
+    .map(g => byGroup.get(g)!.sort((a, b) => a - b));
 }
 
 /* ── 단일 효과 편집 폼 ──────────────────────────────────── */
@@ -337,6 +345,18 @@ export function AdminPage() {
 
   const def = draft.def;
   const hasConditional = !!def.conditional;
+  // 조건부 트리거: 면→그룹번호 매핑 (면 그리드 체크박스 ↔ conditional.groups)
+  const faceGroup = def.conditional ? groupsToFaceMap(def.conditional.groups) : {};
+  function setTrigger(rel: number, on: boolean) {
+    if (!def.conditional) return;
+    const map = { ...faceGroup };
+    if (on) map[rel] = map[rel] ?? 1; else delete map[rel];
+    patchDef({ conditional: { ...def.conditional, groups: faceMapToGroups(map) } });
+  }
+  function setTriggerGroup(rel: number, g: number) {
+    if (!def.conditional) return;
+    patchDef({ conditional: { ...def.conditional, groups: faceMapToGroups({ ...faceGroup, [rel]: Math.max(1, g) }) } });
+  }
 
   return (
     <div className="flex flex-col h-screen bg-canvas text-ink">
@@ -456,6 +476,26 @@ export function AdminPage() {
                         patchDef({ faces });
                       }}
                     />
+                    {hasConditional && (
+                      <label className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-line text-[10px] text-ink-muted">
+                        <input
+                          type="checkbox"
+                          checked={faceGroup[rel] != null}
+                          onChange={e => setTrigger(rel, e.target.checked)}
+                        />
+                        ⚡트리거
+                        {faceGroup[rel] != null && (
+                          <input
+                            type="number"
+                            min={1}
+                            value={faceGroup[rel]}
+                            onChange={e => setTriggerGroup(rel, Number(e.target.value))}
+                            className="w-9 ml-auto border border-line rounded bg-surface text-ink text-[10px] px-1 py-0.5"
+                            title="그룹 (같은 번호=OR, 다른 번호=AND)"
+                          />
+                        )}
+                      </label>
+                    )}
                   </div>
                 )
               )}
@@ -499,14 +539,10 @@ export function AdminPage() {
             </label>
             {def.conditional && (
               <div className="grid grid-cols-2 gap-3 pl-5">
-                <Label>
-                  활성 조건 면 그룹 <span className="text-ink-muted font-normal">(그룹=AND, 그룹 내=OR. 예: 0,180;90,270)</span>
-                  <TextInput
-                    value={groupsToText(def.conditional.groups)}
-                    onChange={e => patchDef({ conditional: { ...def.conditional!, groups: textToGroups(e.target.value) } })}
-                    className="mt-1 !text-xs font-mono"
-                  />
-                </Label>
+                <p className="text-[11px] text-ink-muted self-center">
+                  활성 트리거 면은 <strong className="text-ink">위 면 그리드</strong>에서 ⚡트리거 체크.
+                  같은 그룹 번호 = OR, 다른 번호 = AND.
+                </p>
                 <div className="flex flex-col gap-1.5 text-xs pt-1">
                   <label className="flex items-center gap-1.5">
                     <input
