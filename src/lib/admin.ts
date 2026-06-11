@@ -7,7 +7,7 @@
 //   (로그인 후 콘솔에서 useGameStore.getState().currentUserUid 또는
 //    Firebase Console > Authentication 에서 확인)
 export const ADMIN_UIDS: string[] = [
-  // 'REPLACE_WITH_ADMIN_UID',
+  // 'gy0yLjz0wLgZsFnC2f4ZOB1nTa53',
 ];
 
 export function isAdminUid(uid: string | null): boolean {
