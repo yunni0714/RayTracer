@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { SVG_ART } from '../lib/svgArt';
+import { getSvgArt } from '../lib/svgArt';
 import { rotatePiece } from '../lib/pieceActions';
+import { getPieceDefaults } from '../lib/pieceConfig';
 import type { CellData, PieceType, Rotation, SelectedTool } from '../types/game';
 
 interface DragSource {
@@ -21,7 +22,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
   function createGhost(type: PieceType, x: number, y: number, rotation: Rotation): HTMLDivElement {
     const ghost = document.createElement('div');
-    ghost.innerHTML = `<div style="transform:rotate(${rotation}deg);width:100%;height:100%;">${SVG_ART[type]}</div>`;
+    ghost.innerHTML = `<div style="transform:rotate(${rotation}deg);width:100%;height:100%;">${getSvgArt(type)}</div>`;
     ghost.style.cssText = [
       'position:fixed', 'width:60px', 'height:60px', 'opacity:0.7',
       'pointer-events:none', 'z-index:9999', 'transform:translate(-50%,-50%)',
@@ -248,11 +249,19 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
 
       if (src.origin === 'palette' && isEditor) {
         state.saveUndoSnapshot();
-        state.setCell(row, col, {
-          type: src.pieceType, rotation: 0,
-          isInventory: state.isModInvActive, canMove: state.isModInvActive,
-          canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
-        });
+        // 수정자 미사용 시 config 기물 기본 특성(defaults) 적용
+        const hasMod = state.isModInvActive || state.isModRotatableActive || state.isModLockActive;
+        const d = getPieceDefaults(src.pieceType);
+        state.setCell(row, col, hasMod
+          ? {
+              type: src.pieceType, rotation: 0,
+              isInventory: state.isModInvActive, canMove: state.isModInvActive,
+              canRotate: state.isModInvActive ? !state.isModLockActive : state.isModRotatableActive,
+            }
+          : {
+              type: src.pieceType, rotation: 0,
+              isInventory: d.isInventory, canMove: d.canMove, canRotate: d.canRotate,
+            });
         state.setSelectedCell({ row, col }); // 배치 직후 자동 표시
         restoreLastActiveTool();
         return;

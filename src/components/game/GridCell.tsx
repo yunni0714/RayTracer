@@ -1,4 +1,5 @@
-import { SVG_ART } from '../../lib/svgArt';
+import { getSvgArt } from '../../lib/svgArt';
+import { useGameStore } from '../../store/gameStore';
 import type { CellData } from '../../types/game';
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function GridCell({ row, col, cell }: Props) {
+  useGameStore(s => s.pieceConfigRev); // config 오버레이 갱신 시 리렌더
+
   return (
     <div
       data-row={row}
@@ -18,7 +21,7 @@ export function GridCell({ row, col, cell }: Props) {
         <div
           className="absolute inset-0 flex items-center justify-center p-2"
           style={{ transform: `rotate(${cell.rotation}deg)` }}
-          dangerouslySetInnerHTML={{ __html: SVG_ART[cell.type] }}
+          dangerouslySetInnerHTML={{ __html: getSvgArt(cell.type) }}
         />
       )}
       {cell?.isInventory && (

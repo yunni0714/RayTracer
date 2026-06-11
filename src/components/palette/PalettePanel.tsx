@@ -3,16 +3,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
 import { Button, Tabs, TextArea, cx } from '../ui';
-import type { PieceType, CellData } from '../../types/game';
+import { PALETTE_ORDER, getPieceTab, type PieceTab } from '../../lib/pieceConfig';
+import type { CellData } from '../../types/game';
 
-const BASIC_TOOLS: PieceType[] = ['ray', 'target', 'mirror', 'half_mirror', 'block', 'tunnel', 'single_mirror', 'target_mirror_a', 'target_mirror_b'];
-const INTERMEDIATE_TOOLS: PieceType[] = [
-  'diode', 'v_mirror_double', 'v_half_mirror_double', 'small_target', 'omni_target', 'high_block',
-  'transistor_gate', 'cross_gate', 'priority_gate', 'target_projector', 'inverting_projector',
-];
-const ADVANCED_TOOLS: PieceType[] = ['mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'diag_single_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror', 'v_target_mirror_a', 'v_target_mirror_b'];
-
-type Tab = 'basic' | 'intermediate' | 'advanced';
+type Tab = PieceTab;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +37,7 @@ function ModChip({
 
 export function PalettePanel() {
   const [activeTab, setActiveTab] = useState<Tab>('basic');
+  useGameStore(s => s.pieceConfigRev); // config 오버레이(탭/SVG) 갱신 시 리렌더
   const [jsonText, setJsonText] = useState('');
 
   const {
@@ -116,9 +111,8 @@ export function PalettePanel() {
     }
   }
 
-  const tools = activeTab === 'basic' ? BASIC_TOOLS
-    : activeTab === 'intermediate' ? INTERMEDIATE_TOOLS
-    : ADVANCED_TOOLS;
+  // 탭 구성은 config 오버레이(getPieceTab)를 따른다. 표시 순서는 PALETTE_ORDER 고정.
+  const tools = PALETTE_ORDER.filter(t => getPieceTab(t) === activeTab);
 
   return (
     <div className="flex flex-col gap-3">

@@ -1,4 +1,5 @@
-import { SVG_ART } from '../../lib/svgArt';
+import { getSvgArt } from '../../lib/svgArt';
+import { useGameStore } from '../../store/gameStore';
 import type { MapItemDTO } from '../../types/game';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size = 120, gridSize = 5 }: Props) {
+  useGameStore(s => s.pieceConfigRev); // config 오버레이 갱신 시 리렌더
+
   const grid: (MapItemDTO | null)[][] = Array.from({ length: gridSize }, () =>
     Array(gridSize).fill(null)
   );
@@ -49,7 +52,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
                       width: cellSize - 4,
                       height: cellSize - 4,
                     }}
-                    dangerouslySetInnerHTML={{ __html: SVG_ART[item.type] }}
+                    dangerouslySetInnerHTML={{ __html: getSvgArt(item.type) }}
                   />
                 )}
               </div>
@@ -84,7 +87,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  dangerouslySetInnerHTML={{ __html: SVG_ART[item.type] }}
+                  dangerouslySetInnerHTML={{ __html: getSvgArt(item.type) }}
                 />
               )}
             </div>

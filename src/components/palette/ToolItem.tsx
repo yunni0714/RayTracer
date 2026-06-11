@@ -1,4 +1,5 @@
-import { SVG_ART } from '../../lib/svgArt';
+import { getSvgArt } from '../../lib/svgArt';
+import { useGameStore } from '../../store/gameStore';
 import type { PieceType, Rotation } from '../../types/game';
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
 
 // 납작한 직사각 타일(sm=44px) / 큰 타일(lg=64px). 기물 SVG는 비율유지 정사각 중앙 배치.
 export function ToolItem({ type, rotation = 0, count, selected, onClick, size = 'sm', lock }: Props) {
+  useGameStore(s => s.pieceConfigRev); // config 오버레이 갱신 시 리렌더
+
   return (
     <button
       type="button"
@@ -27,7 +30,7 @@ export function ToolItem({ type, rotation = 0, count, selected, onClick, size = 
       <div
         className="h-full aspect-square p-1.5"
         style={{ transform: `rotate(${rotation}deg)` }}
-        dangerouslySetInnerHTML={{ __html: SVG_ART[type] }}
+        dangerouslySetInnerHTML={{ __html: getSvgArt(type) }}
       />
       {lock && (
         <span
