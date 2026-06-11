@@ -132,7 +132,7 @@ CSS 변수. `<html>.dark` 클래스가 붙으면 다크값으로 전환. Tailwin
 
 - [x] **보정 라운드 1 (Opus)** — Fable 산출물 검토 후 contained 수정: 표적 정면 판정(전방위→정면면), 상급 탭 상시 노출(이스터에그 게이트 제거), 회전 트레잇 표시 맥락화(기본값 무표시·일탈만, 물리회전↻ vs canRotate 토글 분리), 플레이 인벤 타일 확대+🔒, 테스트 화면 4열→3열. (commit `6e3da5c`)
 - [ ] **B1 (Fable)** — 라이브러리 L1 재구성(좌 카테고리 내비 + 우 미리보기/플레이). 스펙: `docs/LIBRARY_L1.md`.
-- [ ] **B2 (Fable)** — 어드민/콘피그 패널(Firestore 공유, 기물 SVG·특성·표적판정·동작 편집, 관리자 UID 게이트, **firestore.rules 선행**). 스펙: `docs/ADMIN_PANEL.md`.
+- [ ] **B2 (Fable)** — 어드민/콘피그 패널 = **면별(per-face) 기물 behavior 모델 + 에디터**(Firestore 공유, SVG·특성·면별 효과 편집, 관리자 UID 게이트, **firestore.rules 선행**). 표적거울 복합 표적기능·터널 목표화 등은 코드 땜질 대신 **사용자가 에디터에서 면별로 직접 정의**. 어휘 기준 `docs/PIECE_TAXONOMY.md`, 스펙 `docs/ADMIN_PANEL.md`.
 
 > **UI 트랙(Phase 1~5)과 별개**: 추가 기물(관문·프로젝터 등) + 넓은 그리드 + firestore.rules = `docs/FEATURE_PIECES_GRID.md`(엔진 재작성, 분리 진행).
 > 진행 메모는 `docs/HANDOFF.md` 참조.
