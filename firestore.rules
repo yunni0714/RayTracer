@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// RayTracer Firestore 보안 규칙
+//
+// 배포: firebase deploy --only firestore:rules
+// 주의: 클라이언트 UID 게이트(src/lib/admin.ts)는 UI 숨김일 뿐이다.
+//       서버 강제는 이 파일이 전부다 — config 쓰기 권한은 반드시 여기서 막는다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 관리자 UID 화이트리스트.
+    // src/lib/admin.ts 의 ADMIN_UIDS 와 반드시 동기화할 것.
+    // TODO(maker): 본인 Firebase Auth UID 로 교체 후 배포.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid in ['REPLACE_WITH_ADMIN_UID'];
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ── 기물 정의 등 공유 설정 ─────────────────────────────
+    // 모든 플레이어가 런타임 오버레이로 읽는다. 쓰기는 관리자만.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── 사용자 프로필 (닉네임) ─────────────────────────────
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ── 맵 ────────────────────────────────────────────────
+    match /maps/{mapId} {
+      allow read: if true;
+
+      // 생성: 로그인 + authorUid 가 본인
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid;
+
+      // 수정: 작성자는 전체. 그 외 로그인 유저는 반응/난이도투표 카운터 필드만
+      // (클라이언트가 increment() 로 직접 쓰는 기존 경로 유지).
+      allow update: if signedIn() && (
+        resource.data.authorUid == request.auth.uid
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['reactionOk', 'reactionGod', 'diffVotes'])
+      );
+
+      // 삭제: 작성자 또는 관리자
+      allow delete: if signedIn()
+        && (resource.data.authorUid == request.auth.uid || isAdmin());
+
+      // ── 풀이 제안 ───────────────────────────────────────
+      match /suggestions/{sugId} {
+        allow read: if true;
+
+        // 생성: 로그인 + suggesterUid 가 본인
+        allow create: if signedIn()
+          && request.resource.data.suggesterUid == request.auth.uid;
+
+        allow update: if false;
+
+        // 삭제: 제안자 본인 또는 맵 작성자 또는 관리자
+        allow delete: if signedIn() && (
+          resource.data.suggesterUid == request.auth.uid
+          || get(/databases/$(database)/documents/maps/$(mapId)).data.authorUid
+               == request.auth.uid
+          || isAdmin()
+        );
+      }
+    }
+
+    // 그 외 전부 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
