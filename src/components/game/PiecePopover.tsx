@@ -61,19 +61,22 @@ export function PiecePopover() {
       style={{ top, left, transform: `translate(${tx}, ${ty})` }}
     >
       {canRotateHere && (
-        <IconButton aria-label="회전" title="회전" onClick={() => rotatePiece(row, col)}>
-          🔄
+        <IconButton aria-label="90도 회전" title="90° 회전" onClick={() => rotatePiece(row, col)}>
+          ↻
         </IconButton>
       )}
       {isEditorMode ? (
         <>
+          {/* 회전 트레잇 토글(canRotate). 인벤=회전불가 / 고정=회전가능 맥락. 일탈 상태일 때 강조. */}
           <IconButton
-            aria-label="회전잠금 토글"
-            title={cell.canRotate ? '회전잠금 걸기' : '회전잠금 풀기'}
-            className={cell.canRotate ? '' : '!bg-warning-soft'}
+            aria-label="회전 특성 토글"
+            title={cell.isInventory
+              ? (cell.canRotate ? '회전 불가 지정' : '회전 불가 해제')
+              : (cell.canRotate ? '회전 가능 해제' : '회전 가능 부여')}
+            className={(cell.isInventory ? !cell.canRotate : cell.canRotate) ? '!bg-warning-soft' : ''}
             onClick={() => toggleRotateLock(row, col)}
           >
-            🔒
+            {cell.isInventory ? '🔒' : '🔄'}
           </IconButton>
           <IconButton
             aria-label="유저지급 토글"

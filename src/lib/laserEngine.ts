@@ -93,7 +93,14 @@ const PASSIVE: PieceBehavior = { interact: (inDir) => ({ outDirs: [inDir] }) };
 
 export const REGISTRY: Partial<Record<PieceType, PieceBehavior>> = {
   ray:    { interact: absorb },
-  target: { isTarget: true, interact: () => ({ satisfied: true }) },
+  // 표적: 정면(표식면 = SVG 기본 배치 시 위쪽)으로 들어오는 빔만 인식. 그 외 면은 흡수(차단).
+  target: {
+    isTarget: true,
+    interact: (inDir, cell) => {
+      const rel = (inDir - cell.rotation + 360) % 360;
+      return rel === 90 ? { satisfied: true } : {}; // 정면만 충족, 그 외 흡수
+    },
+  },
   block:  { interact: (inDir) => ({ outDirs: [inDir] }) }, // 기존 block은 통과
   tunnel: {
     interact: (inDir, cell) => {

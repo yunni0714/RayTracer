@@ -112,21 +112,39 @@ describe('computeLaser — 거울', () => {
 });
 
 describe('computeLaser — 승리 판정', () => {
-  it('표적에 빔이 닿으면 solved', () => {
+  it('표적 정면(위)에 빔이 닿으면 solved', () => {
     const g = emptyGrid();
-    g[2][0] = piece('ray', 90);
-    g[2][3] = piece('target');
+    g[0][2] = piece('ray', 180); // dir 90 (아래)
+    g[2][2] = piece('target');   // 정면=위 → rel 90 충족
     const r = computeLaser(g);
     expect(r.targetsTotal).toBe(1);
     expect(r.targetsHit).toBe(1);
     expect(r.solved).toBe(true);
   });
 
-  it('표적 2개 중 1개만 맞으면 미해결', () => {
+  it('표적은 정면(표식면)으로 온 빔만 인식한다', () => {
+    // 측면(왼쪽)에서 들어오는 빔: 미충족
     const g = emptyGrid();
-    g[2][0] = piece('ray', 90);
-    g[2][3] = piece('target');
-    g[0][0] = piece('target');
+    g[2][0] = piece('ray', 90);  // dir 0 (오른쪽) → 표적 왼쪽 측면
+    g[2][2] = piece('target');   // 정면=위
+    const r = computeLaser(g);
+    expect(r.targetsTotal).toBe(1);
+    expect(r.targetsHit).toBe(0);
+    expect(r.solved).toBe(false);
+  });
+
+  it('표적을 회전시키면 정면도 함께 돈다 (측면 빔도 정면이 되면 충족)', () => {
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);       // dir 0 (오른쪽)
+    g[2][2] = piece('target', 270);   // 정면이 왼쪽을 향함 → rel(0-270)=90 충족
+    expect(computeLaser(g).solved).toBe(true);
+  });
+
+  it('표적 2개 중 1개만 정면 피격이면 미해결', () => {
+    const g = emptyGrid();
+    g[0][2] = piece('ray', 180); // dir 90 (아래) → (2,2) 정면 피격
+    g[2][2] = piece('target');
+    g[0][0] = piece('target');   // 빔 도달 안 함
     const r = computeLaser(g);
     expect(r.targetsTotal).toBe(2);
     expect(r.targetsHit).toBe(1);

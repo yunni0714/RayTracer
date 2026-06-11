@@ -103,7 +103,6 @@ interface GameStore {
   // ── UI ───────────────────────────────────────
   notification: NotificationState | null;
   activeModal: ActiveModal;
-  isUnlocked: boolean; // 이스터에그 상급 기물 해금
   theme: 'light' | 'dark';
   confirmState: ConfirmOpts | null;
 
@@ -161,7 +160,6 @@ interface GameStore {
   clearNotification: () => void;
   openModal: (modal: ActiveModal) => void;
   closeModal: () => void;
-  setUnlocked: (v: boolean) => void;
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark') => void;
   requestConfirm: (opts: ConfirmOpts) => Promise<boolean>;
@@ -202,7 +200,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentUserNickname: null,
   notification: null,
   activeModal: null,
-  isUnlocked: false,
   theme: initialTheme(),
   confirmState: null,
 
@@ -444,7 +441,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   clearNotification: () => set({ notification: null }),
   openModal: (modal) => set({ activeModal: modal }),
   closeModal: () => set({ activeModal: null }),
-  setUnlocked: (v) => set({ isUnlocked: v }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   setTheme: (t) => set({ theme: t }),
 
