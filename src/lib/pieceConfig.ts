@@ -77,7 +77,9 @@ const INTERMEDIATE: PieceType[] = [
   'diode', 'v_mirror_double', 'v_half_mirror_double', 'small_target', 'omni_target', 'high_block',
   'transistor_gate', 'cross_gate', 'priority_gate', 'target_projector', 'inverting_projector',
 ];
-const ADVANCED: PieceType[] = ['mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'diag_single_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror', 'v_target_mirror_a', 'v_target_mirror_b'];
+// 팔레트 은퇴 기물(maker 결정): diag_single_mirror_a/b, v_target_mirror_a/b,
+// v_mirror(중급 수직 양면거울과 중복). 엔진 def/SVG/라벨은 유지 — 기존 맵 호환.
+const ADVANCED: PieceType[] = ['mirror_45', 'half_mirror_45', 'v_half_mirror', 'v_single_mirror'];
 
 // 팔레트 표시 순서(탭 오버라이드 시에도 이 상대 순서 유지)
 export const PALETTE_ORDER: PieceType[] = [...BASIC, ...INTERMEDIATE, ...ADVANCED];

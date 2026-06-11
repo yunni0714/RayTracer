@@ -381,6 +381,9 @@ Group B (조건부/상태형 — 고정점 루프):
 
 여기에 어드민 config가 정의한 **커스텀 기물**(slug id, `AnyPieceType = string`)이 런타임에 추가될 수 있다.
 
+**팔레트 은퇴 기물** (maker 결정 — `pieceConfig.ts` ADVANCED 배열에서 제외, 엔진 def/SVG/라벨은 기존 맵 호환 위해 유지):
+`diag_single_mirror_a/b`, `v_target_mirror_a/b`, `v_mirror`(중급 수직 양면거울과 중복).
+
 ### CellData
 
 ```ts
