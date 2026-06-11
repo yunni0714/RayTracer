@@ -131,8 +131,8 @@ CSS 변수. `<html>.dark` 클래스가 붙으면 다크값으로 전환. Tailwin
 - [x] **Phase 5 — 기물 조작 UX** 완료. ① 도구 든 채 기물 좌클릭 = 도구 해제 우선(덮어쓰기 안 함). ② 좌클릭=기물 선택(`selectedCell`) → 데스크탑 플로팅 `PiecePopover`(회전·🔒잠금·🎒유저지급·✨특성삭제·🗑삭제 / 테스트: 회전·♻회수, 배치 직후 자동 표시, 외부클릭/Esc 닫힘, 경계 flip), 모바일은 인스펙터(`SelectedPieceInfo`, 하단 시트 정보탭 자동 전환)가 메인 — 둘은 같은 스토어 상태 편집(동기화). ③ 우클릭=회전(삭제는 팝오버로 이동). 공용 액션 `src/lib/pieceActions.ts`. e2e 갱신 + `piece-popover.spec.ts` 신규.
 
 - [x] **보정 라운드 1 (Opus)** — Fable 산출물 검토 후 contained 수정: 표적 정면 판정(전방위→정면면), 상급 탭 상시 노출(이스터에그 게이트 제거), 회전 트레잇 표시 맥락화(기본값 무표시·일탈만, 물리회전↻ vs canRotate 토글 분리), 플레이 인벤 타일 확대+🔒, 테스트 화면 4열→3열. (commit `6e3da5c`)
-- [ ] **B1 (Fable)** — 라이브러리 L1 재구성(좌 카테고리 내비 + 우 미리보기/플레이). 스펙: `docs/LIBRARY_L1.md`.
-- [ ] **B2 (Fable)** — 어드민/콘피그 패널 = **면별(per-face) 기물 behavior 모델 + 에디터**(Firestore 공유, SVG·특성·면별 효과 편집, 관리자 UID 게이트, **firestore.rules 선행**). 표적거울 복합 표적기능·터널 목표화 등은 코드 땜질 대신 **사용자가 에디터에서 면별로 직접 정의**. 어휘 기준 `docs/PIECE_TAXONOMY.md`, 스펙 `docs/ADMIN_PANEL.md`.
+- [x] **B1 (Fable)** — 라이브러리 L1 재구성 완료. 좌 카테고리 내비(추천/원본/최근/명예의전당/내 맵 + ✨새 맵) / 중앙 맵 그리드(검색·정렬, 검색은 전 카테고리) / 우 미리보기(`MiniGrid`+메타+반응+▶플레이). 카드 클릭=선택, ▶로 진입. lg 미만: 카테고리=상단 세그먼트, 미리보기=하단 시트. `MapCard` selected 하이라이트.
+- [x] **B2 (Fable)** — 어드민/콘피그 패널 완료. ① `firestore.rules` 레포 커밋(config=관리자 화이트리스트 write, maps/users/suggestions 명시 — **UID 플레이스홀더 교체+배포는 메이커 몫**). ② 엔진 `REGISTRY` → 면별 `PieceBehaviorDef` 테이블 + `buildInteract`(`buildBehavior`) + `getBehavior/getBehaviorDef/isTargetType` 접근자 — **회귀 0**(기존 43 테스트 무수정 통과). ③ 런타임 오버레이 `src/lib/pieceConfig.ts`(`applyPieceConfig` 순수·검증·손상 폴백, `getSvgArt`/label/tab/defaults, 부팅 1회 로드 + `pieceConfigRev` 리렌더). ④ `/admin` 라우트 + UID 게이트(`src/lib/admin.ts`) + SVG/특성/면 그리드 에디터 + Firestore 저장·기본값 리셋. InspectorPanel 표적 카운트 `isTarget` 기준 일치. 스키마 편차·잔여는 `docs/ADMIN_PANEL.md` 상단 참조. 코드 편집창(§6 옵션)은 보안 사유로 미구현.
 
 > **UI 트랙(Phase 1~5)과 별개**: 추가 기물(관문·프로젝터 등) + 넓은 그리드 + firestore.rules = `docs/FEATURE_PIECES_GRID.md`(엔진 재작성, 분리 진행).
 > 진행 메모는 `docs/HANDOFF.md` 참조.
