@@ -43,12 +43,16 @@ export const CELL_SIZE = 100;
 
 /* ── 어드민 config SVG 오버라이드 (pieceConfig.ts 가 주입) ── */
 
-let svgOverrides: Partial<Record<PieceType, string>> = {};
+// 미지 타입 폴백: 점선 박스 + ? — config 가 지워진 커스텀 기물도 보이게 한다.
+export const PLACEHOLDER_SVG =
+  `<svg viewBox="0 0 100 100"><rect x="16" y="16" width="68" height="68" fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="12 8"/><text x="50" y="63" text-anchor="middle" font-size="38" font-weight="bold" fill="currentColor">?</text></svg>`;
 
-export function setSvgOverrides(overrides: Partial<Record<PieceType, string>>): void {
+let svgOverrides: Partial<Record<string, string>> = {};
+
+export function setSvgOverrides(overrides: Partial<Record<string, string>>): void {
   svgOverrides = overrides;
 }
 
-export function getSvgArt(type: PieceType): string {
-  return svgOverrides[type] ?? SVG_ART[type] ?? '';
+export function getSvgArt(type: string): string {
+  return svgOverrides[type] ?? (SVG_ART as Partial<Record<string, string>>)[type] ?? PLACEHOLDER_SVG;
 }

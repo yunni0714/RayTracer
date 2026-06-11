@@ -58,27 +58,27 @@ const DEFAULT_PIECE_DEFAULTS: PieceDefaults = { canRotate: false, canMove: false
 
 /* ── 오버라이드 상태 (모듈 캐시) ────────────────────────── */
 
-let tabOverrides: Partial<Record<PieceType, PieceTab>> = {};
-let defaultsOverrides: Partial<Record<PieceType, Partial<PieceDefaults>>> = {};
-let rawEntries: Partial<Record<PieceType, PieceConfigEntry>> = {};
+let tabOverrides: Partial<Record<string, PieceTab>> = {};
+let defaultsOverrides: Partial<Record<string, Partial<PieceDefaults>>> = {};
+let rawEntries: Partial<Record<string, PieceConfigEntry>> = {};
 
-export function getPieceTab(type: PieceType): PieceTab {
-  return tabOverrides[type] ?? DEFAULT_TABS[type] ?? 'intermediate';
+export function getPieceTab(type: string): PieceTab {
+  return tabOverrides[type] ?? (DEFAULT_TABS as Partial<Record<string, PieceTab>>)[type] ?? 'intermediate';
 }
 
-export function getPieceDefaults(type: PieceType): PieceDefaults {
+export function getPieceDefaults(type: string): PieceDefaults {
   const merged = { ...DEFAULT_PIECE_DEFAULTS, ...defaultsOverrides[type] };
   // canMove 는 isInventory(유저지급)에 종속한다 — 유저지급 기물만 플레이 중 이동 가능.
   return { ...merged, canMove: merged.isInventory };
 }
 
 // 어드민 에디터용: 현재 적용된 raw 오버라이드 엔트리
-export function getPieceConfigEntry(type: PieceType): PieceConfigEntry | undefined {
+export function getPieceConfigEntry(type: string): PieceConfigEntry | undefined {
   return rawEntries[type];
 }
 
 // 어드민 에디터용: 전체 오버라이드 스냅샷 (저장 후 로컬 즉시반영에 사용)
-export function getAllConfigEntries(): Partial<Record<PieceType, PieceConfigEntry>> {
+export function getAllConfigEntries(): Partial<Record<string, PieceConfigEntry>> {
   return { ...rawEntries };
 }
 

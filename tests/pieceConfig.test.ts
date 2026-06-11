@@ -1,15 +1,15 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults } from '../src/lib/pieceConfig';
-import { computeLaser, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
-import { getSvgArt, SVG_ART } from '../src/lib/svgArt';
-import { getPieceLabel } from '../src/lib/pieceActions';
-import type { CellData, PieceType, Rotation } from '../src/types/game';
+import { computeLaser, getBehavior, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
+import { getSvgArt, SVG_ART, PLACEHOLDER_SVG } from '../src/lib/svgArt';
+import { getPieceLabel, getRotationStep } from '../src/lib/pieceActions';
+import type { CellData, Rotation } from '../src/types/game';
 
 function emptyGrid(size = 5): (CellData | null)[][] {
   return Array.from({ length: size }, () => Array(size).fill(null));
 }
 
-function piece(type: PieceType, rotation: Rotation = 0): CellData {
+function piece(type: string, rotation: Rotation = 0): CellData {
   return { type, rotation, canMove: false, canRotate: false, isInventory: false };
 }
 
@@ -100,6 +100,32 @@ describe('applyPieceConfig — svg/label/tab/defaults', () => {
     // 다른 기물은 그대로
     expect(getSvgArt('target')).toBe(SVG_ART.target);
     expect(getPieceTab('target')).toBe('basic');
+  });
+});
+
+describe('미지 타입 접근자 폴백 (커스텀 기물 안전망)', () => {
+  it('미지 타입은 PASSIVE — 통과·비표적·크래시 없음', () => {
+    const b = getBehavior('no_such_piece');
+    expect(b.isTarget).toBe(false);
+    expect(b.interact(0, piece('no_such_piece'), undefined)).toEqual({ outDirs: [0] });
+  });
+
+  it('미지 타입 SVG 는 플레이스홀더, 라벨은 타입 문자열', () => {
+    expect(getSvgArt('no_such_piece')).toBe(PLACEHOLDER_SVG);
+    expect(getPieceLabel('no_such_piece')).toBe('no_such_piece');
+    expect(getRotationStep('no_such_piece')).toBe(90);
+    expect(getPieceDefaults('no_such_piece')).toEqual({ canRotate: false, canMove: false, isInventory: false });
+  });
+
+  it('미지 타입 셀이 있는 맵도 통과로 계산되고 승리판정에서 제외된다', () => {
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);          // dir 0
+    g[2][2] = piece('ghost_custom');     // 미지 — 통과해야 함
+    g[2][4] = piece('target', 270);      // rel 90 충족 (dir 0, rot 270 → rel 90)
+    const r = computeLaser(g);
+    expect(r.segments.some(s => s.x1 === 2 && s.y1 === 2)).toBe(true); // 빔이 미지 셀을 지나감
+    expect(r.targetsTotal).toBe(1);                                    // 미지 타입은 표적 아님
+    expect(r.solved).toBe(true);
   });
 });
 

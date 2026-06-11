@@ -3,11 +3,11 @@ import { useGameStore } from '../store/gameStore';
 import { getSvgArt } from '../lib/svgArt';
 import { rotatePiece } from '../lib/pieceActions';
 import { getPieceDefaults } from '../lib/pieceConfig';
-import type { CellData, PieceType, Rotation, SelectedTool } from '../types/game';
+import type { AnyPieceType, CellData, Rotation, SelectedTool } from '../types/game';
 
 interface DragSource {
   origin: 'palette' | 'grid';
-  pieceType: PieceType;
+  pieceType: AnyPieceType;
   fromRow?: number;
   fromCol?: number;
   rotation: Rotation;
@@ -20,7 +20,7 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
   const paintTargetRef = useRef<{ row: number; col: number } | null>(null);
   const lastActiveToolRef = useRef<SelectedTool | null>(null);
 
-  function createGhost(type: PieceType, x: number, y: number, rotation: Rotation): HTMLDivElement {
+  function createGhost(type: AnyPieceType, x: number, y: number, rotation: Rotation): HTMLDivElement {
     const ghost = document.createElement('div');
     ghost.innerHTML = `<div style="transform:rotate(${rotation}deg);width:100%;height:100%;">${getSvgArt(type)}</div>`;
     ghost.style.cssText = [
