@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 요약
 
-순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업. **Phase 1~5 + 엔진트랙(추가 기물·NxN 그리드) 완료**(Fable). 이후 **보정 라운드 1 완료**(Opus, commit `6e3da5c`): 표적 정면판정·상급탭 상시노출·회전트레잇 표시·인벤타일·테스트 3열. **다음(Fable 인계) = B1 라이브러리 L1(`docs/LIBRARY_L1.md`) + B2 어드민/콘피그 패널(`docs/ADMIN_PANEL.md`, firestore.rules 선행).** 상세 진행상태 `docs/DESIGN.md` §7.
+순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업. **Phase 1~5 + 엔진트랙(추가 기물·NxN 그리드) 완료**(Fable). 이후 **보정 라운드 1 완료**(Opus, commit `6e3da5c`): 표적 정면판정·상급탭 상시노출·회전트레잇 표시·인벤타일·테스트 3열. **다음(Fable 인계) = B1 라이브러리 L1(`docs/LIBRARY_L1.md`) + B2 어드민 = 면별(per-face) 기물 behavior 모델 + 에디터(`docs/ADMIN_PANEL.md`, 어휘 `docs/PIECE_TAXONOMY.md`, firestore.rules 선행).** 복합기물(표적거울)·터널 목표화 등 동작 누락은 코드 땜질 대신 **에디터에서 사용자가 면별 정의**(결정됨). 상세 진행상태 `docs/DESIGN.md` §7.
 
 ---
 
