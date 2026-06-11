@@ -31,12 +31,16 @@ export type PieceType =
   | 'target_projector'
   | 'inverting_projector';
 
+// 저장·렌더 경계의 기물 타입 — 빌트인(PieceType) 또는 config 가 정의한 커스텀 id.
+// 접근자(getSvgArt/getBehavior/...)가 미지 문자열에도 안전 폴백을 보장한다.
+export type AnyPieceType = string;
+
 export type Rotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
 export type Difficulty = 'Tutor' | 'Easy' | 'Normal' | 'Hard' | 'Insane';
 
 export interface CellData {
-  type: PieceType;
+  type: AnyPieceType;
   rotation: Rotation;
   canMove: boolean;
   canRotate: boolean;
@@ -45,7 +49,7 @@ export interface CellData {
 
 export interface InventoryItem {
   count: number;
-  type: PieceType;
+  type: AnyPieceType;
   canRotate: boolean;
   rotation: Rotation;
 }
@@ -53,7 +57,7 @@ export interface InventoryItem {
 export interface MapItemDTO {
   x: number;
   y: number;
-  type: PieceType;
+  type: AnyPieceType;
   rotation: Rotation;
   canMove: boolean;
   canRotate: boolean;
@@ -94,7 +98,7 @@ export interface GameSnapshot {
 }
 
 export interface SelectedTool {
-  type: PieceType;
+  type: AnyPieceType;
   source: 'palette' | 'grid' | 'inventory';
   fromRow?: number;
   fromCol?: number;

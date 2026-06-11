@@ -26,14 +26,48 @@ export interface PieceDefaults {
 export interface PieceConfigEntry {
   svg?: string;
   labelKo?: string;
-  tab?: PieceTab;
+  tab?: PieceTab;        // 레거시 — folderId 가 없으면 folderId 로 읽는다 (하위호환)
+  folderId?: string;     // 팔레트 폴더 (tab 대체)
+  hidden?: boolean;      // 빌트인 "삭제" = 팔레트에서 숨김 (코드 정의는 못 지움)
   defaults?: Partial<PieceDefaults>;
   behavior?: PieceBehaviorDef;
 }
 
+export interface PieceFolder {
+  id: string;
+  name: string;
+  order: number;
+}
+
 export interface PieceConfigDoc {
   version: number;
-  pieces: Partial<Record<PieceType, PieceConfigEntry>>;
+  folders?: PieceFolder[]; // 없으면 기본 3폴더 (하위호환)
+  pieces: Partial<Record<string, PieceConfigEntry>>;
+}
+
+/* ── 커스텀 타입 (config-only 기물) ─────────────────────── */
+
+const BUILTIN_TYPES: ReadonlySet<string> = new Set(Object.keys(DEFAULT_DEFS));
+const CUSTOM_ID_RE = /^[a-z0-9_]+$/;
+const CUSTOM_ID_MAX = 32;
+
+// 커스텀 기물 id 검증: slug 형식, 길이 제한, 빌트인과 충돌 금지.
+export function isValidCustomTypeId(id: string): boolean {
+  return id.length > 0 && id.length <= CUSTOM_ID_MAX && CUSTOM_ID_RE.test(id) && !BUILTIN_TYPES.has(id);
+}
+
+let customTypes: string[] = [];
+
+// 현재 config 가 등록한 커스텀 타입 목록 (팔레트/어드민이 빌트인과 합쳐 렌더)
+export function getCustomTypes(): string[] {
+  return [...customTypes];
+}
+
+let hiddenTypes: ReadonlySet<string> = new Set();
+
+// 팔레트 숨김 여부 (빌트인 "삭제"). 맵에 이미 놓인 기물 동작에는 영향 없음.
+export function isPieceHidden(type: string): boolean {
+  return hiddenTypes.has(type);
 }
 
 /* ── 팔레트 탭 기본값 (표시 순서 보존) ──────────────────── */
@@ -58,27 +92,59 @@ const DEFAULT_PIECE_DEFAULTS: PieceDefaults = { canRotate: false, canMove: false
 
 /* ── 오버라이드 상태 (모듈 캐시) ────────────────────────── */
 
-let tabOverrides: Partial<Record<PieceType, PieceTab>> = {};
-let defaultsOverrides: Partial<Record<PieceType, Partial<PieceDefaults>>> = {};
-let rawEntries: Partial<Record<PieceType, PieceConfigEntry>> = {};
+let folderOverrides: Partial<Record<string, string>> = {};
+let configFolders: PieceFolder[] | null = null;
+let defaultsOverrides: Partial<Record<string, Partial<PieceDefaults>>> = {};
+let rawEntries: Partial<Record<string, PieceConfigEntry>> = {};
 
-export function getPieceTab(type: PieceType): PieceTab {
-  return tabOverrides[type] ?? DEFAULT_TABS[type] ?? 'intermediate';
+/* ── 폴더 ───────────────────────────────────────────────── */
+
+// 기본 3폴더 — config 에 folders 없을 때 + 항상 존재 보장 (삭제 시 재생성)
+export const DEFAULT_FOLDERS: readonly PieceFolder[] = [
+  { id: 'basic', name: '초급', order: 0 },
+  { id: 'intermediate', name: '중급', order: 1 },
+  { id: 'advanced', name: '상급', order: 2 },
+];
+
+const FOLDER_ID_RE = /^[a-z0-9_]+$/;
+const FOLDER_ID_MAX = 48;
+
+export function isValidFolderId(id: string): boolean {
+  return id.length > 0 && id.length <= FOLDER_ID_MAX && FOLDER_ID_RE.test(id);
 }
 
-export function getPieceDefaults(type: PieceType): PieceDefaults {
+// order 순 정렬된 폴더 목록. 기본 3폴더는 config 가 빠뜨려도 항상 포함.
+export function getFolders(): PieceFolder[] {
+  const list = configFolders ? configFolders.map(f => ({ ...f })) : DEFAULT_FOLDERS.map(f => ({ ...f }));
+  for (const def of DEFAULT_FOLDERS) {
+    if (!list.some(f => f.id === def.id)) list.push({ ...def });
+  }
+  return list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+}
+
+export function getPieceFolder(type: string): string {
+  return folderOverrides[type] ?? (DEFAULT_TABS as Partial<Record<string, PieceTab>>)[type] ?? 'intermediate';
+}
+
+// 레거시 접근자 — 폴더가 기본 3종 밖이면 'intermediate' 로 수렴.
+export function getPieceTab(type: string): PieceTab {
+  const f = getPieceFolder(type);
+  return (TABS as string[]).includes(f) ? (f as PieceTab) : 'intermediate';
+}
+
+export function getPieceDefaults(type: string): PieceDefaults {
   const merged = { ...DEFAULT_PIECE_DEFAULTS, ...defaultsOverrides[type] };
   // canMove 는 isInventory(유저지급)에 종속한다 — 유저지급 기물만 플레이 중 이동 가능.
   return { ...merged, canMove: merged.isInventory };
 }
 
 // 어드민 에디터용: 현재 적용된 raw 오버라이드 엔트리
-export function getPieceConfigEntry(type: PieceType): PieceConfigEntry | undefined {
+export function getPieceConfigEntry(type: string): PieceConfigEntry | undefined {
   return rawEntries[type];
 }
 
 // 어드민 에디터용: 전체 오버라이드 스냅샷 (저장 후 로컬 즉시반영에 사용)
-export function getAllConfigEntries(): Partial<Record<PieceType, PieceConfigEntry>> {
+export function getAllConfigEntries(): Partial<Record<string, PieceConfigEntry>> {
   return { ...rawEntries };
 }
 
@@ -141,6 +207,22 @@ export function sanitizeSvg(svg: string): string {
     .replace(/javascript:/gi, '');
 }
 
+// config 의 folders 배열 검증 — 유효 항목만 통과, 비면 null (기본 3폴더 사용).
+function sanitizeFolders(raw: unknown): PieceFolder[] | null {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set<string>();
+  const out: PieceFolder[] = [];
+  for (const f of raw) {
+    if (!f || typeof f !== 'object') continue;
+    const { id, name, order } = f as PieceFolder;
+    if (typeof id !== 'string' || !isValidFolderId(id) || seen.has(id)) continue;
+    if (typeof name !== 'string' || !name.trim()) continue;
+    seen.add(id);
+    out.push({ id, name: name.trim(), order: typeof order === 'number' ? order : out.length });
+  }
+  return out.length > 0 ? out : null;
+}
+
 function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const e = raw as PieceConfigEntry;
@@ -151,6 +233,8 @@ function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   }
   if (typeof e.labelKo === 'string' && e.labelKo.trim()) out.labelKo = e.labelKo.trim();
   if (e.tab && TABS.includes(e.tab)) out.tab = e.tab;
+  if (typeof e.folderId === 'string' && isValidFolderId(e.folderId)) out.folderId = e.folderId;
+  if (typeof e.hidden === 'boolean') out.hidden = e.hidden;
   if (e.defaults && typeof e.defaults === 'object') {
     const d: Partial<PieceDefaults> = {};
     for (const k of ['canRotate', 'canMove', 'isInventory'] as const) {
@@ -168,36 +252,48 @@ function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
 /* ── 적용 / 리셋 ────────────────────────────────────────── */
 
 export interface ApplyResult {
-  applied: PieceType[];
+  applied: string[];
   skipped: string[];
 }
 
 // config 문서(파싱된 JSON)를 검증 후 오버레이로 적용. 순수 — 네트워크 없음.
+// 빌트인 = 코드 기본값 위 머지. 커스텀 = config-only — behavior+svg 둘 다 있어야 등록
+// (둘 중 하나라도 없으면 렌더/엔진이 받아줄 수 없으므로 skip).
 export function applyPieceConfig(raw: unknown): ApplyResult {
-  const applied: PieceType[] = [];
+  const applied: string[] = [];
   const skipped: string[] = [];
 
-  const behaviorDefs: Partial<Record<PieceType, PieceBehaviorDef>> = {};
-  const svgs: Partial<Record<PieceType, string>> = {};
-  const labels: Partial<Record<PieceType, string>> = {};
-  const tabs: Partial<Record<PieceType, PieceTab>> = {};
-  const defaults: Partial<Record<PieceType, Partial<PieceDefaults>>> = {};
-  const entries: Partial<Record<PieceType, PieceConfigEntry>> = {};
+  const behaviorDefs: Partial<Record<string, PieceBehaviorDef>> = {};
+  const svgs: Partial<Record<string, string>> = {};
+  const labels: Partial<Record<string, string>> = {};
+  const folderIds: Partial<Record<string, string>> = {};
+  const defaults: Partial<Record<string, Partial<PieceDefaults>>> = {};
+  const entries: Partial<Record<string, PieceConfigEntry>> = {};
+  const customs: string[] = [];
+  const hidden = new Set<string>();
+
+  const folders = sanitizeFolders((raw as PieceConfigDoc | null)?.folders);
+  // 유효 폴더 id 집합 — 기본 3폴더는 항상 유효 (getFolders 가 재생성 보장)
+  const folderIdSet = new Set([...(folders ?? []).map(f => f.id), ...DEFAULT_FOLDERS.map(f => f.id)]);
 
   const pieces = (raw as PieceConfigDoc | null)?.pieces;
   if (pieces && typeof pieces === 'object') {
-    for (const [key, rawEntry] of Object.entries(pieces)) {
-      const type = key as PieceType;
-      // 코드가 모르는 타입은 무시 (렌더/엔진이 받아줄 수 없음)
-      if (!(type in DEFAULT_DEFS)) { skipped.push(key); continue; }
+    for (const [type, rawEntry] of Object.entries(pieces)) {
+      const isBuiltin = BUILTIN_TYPES.has(type);
+      if (!isBuiltin && !isValidCustomTypeId(type)) { skipped.push(type); continue; }
       const entry = sanitizeEntry(rawEntry);
-      if (!entry) { skipped.push(key); continue; }
+      if (!entry) { skipped.push(type); continue; }
+      if (!isBuiltin && !(entry.behavior && entry.svg)) { skipped.push(type); continue; }
       entries[type] = entry;
       if (entry.behavior) behaviorDefs[type] = entry.behavior;
       if (entry.svg) svgs[type] = entry.svg;
       if (entry.labelKo) labels[type] = entry.labelKo;
-      if (entry.tab) tabs[type] = entry.tab;
+      // 하위호환: folderId 없으면 레거시 tab 을 폴더로 읽는다. 존재하지 않는 폴더는 무시(기본값 폴백).
+      const folderId = entry.folderId ?? entry.tab;
+      if (folderId && folderIdSet.has(folderId)) folderIds[type] = folderId;
       if (entry.defaults) defaults[type] = entry.defaults;
+      if (entry.hidden) hidden.add(type);
+      if (!isBuiltin) customs.push(type);
       applied.push(type);
     }
   }
@@ -205,9 +301,12 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   setBehaviorOverrides(behaviorDefs);
   setSvgOverrides(svgs);
   setLabelOverrides(labels);
-  tabOverrides = tabs;
+  configFolders = folders;
+  folderOverrides = folderIds;
   defaultsOverrides = defaults;
   rawEntries = entries;
+  customTypes = customs;
+  hiddenTypes = hidden;
 
   return { applied, skipped };
 }
@@ -216,9 +315,12 @@ export function resetPieceConfig(): void {
   setBehaviorOverrides({});
   setSvgOverrides({});
   setLabelOverrides({});
-  tabOverrides = {};
+  configFolders = null;
+  folderOverrides = {};
   defaultsOverrides = {};
   rawEntries = {};
+  customTypes = [];
+  hiddenTypes = new Set();
 }
 
 // 부팅 시 1회 호출 (App.tsx). 실패해도 코드 기본값으로 동작 — 절대 throw 하지 않는다.

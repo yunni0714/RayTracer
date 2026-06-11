@@ -1,7 +1,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
-import type { PieceType, Rotation } from '../../types/game';
+import type { Rotation } from '../../types/game';
 
 export function TestModeInventory() {
   const { isEditorMode, playerInventory, selectedTool, setSelectedTool } = useGameStore(useShallow(s => ({
@@ -25,7 +25,7 @@ export function TestModeInventory() {
           {items.map(([key, item]) => (
             <ToolItem
               key={key}
-              type={item.type as PieceType}
+              type={item.type}
               rotation={item.rotation as Rotation}
               count={item.count}
               size="lg"
@@ -36,7 +36,7 @@ export function TestModeInventory() {
                   selectedTool?.source === 'inventory' && selectedTool.inventoryKey === key
                     ? null
                     : {
-                        type: item.type as PieceType,
+                        type: item.type,
                         source: 'inventory',
                         isInvTool: true,
                         inventoryKey: key,

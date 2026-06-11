@@ -1,9 +1,9 @@
 import { getSvgArt } from '../../lib/svgArt';
 import { useGameStore } from '../../store/gameStore';
-import type { PieceType, Rotation } from '../../types/game';
+import type { AnyPieceType, Rotation } from '../../types/game';
 
 interface Props {
-  type: PieceType;
+  type: AnyPieceType;
   rotation?: Rotation;
   count?: number;
   selected?: boolean;

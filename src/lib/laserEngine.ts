@@ -323,20 +323,20 @@ const PASSIVE: PieceBehavior = {
   interact: (inDir) => ({ outDirs: [inDir] }),
 };
 
-let overrideDefs: Partial<Record<PieceType, PieceBehaviorDef>> = {};
-let behaviorCache = new Map<PieceType, PieceBehavior>();
+let overrideDefs: Partial<Record<string, PieceBehaviorDef>> = {};
+let behaviorCache = new Map<string, PieceBehavior>();
 
 // 어드민 config 오버라이드 주입 (pieceConfig.ts 가 호출). 캐시 무효화 포함.
-export function setBehaviorOverrides(defs: Partial<Record<PieceType, PieceBehaviorDef>>): void {
+export function setBehaviorOverrides(defs: Partial<Record<string, PieceBehaviorDef>>): void {
   overrideDefs = defs;
   behaviorCache = new Map();
 }
 
-export function getBehaviorDef(type: PieceType): PieceBehaviorDef | undefined {
-  return overrideDefs[type] ?? DEFAULT_DEFS[type];
+export function getBehaviorDef(type: string): PieceBehaviorDef | undefined {
+  return overrideDefs[type] ?? (DEFAULT_DEFS as Partial<Record<string, PieceBehaviorDef>>)[type];
 }
 
-export function getBehavior(type: PieceType): PieceBehavior {
+export function getBehavior(type: string): PieceBehavior {
   let b = behaviorCache.get(type);
   if (!b) {
     const def = getBehaviorDef(type);
@@ -347,7 +347,7 @@ export function getBehavior(type: PieceType): PieceBehavior {
 }
 
 // 엔진 isTarget 판정과 UI 통계를 일치시키기 위한 헬퍼
-export function isTargetType(type: PieceType): boolean {
+export function isTargetType(type: string): boolean {
   return getBehavior(type).isTarget;
 }
 
