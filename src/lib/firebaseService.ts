@@ -136,3 +136,8 @@ export async function savePieceConfigEntry(
 export async function deletePieceConfigEntry(pieceType: string): Promise<void> {
   await updateDoc(doc(db, 'config', 'pieces'), { [`pieces.${pieceType}`]: deleteField() });
 }
+
+// 임의 부분 패치 (folders 교체, 복수 기물 folderId 일괄 머지 등)
+export async function savePieceConfigPatch(patch: Record<string, unknown>): Promise<void> {
+  await setDoc(doc(db, 'config', 'pieces'), { version: 2, ...patch }, { merge: true });
+}

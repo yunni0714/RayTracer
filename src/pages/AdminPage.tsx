@@ -10,13 +10,13 @@ import {
   type PieceBehaviorDef, type FaceSpec, type FaceEffect, type FaceEffectKind,
 } from '../lib/laserEngine';
 import {
-  PALETTE_ORDER, getPieceTab, getPieceDefaults, getAllConfigEntries, applyPieceConfig,
-  type PieceConfigEntry, type PieceTab,
+  PALETTE_ORDER, getPieceFolder, getPieceDefaults, getAllConfigEntries, applyPieceConfig,
+  getFolders, getCustomTypes, DEFAULT_FOLDERS,
+  type PieceConfigEntry, type PieceFolder,
 } from '../lib/pieceConfig';
-import { savePieceConfigEntry, deletePieceConfigEntry } from '../lib/firebaseService';
+import { savePieceConfigEntry, deletePieceConfigEntry, savePieceConfigPatch } from '../lib/firebaseService';
 import { Notification } from '../components/layout/Notification';
-import { Button, Label, TextInput, TextArea, Select, Pill, ConfirmHost, cx } from '../components/ui';
-import type { PieceType } from '../types/game';
+import { Button, IconButton, Label, TextInput, TextArea, Select, Pill, ConfirmHost, cx } from '../components/ui';
 
 /* ════════════════════════════════════════════════════════
    어드민 — 면별(per-face) 기물 behavior 에디터 (docs/ADMIN_PANEL.md)
@@ -53,9 +53,7 @@ function outToSurface(rel: number, out: number): number {
 
 const RELS = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
-const TABS: { id: PieceTab; label: string }[] = [
-  { id: 'basic', label: '초급' }, { id: 'intermediate', label: '중급' }, { id: 'advanced', label: '상급' },
-];
+const DEFAULT_FOLDER_IDS = new Set(DEFAULT_FOLDERS.map(f => f.id));
 
 // 면 그리드 배치: 각 칸 = "그 방향에서 들어오는 빔"(rel = 진행방향-회전).
 // rel 0 = 오른쪽으로 진행 = 왼쪽 면으로 입사 → 중앙 기준 왼쪽 칸.
@@ -72,17 +70,17 @@ interface Draft {
   def: PieceBehaviorDef;
   svg: string;
   label: string;
-  tab: PieceTab;
+  folderId: string;
   defaults: { canRotate: boolean; canMove: boolean; isInventory: boolean };
 }
 
-function makeDraft(type: PieceType): Draft {
+function makeDraft(type: string): Draft {
   const def = getBehaviorDef(type)!;
   return {
     def: JSON.parse(JSON.stringify(def)) as PieceBehaviorDef,
     svg: getSvgArt(type),
     label: getPieceLabel(type),
-    tab: getPieceTab(type),
+    folderId: getPieceFolder(type),
     defaults: getPieceDefaults(type),
   };
 }
@@ -274,10 +272,13 @@ export function AdminPage() {
     })));
   useGameStore(s => s.pieceConfigRev);
 
-  const [selectedType, setSelectedType] = useState<PieceType>(PALETTE_ORDER[0]);
+  const [selectedType, setSelectedType] = useState<string>(PALETTE_ORDER[0]);
   const [draft, setDraft] = useState<Draft>(() => makeDraft(PALETTE_ORDER[0]));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
+  const [dropFolder, setDropFolder] = useState<string | null>(null);
 
   if (!isAdminUid(currentUserUid)) {
     return <Navigate to="/" replace />;
@@ -293,11 +294,17 @@ export function AdminPage() {
     setDirty(true);
   }
 
-  async function selectPiece(type: PieceType) {
+  async function selectPiece(type: string) {
     if (dirty && !(await requestConfirm({ message: '저장하지 않은 변경이 있습니다. 버리고 이동할까요?', danger: true }))) return;
     setSelectedType(type);
     setDraft(makeDraft(type));
     setDirty(false);
+  }
+
+  // 로컬 오버레이 즉시 재적용 (Firestore 쓰기 성공 후 호출)
+  function applyLocal(folders: PieceFolder[], entries: Partial<Record<string, PieceConfigEntry>>) {
+    applyPieceConfig({ version: 2, folders, pieces: entries });
+    bumpPieceConfigRev();
   }
 
   // 저장: Firestore 머지 + 로컬 오버레이 즉시 재적용
@@ -308,12 +315,11 @@ export function AdminPage() {
         behavior: draft.def,
         svg: draft.svg,
         labelKo: draft.label,
-        tab: draft.tab,
+        folderId: draft.folderId,
         defaults: draft.defaults,
       };
       await savePieceConfigEntry(selectedType, entry as unknown as Record<string, unknown>);
-      applyPieceConfig({ version: 1, pieces: { ...getAllConfigEntries(), [selectedType]: entry } });
-      bumpPieceConfigRev();
+      applyLocal(getFolders(), { ...getAllConfigEntries(), [selectedType]: entry });
       setDirty(false);
       showNotification(`[${draft.label}] 저장 완료 — 전 플레이어에 반영됩니다.`);
     } catch {
@@ -331,8 +337,7 @@ export function AdminPage() {
       await deletePieceConfigEntry(selectedType);
       const rest = getAllConfigEntries();
       delete rest[selectedType];
-      applyPieceConfig({ version: 1, pieces: rest });
-      bumpPieceConfigRev();
+      applyLocal(getFolders(), rest);
       setDraft(makeDraft(selectedType));
       setDirty(false);
       showNotification('기본값으로 복원되었습니다.');
@@ -340,6 +345,84 @@ export function AdminPage() {
       showNotification('복원 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
     } finally {
       setSaving(false);
+    }
+  }
+
+  /* ── 폴더 CRUD + 드래그 할당 (즉시 저장) ───────────────── */
+
+  async function persistFolders(
+    next: PieceFolder[],
+    reassign?: Record<string, string>, // type → folderId
+  ) {
+    try {
+      const piecePatch: Record<string, { folderId: string }> = {};
+      const entries = getAllConfigEntries();
+      for (const [type, folderId] of Object.entries(reassign ?? {})) {
+        piecePatch[type] = { folderId };
+        entries[type] = { ...(entries[type] ?? {}), folderId };
+      }
+      await savePieceConfigPatch(
+        reassign ? { folders: next, pieces: piecePatch } : { folders: next },
+      );
+      applyLocal(next, entries);
+    } catch {
+      showNotification('폴더 저장 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    }
+  }
+
+  async function addFolder() {
+    const folders = getFolders();
+    const id = `folder_${Date.now().toString(36)}`;
+    const order = Math.max(...folders.map(f => f.order)) + 1;
+    await persistFolders([...folders, { id, name: '새 폴더', order }]);
+    setEditingFolder({ id, name: '새 폴더' });
+  }
+
+  async function commitRename() {
+    if (!editingFolder) return;
+    const name = editingFolder.name.trim();
+    setEditingFolder(null);
+    if (!name) return;
+    const folders = getFolders();
+    if (folders.find(f => f.id === editingFolder.id)?.name === name) return;
+    await persistFolders(folders.map(f => f.id === editingFolder.id ? { ...f, name } : f));
+  }
+
+  async function moveFolder(id: string, delta: -1 | 1) {
+    const sorted = getFolders();
+    const i = sorted.findIndex(f => f.id === id);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= sorted.length) return;
+    [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
+    await persistFolders(sorted.map((f, idx) => ({ ...f, order: idx })));
+  }
+
+  async function removeFolder(id: string) {
+    if (DEFAULT_FOLDER_IDS.has(id)) return; // 기본 3폴더는 삭제 불가
+    const folders = getFolders();
+    const folder = folders.find(f => f.id === id);
+    if (!folder) return;
+    const allTypes = [...PALETTE_ORDER, ...getCustomTypes()];
+    const moved = allTypes.filter(t => getPieceFolder(t) === id);
+    const next = folders.filter(f => f.id !== id);
+    const firstId = next.sort((a, b) => a.order - b.order)[0].id;
+    if (!(await requestConfirm({
+      message: `[${folder.name}] 폴더를 삭제할까요? 폴더의 기물 ${moved.length}개는 [${next[0].name}] 로 이동합니다.`,
+      danger: true,
+    }))) return;
+    await persistFolders(next, Object.fromEntries(moved.map(t => [t, firstId])));
+  }
+
+  async function assignPiece(type: string, folderId: string) {
+    if (getPieceFolder(type) === folderId) return;
+    try {
+      await savePieceConfigPatch({ pieces: { [type]: { folderId } } });
+      const entries = getAllConfigEntries();
+      entries[type] = { ...(entries[type] ?? {}), folderId };
+      applyLocal(getFolders(), entries);
+      if (type === selectedType) setDraft(d => ({ ...d, folderId }));
+    } catch {
+      showNotification('이동 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
     }
   }
 
@@ -374,22 +457,100 @@ export function AdminPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 좌: 기물 목록 */}
-        <aside className="w-56 shrink-0 bg-surface border-r border-line p-2 overflow-y-auto">
-          {PALETTE_ORDER.map(type => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => selectPiece(type)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-tile text-left text-xs transition-colors ${
-                type === selectedType ? 'bg-accent-soft border border-accent' : 'hover:bg-surface-2 border border-transparent'
-              }`}
-            >
-              <span className="w-7 h-7 shrink-0" dangerouslySetInnerHTML={{ __html: getSvgArt(type) }} />
-              <span className="min-w-0 flex-1 truncate font-medium">{getPieceLabel(type)}</span>
-              {getPieceConfigBadge(type)}
-            </button>
-          ))}
+        {/* 좌: 기물 목록 — 폴더별 섹션 (접이식 + 드래그 할당) */}
+        <aside className="w-60 shrink-0 bg-surface border-r border-line p-2 overflow-y-auto flex flex-col gap-1">
+          {getFolders().map(folder => {
+            const pieces = [...PALETTE_ORDER, ...getCustomTypes()].filter(t => getPieceFolder(t) === folder.id);
+            const isCollapsed = collapsed.has(folder.id);
+            const isDefault = DEFAULT_FOLDER_IDS.has(folder.id);
+            return (
+              <div
+                key={folder.id}
+                onDragOver={e => { e.preventDefault(); setDropFolder(folder.id); }}
+                onDragLeave={() => setDropFolder(f => f === folder.id ? null : f)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setDropFolder(null);
+                  const type = e.dataTransfer.getData('text/plain');
+                  if (type) assignPiece(type, folder.id);
+                }}
+                className={cx(
+                  'rounded-tile border transition-colors',
+                  dropFolder === folder.id ? 'border-accent bg-accent-soft' : 'border-transparent',
+                )}
+              >
+                <div className="flex items-center gap-0.5 px-1 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCollapsed(s => {
+                      const next = new Set(s);
+                      if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id);
+                      return next;
+                    })}
+                    className="w-5 h-5 shrink-0 text-[10px] text-ink-muted hover:text-ink"
+                    title={isCollapsed ? '펼치기' : '접기'}
+                  >
+                    {isCollapsed ? '▸' : '▾'}
+                  </button>
+                  {editingFolder?.id === folder.id ? (
+                    <TextInput
+                      autoFocus
+                      value={editingFolder.name}
+                      onChange={e => setEditingFolder({ id: folder.id, name: e.target.value })}
+                      onBlur={commitRename}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitRename();
+                        if (e.key === 'Escape') setEditingFolder(null);
+                      }}
+                      className="flex-1 min-w-0 !text-xs !py-0.5 !px-1"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onDoubleClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
+                      className="flex-1 min-w-0 truncate text-left text-[11px] font-extrabold uppercase tracking-wider text-ink-muted"
+                      title="더블클릭으로 이름 변경"
+                    >
+                      {folder.name} <span className="font-normal">({pieces.length})</span>
+                    </button>
+                  )}
+                  <IconButton
+                    aria-label="이름 변경"
+                    className="!text-[10px] !px-1 !py-1"
+                    onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
+                  >✏️</IconButton>
+                  <IconButton aria-label="위로" className="!text-[10px] !px-1 !py-1" onClick={() => moveFolder(folder.id, -1)}>↑</IconButton>
+                  <IconButton aria-label="아래로" className="!text-[10px] !px-1 !py-1" onClick={() => moveFolder(folder.id, 1)}>↓</IconButton>
+                  {!isDefault && (
+                    <IconButton aria-label="폴더 삭제" className="!text-[10px] !px-1 !py-1" onClick={() => removeFolder(folder.id)}>🗑</IconButton>
+                  )}
+                </div>
+                {!isCollapsed && pieces.map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    draggable
+                    onDragStart={e => {
+                      e.dataTransfer.setData('text/plain', type);
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onClick={() => selectPiece(type)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-tile text-left text-xs transition-colors cursor-grab ${
+                      type === selectedType ? 'bg-accent-soft border border-accent' : 'hover:bg-surface-2 border border-transparent'
+                    }`}
+                  >
+                    <span className="w-7 h-7 shrink-0" dangerouslySetInnerHTML={{ __html: getSvgArt(type) }} />
+                    <span className="min-w-0 flex-1 truncate font-medium">{getPieceLabel(type)}</span>
+                    {getPieceConfigBadge(type)}
+                  </button>
+                ))}
+                {!isCollapsed && pieces.length === 0 && (
+                  <p className="px-2 py-1 text-[10px] text-ink-muted">비어 있음 — 기물을 끌어다 놓으세요</p>
+                )}
+              </div>
+            );
+          })}
+          <Button variant="secondary" className="!text-xs mt-1" onClick={addFolder}>➕ 폴더 추가</Button>
         </aside>
 
         {/* 우: 편집 폼 */}
@@ -401,9 +562,9 @@ export function AdminPage() {
               <TextInput value={draft.label} onChange={e => patchDraft({ label: e.target.value })} className="mt-1" />
             </Label>
             <Label>
-              팔레트 탭
-              <Select value={draft.tab} onChange={e => patchDraft({ tab: e.target.value as PieceTab })} className="mt-1">
-                {TABS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              폴더
+              <Select value={draft.folderId} onChange={e => patchDraft({ folderId: e.target.value })} className="mt-1">
+                {getFolders().map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </Select>
             </Label>
           </div>
@@ -608,7 +769,7 @@ export function AdminPage() {
 }
 
 // 오버라이드 존재 표시 배지
-function getPieceConfigBadge(type: PieceType) {
+function getPieceConfigBadge(type: string) {
   return getAllConfigEntries()[type]
     ? <span className="text-[10px] text-accent font-bold shrink-0" title="config 오버라이드 적용됨">●</span>
     : null;
