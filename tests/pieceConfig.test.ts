@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults } from '../src/lib/pieceConfig';
+import {
+  applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults,
+  getCustomTypes, isValidCustomTypeId,
+} from '../src/lib/pieceConfig';
 import { computeLaser, getBehavior, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
 import { getSvgArt, SVG_ART, PLACEHOLDER_SVG } from '../src/lib/svgArt';
 import { getPieceLabel, getRotationStep } from '../src/lib/pieceActions';
@@ -126,6 +129,75 @@ describe('미지 타입 접근자 폴백 (커스텀 기물 안전망)', () => {
     expect(r.segments.some(s => s.x1 === 2 && s.y1 === 2)).toBe(true); // 빔이 미지 셀을 지나감
     expect(r.targetsTotal).toBe(1);                                    // 미지 타입은 표적 아님
     expect(r.solved).toBe(true);
+  });
+});
+
+describe('applyPieceConfig — 커스텀 타입', () => {
+  const customSvg = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20"/></svg>';
+  const absorbAll = { faces: {}, fallback: { kind: 'absorb', satisfy: true }, rotationStep: 90 };
+
+  it('behavior+svg 둘 다 있는 커스텀 타입은 등록되고 엔진/렌더에 반영된다', () => {
+    const r = applyPieceConfig({
+      version: 2,
+      pieces: { my_custom: { svg: customSvg, labelKo: '내 기물', behavior: absorbAll } },
+    });
+    expect(r.applied).toContain('my_custom');
+    expect(getCustomTypes()).toEqual(['my_custom']);
+    expect(getSvgArt('my_custom')).toBe(customSvg);
+    expect(getPieceLabel('my_custom')).toBe('내 기물');
+    expect(isTargetType('my_custom')).toBe(true);
+
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);
+    g[2][2] = piece('my_custom');
+    const res = computeLaser(g);
+    expect(res.targetsTotal).toBe(1);
+    expect(res.solved).toBe(true);
+  });
+
+  it('behavior 또는 svg 가 없는 커스텀 타입은 skip', () => {
+    const r = applyPieceConfig({
+      version: 2,
+      pieces: {
+        only_svg: { svg: customSvg },
+        only_behavior: { behavior: absorbAll },
+      },
+    });
+    expect(r.applied).toHaveLength(0);
+    expect(r.skipped).toEqual(expect.arrayContaining(['only_svg', 'only_behavior']));
+    expect(getCustomTypes()).toEqual([]);
+  });
+
+  it('잘못된 id (대문자/특수문자/과대길이) 는 skip', () => {
+    const entry = { svg: customSvg, behavior: absorbAll };
+    const r = applyPieceConfig({
+      version: 2,
+      pieces: {
+        'BadCase': entry,
+        'has-dash': entry,
+        ['x'.repeat(40)]: entry,
+      },
+    });
+    expect(r.applied).toHaveLength(0);
+    expect(getCustomTypes()).toEqual([]);
+  });
+
+  it('isValidCustomTypeId — 빌트인 충돌 금지', () => {
+    expect(isValidCustomTypeId('mirror')).toBe(false);
+    expect(isValidCustomTypeId('my_piece_2')).toBe(true);
+    expect(isValidCustomTypeId('')).toBe(false);
+  });
+
+  it('reset 후 커스텀 타입은 사라지고 폴백으로 돌아간다', () => {
+    applyPieceConfig({
+      version: 2,
+      pieces: { my_custom: { svg: customSvg, behavior: absorbAll } },
+    });
+    expect(isTargetType('my_custom')).toBe(true);
+    resetPieceConfig();
+    expect(getCustomTypes()).toEqual([]);
+    expect(isTargetType('my_custom')).toBe(false);       // PASSIVE 폴백
+    expect(getSvgArt('my_custom')).toBe(PLACEHOLDER_SVG); // 플레이스홀더 폴백
   });
 });
 

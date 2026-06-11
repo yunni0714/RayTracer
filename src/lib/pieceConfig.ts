@@ -33,7 +33,25 @@ export interface PieceConfigEntry {
 
 export interface PieceConfigDoc {
   version: number;
-  pieces: Partial<Record<PieceType, PieceConfigEntry>>;
+  pieces: Partial<Record<string, PieceConfigEntry>>;
+}
+
+/* ── 커스텀 타입 (config-only 기물) ─────────────────────── */
+
+const BUILTIN_TYPES: ReadonlySet<string> = new Set(Object.keys(DEFAULT_DEFS));
+const CUSTOM_ID_RE = /^[a-z0-9_]+$/;
+const CUSTOM_ID_MAX = 32;
+
+// 커스텀 기물 id 검증: slug 형식, 길이 제한, 빌트인과 충돌 금지.
+export function isValidCustomTypeId(id: string): boolean {
+  return id.length > 0 && id.length <= CUSTOM_ID_MAX && CUSTOM_ID_RE.test(id) && !BUILTIN_TYPES.has(id);
+}
+
+let customTypes: string[] = [];
+
+// 현재 config 가 등록한 커스텀 타입 목록 (팔레트/어드민이 빌트인과 합쳐 렌더)
+export function getCustomTypes(): string[] {
+  return [...customTypes];
 }
 
 /* ── 팔레트 탭 기본값 (표시 순서 보존) ──────────────────── */
@@ -168,36 +186,40 @@ function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
 /* ── 적용 / 리셋 ────────────────────────────────────────── */
 
 export interface ApplyResult {
-  applied: PieceType[];
+  applied: string[];
   skipped: string[];
 }
 
 // config 문서(파싱된 JSON)를 검증 후 오버레이로 적용. 순수 — 네트워크 없음.
+// 빌트인 = 코드 기본값 위 머지. 커스텀 = config-only — behavior+svg 둘 다 있어야 등록
+// (둘 중 하나라도 없으면 렌더/엔진이 받아줄 수 없으므로 skip).
 export function applyPieceConfig(raw: unknown): ApplyResult {
-  const applied: PieceType[] = [];
+  const applied: string[] = [];
   const skipped: string[] = [];
 
-  const behaviorDefs: Partial<Record<PieceType, PieceBehaviorDef>> = {};
-  const svgs: Partial<Record<PieceType, string>> = {};
-  const labels: Partial<Record<PieceType, string>> = {};
-  const tabs: Partial<Record<PieceType, PieceTab>> = {};
-  const defaults: Partial<Record<PieceType, Partial<PieceDefaults>>> = {};
-  const entries: Partial<Record<PieceType, PieceConfigEntry>> = {};
+  const behaviorDefs: Partial<Record<string, PieceBehaviorDef>> = {};
+  const svgs: Partial<Record<string, string>> = {};
+  const labels: Partial<Record<string, string>> = {};
+  const tabs: Partial<Record<string, PieceTab>> = {};
+  const defaults: Partial<Record<string, Partial<PieceDefaults>>> = {};
+  const entries: Partial<Record<string, PieceConfigEntry>> = {};
+  const customs: string[] = [];
 
   const pieces = (raw as PieceConfigDoc | null)?.pieces;
   if (pieces && typeof pieces === 'object') {
-    for (const [key, rawEntry] of Object.entries(pieces)) {
-      const type = key as PieceType;
-      // 코드가 모르는 타입은 무시 (렌더/엔진이 받아줄 수 없음)
-      if (!(type in DEFAULT_DEFS)) { skipped.push(key); continue; }
+    for (const [type, rawEntry] of Object.entries(pieces)) {
+      const isBuiltin = BUILTIN_TYPES.has(type);
+      if (!isBuiltin && !isValidCustomTypeId(type)) { skipped.push(type); continue; }
       const entry = sanitizeEntry(rawEntry);
-      if (!entry) { skipped.push(key); continue; }
+      if (!entry) { skipped.push(type); continue; }
+      if (!isBuiltin && !(entry.behavior && entry.svg)) { skipped.push(type); continue; }
       entries[type] = entry;
       if (entry.behavior) behaviorDefs[type] = entry.behavior;
       if (entry.svg) svgs[type] = entry.svg;
       if (entry.labelKo) labels[type] = entry.labelKo;
       if (entry.tab) tabs[type] = entry.tab;
       if (entry.defaults) defaults[type] = entry.defaults;
+      if (!isBuiltin) customs.push(type);
       applied.push(type);
     }
   }
@@ -208,6 +230,7 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   tabOverrides = tabs;
   defaultsOverrides = defaults;
   rawEntries = entries;
+  customTypes = customs;
 
   return { applied, skipped };
 }
@@ -219,6 +242,7 @@ export function resetPieceConfig(): void {
   tabOverrides = {};
   defaultsOverrides = {};
   rawEntries = {};
+  customTypes = [];
 }
 
 // 부팅 시 1회 호출 (App.tsx). 실패해도 코드 기본값으로 동작 — 절대 throw 하지 않는다.
