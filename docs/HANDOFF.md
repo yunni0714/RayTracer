@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 요약
 
-순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 재설계 + 반응형 + 다크모드 + 어드민(면별 기물 config)** 작업. **Phase 1~5 + 엔진트랙 + B1(라이브러리 L1) + B2(면별 어드민) 완료**(Fable). Opus **보정 라운드 1**(`6e3da5c`: 표적 정면판정·상급탭·회전트레잇·인벤타일·테스트 3열) + **라운드 2**(`149d2b5`·`e512161`: rules 실배포 동기화·ADMIN.html 충돌해소·SVG 새니타이즈·면효과 4종 단순화·8방향 반사화살표·canMove 종속·트리거 면별 체크) 완료. **다음(Fable 인계) = B3 기물 관리**(커스텀 폴더 + 기물 생성/삭제) — 스펙 `docs/PIECE_ADMIN_V2.md`. 메이커 액션 잔여: firestore.rules 배포(`config` 블록 포함) + admin UID 동기화. 복합기물(표적거울)·터널 목표화는 어드민 면 그리드에서 정의. 상세 `docs/DESIGN.md` §7.
+순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 재설계 + 반응형 + 다크모드 + 어드민(면별 기물 config)** 작업. **Phase 1~5 + 엔진트랙 + B1(라이브러리 L1) + B2(면별 어드민) + B3(기물 관리: 커스텀 폴더 + 기물 생성/삭제) 완료**(Fable). Opus **보정 라운드 1**(`6e3da5c`: 표적 정면판정·상급탭·회전트레잇·인벤타일·테스트 3열) + **라운드 2**(`149d2b5`·`e512161`: rules 실배포 동기화·ADMIN.html 충돌해소·SVG 새니타이즈·면효과 4종 단순화·8방향 반사화살표·canMove 종속·트리거 면별 체크) 완료. B3 산출물 요약은 아래 §4 "B3 완료" 블록 + `docs/DESIGN.md` §7. 메이커 액션 잔여: firestore.rules 배포(`config` 블록 포함) + admin UID 동기화. 복합기물(표적거울)·터널 목표화는 어드민 면 그리드에서 정의.
 
 ---
 
@@ -70,6 +70,15 @@
 - e2e: rotation(우클릭 회전+팝오버 회전)·inventory(팝오버 회수)·piece-popover(도구해제 우선·특성·삭제·Esc) — **이 컨테이너는 Playwright 브라우저 다운로드가 차단되어 미실행. 로컬에서 `npx playwright install chromium` 후 `npm run test:e2e` 필요.**
 
 **별개 엔진 트랙도 완료(2026-06)** — 상세는 `docs/FEATURE_PIECES_GRID.md` 상단 "구현 완료" 블록. 요지: 순수 `computeLaser` + 레지스트리 + 고정점 시뮬 + `solved` 판정, 기믹 기물 11종(중급 탭), `gridSize` 런타임화(하위호환 5), Vitest 41건(`npm run test`). 잔여: firestore.rules 커밋, 표적거울 판정 정의.
+
+**B3 완료(2026-06, Fable)** — 기물 관리(스펙 `docs/PIECE_ADMIN_V2.md`, 구현 순서 1~6 그대로 커밋 분리). 산출물:
+- **타입 경계 string 화**: `src/types/game.ts` 에 `AnyPieceType = string` — `CellData`/`MapItemDTO`/`SelectedTool`/`InventoryItem` 의 `type` 이 string. 빌트인 `PieceType` 유니온은 코드 기본맵(`DEFAULT_DEFS`/`SVG_ART`/`PIECE_LABELS`/`PALETTE_ORDER`) 정체성으로 유지.
+- **접근자 폴백**: `getBehavior`(미지=`PASSIVE` 통과·비표적) · `getSvgArt`(미지=`PLACEHOLDER_SVG` 점선+?) · `getPieceLabel`(미지=type 문자열) · `getRotationStep`/`getPieceDefaults` 안전 기본값. → **맵 미지타입 복원력**: 로드 경로(App/LibraryScreen/NextMapPanel/gameStore)는 셀을 그대로 보존하므로 추가 수정 없이 크래시 0·통과 렌더·승리판정 제외.
+- **커스텀 타입**(`pieceConfig.ts`): `applyPieceConfig` 가 빌트인 외 키 허용 — **behavior+svg 둘 다 있어야 등록**, id 검증 `isValidCustomTypeId`(`^[a-z0-9_]+$`·≤32·빌트인 충돌 금지). `getCustomTypes()` 노출.
+- **폴더 모델**: `PieceConfigDoc.folders?: {id,name,order}[]` + 엔트리 `folderId`(레거시 `tab` 을 folderId 로 읽음). `getFolders()`(order 정렬·기본 3폴더 상시 재생성)·`getPieceFolder()`. `getPieceTab` 은 레거시 수렴 접근자로 잔존.
+- **팔레트**: `PalettePanel` 이 `getFolders()` 기반 동적 탭 — 빈 폴더 숨김, `isPieceHidden` 기물 제외, 빌트인 `PALETTE_ORDER` 순서+커스텀 후미. `getRotationStep` 의 `ADVANCED_TYPES` 회전 규칙은 불변(폴더는 표시 전용).
+- **어드민**(`AdminPage.tsx`): 좌측 목록 폴더 섹션(접이식) + 폴더 CRUD(추가/더블클릭·✏️ 이름변경/↑↓ 순서/🗑 삭제 — 기본 3폴더 삭제 불가, 삭제 시 기물 첫 폴더 재할당 `requestConfirm`) + HTML5 DnD 할당(무의존, `dataTransfer` text/plain, 즉시 Firestore 저장 `savePieceConfigPatch`). "➕ 새 기물"(id/이름/폴더 → pass behavior+시작 SVG 생성 후 편집 진입). 통합 삭제: 빌트인=`hidden:true` 숨김(👁 복구 토글), 커스텀=`deletePieceConfigEntry` 완전 제거. 커스텀/숨김 `Pill` 배지.
+- **검증**: 단계마다 build/lint(변경파일 0 에러)/test. Vitest 49→**66**(미지타입 폴백·커스텀 등록/거부·폴더 하위호환·hidden). **config 부재 시 전 테스트 통과 = 회귀 0 게이트 유지.**
 
 ### 그 다음
 - Phase 4: 완전 반응형 + 터치(`useGridDragDrop`의 `mouse*`→Pointer Events).
