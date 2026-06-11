@@ -8,7 +8,10 @@ import type { CellData, PieceType } from '../types/game';
    drawSegments(ctx, segs, px)  : 세그먼트를 캔버스에 그리기만 한다.
    simulateLaser(ctx, canvas, m): 둘을 잇는 얇은 래퍼(기존 시그니처 유지).
 
-   기물 동작은 데이터드리븐 레지스트리(REGISTRY)로 정의한다.
+   기물 동작은 면별(per-face) 선언 스키마 PieceBehaviorDef 로 정의하고
+   buildBehavior() 가 interact 로 컴파일한다 (docs/ADMIN_PANEL.md).
+   DEFAULT_DEFS = 코드 기본값. 어드민 config 오버라이드는
+   setBehaviorOverrides() 로 주입된다 (src/lib/pieceConfig.ts).
    그리드 크기는 mapData.length에서 유도한다(NxN).
    ════════════════════════════════════════════════════════ */
 
@@ -43,7 +46,45 @@ export interface LaserResult {
   solved: boolean;
 }
 
-/* ── 기물 동작 레지스트리 ──────────────────────────────── */
+/* ── 면별(per-face) 동작 선언 스키마 ───────────────────── */
+
+export type FaceEffectKind = 'pass' | 'block' | 'absorb' | 'reflect' | 'split' | 'reverse';
+//  pass    : 그대로 통과 (outDirs=[inDir])
+//  block   : 표면 차단 (partial — 절반만 그림)
+//  absorb  : 흡수 (빔 종료; 표적 흡수면)
+//  reflect : 면각 반사 (calculateReflection(inDir, surfaceAngle+rotation))
+//  split   : 반거울 (통과 + 반사 동시)
+//  reverse : 180° 되돌림 (양면거울 정면축)
+
+export interface FaceEffect {
+  kind: FaceEffectKind;
+  surfaceAngle?: number; // reflect/split 면각 (기물 기준 — rotation 이 더해진다)
+  satisfy?: boolean;     // 표적 충족 — 모든 kind 와 겸용 (reflect+satisfy=표적거울 등)
+}
+
+// 조건부 기물의 면은 활성(open)/비활성(closed) 두 상태 효과를 가질 수 있다.
+export type FaceSpec = FaceEffect | { open: FaceEffect; closed: FaceEffect };
+
+// 조건부 활성 판정 — 직전 패스의 입사면(rel) 집합 기준.
+//  groups: 각 그룹에서 ≥1 면 피격(any) 이고 모든 그룹 충족(all) 시 활성.
+//          예) transistor [[270]] / cross_gate [[0,180],[90,270]] (H AND V)
+//  negate: true 면 반대로, 나열된 면 전부 미피격일 때 활성 (반전 프로젝터).
+export interface ConditionalDef {
+  init: boolean;
+  groups: number[][];
+  negate?: boolean;
+}
+
+export interface PieceBehaviorDef {
+  faces: Partial<Record<number, FaceSpec>>; // relDir(45 단위) → 효과
+  fallback: FaceSpec;                       // 미지정 방향
+  rotationStep: 45 | 90;
+  conditional?: ConditionalDef;
+  emit?: { fromRel: number; whenActive: boolean }; // 프로젝터 사출 (rotation+fromRel 방향)
+  // isTarget 은 faces/fallback 중 satisfy:true 존재 시 자동 파생 — 별도 플래그 없음
+}
+
+/* ── def → 동작 컴파일 ─────────────────────────────────── */
 
 interface BeamOutcome {
   partial?: boolean;    // 표면에서 차단(절반 길이만 그림)
@@ -52,14 +93,9 @@ interface BeamOutcome {
 }
 
 interface PieceBehavior {
-  isTarget?: boolean; // 승리 판정에 포함되는 필수 표적
-  // 조건부(상태형) 기물: 고정점 루프가 incidence 기반으로 활성 상태를 재평가한다.
-  // resolve 는 직전 패스의 입사 방향(기물 기준 상대각 집합)만 본다 → 큐 순서 무관, 결정적.
-  conditional?: {
-    init: boolean;
-    resolve: (relDirs: Set<number>) => boolean;
-  };
-  emits?: boolean; // 활성 상태에서 (rotation+270)% 방향으로 빔 발사
+  isTarget: boolean;
+  conditional?: { init: boolean; resolve: (relDirs: Set<number>) => boolean };
+  emit?: { fromRel: number; whenActive: boolean };
   interact: (inDir: number, cell: CellData, active?: boolean) => BeamOutcome;
 }
 
@@ -68,179 +104,252 @@ function relDir(inDir: number, rotation: number): number {
   return (inDir - rotation + 360) % 360;
 }
 
-const fullMirror = (saBase: number): PieceBehavior['interact'] =>
-  (inDir, cell) => ({ outDirs: [calculateReflection(inDir, (saBase + cell.rotation) % 360)] });
+function isDualFace(spec: FaceSpec): spec is { open: FaceEffect; closed: FaceEffect } {
+  return 'open' in spec && 'closed' in spec;
+}
 
-const halfMirror = (saBase: number): PieceBehavior['interact'] =>
-  (inDir, cell) => ({
-    outDirs: [inDir, calculateReflection(inDir, (saBase + cell.rotation) % 360)],
-  });
+function resolveFace(spec: FaceSpec, active: boolean | undefined): FaceEffect {
+  return isDualFace(spec) ? (active ? spec.open : spec.closed) : spec;
+}
 
-const oneSidedMirror = (normalBase: number, saBase: number): PieceBehavior['interact'] =>
-  (inDir, cell) => {
-    const normal = (normalBase + cell.rotation) % 360;
-    const rel = (inDir - normal + 360) % 360;
-    if (rel > 90 && rel < 270) {
-      return { outDirs: [calculateReflection(inDir, (saBase + cell.rotation) % 360)] };
-    }
-    return { partial: true }; // 뒷면: 차단
+function faceHasSatisfy(spec: FaceSpec): boolean {
+  return isDualFace(spec)
+    ? !!spec.open.satisfy || !!spec.closed.satisfy
+    : !!spec.satisfy;
+}
+
+function applyEffect(fx: FaceEffect, inDir: number, rotation: number): BeamOutcome {
+  const sa = ((fx.surfaceAngle ?? 0) + rotation) % 360;
+  switch (fx.kind) {
+    case 'pass':    return { outDirs: [inDir], satisfied: fx.satisfy };
+    case 'reverse': return { outDirs: [(inDir + 180) % 360], satisfied: fx.satisfy };
+    case 'reflect': return { outDirs: [calculateReflection(inDir, sa)], satisfied: fx.satisfy };
+    case 'split':   return { outDirs: [inDir, calculateReflection(inDir, sa)], satisfied: fx.satisfy };
+    case 'absorb':  return { satisfied: fx.satisfy };
+    case 'block':
+    default:        return { partial: true, satisfied: fx.satisfy };
+  }
+}
+
+export function buildBehavior(def: PieceBehaviorDef): PieceBehavior {
+  const isTarget =
+    Object.values(def.faces).some(spec => spec && faceHasSatisfy(spec))
+    || faceHasSatisfy(def.fallback);
+
+  const conditional = def.conditional && {
+    init: def.conditional.init,
+    resolve: (rels: Set<number>): boolean => {
+      const c = def.conditional!;
+      if (c.negate) return !c.groups.flat().some(f => rels.has(f));
+      return c.groups.every(g => g.some(f => rels.has(f)));
+    },
   };
 
-const absorb: PieceBehavior['interact'] = () => ({});
+  return {
+    isTarget,
+    conditional,
+    emit: def.emit,
+    interact: (inDir, cell, active) => {
+      const rel = relDir(inDir, cell.rotation);
+      const spec = def.faces[rel] ?? def.fallback;
+      return applyEffect(resolveFace(spec, active), inDir, cell.rotation);
+    },
+  };
+}
 
-// 미지 타입(구버전 클라이언트 보호): 통과
-const PASSIVE: PieceBehavior = { interact: (inDir) => ({ outDirs: [inDir] }) };
+/* ── 코드 기본 def 테이블 ──────────────────────────────── */
 
-export const REGISTRY: Partial<Record<PieceType, PieceBehavior>> = {
-  ray:    { interact: absorb },
-  // 표적: 정면(표식면 = SVG 기본 배치 시 위쪽)으로 들어오는 빔만 인식. 그 외 면은 흡수(차단).
+const fx = (kind: FaceEffectKind, surfaceAngle?: number, satisfy?: boolean): FaceEffect =>
+  ({ kind, ...(surfaceAngle !== undefined && { surfaceAngle }), ...(satisfy && { satisfy }) });
+
+// 조건부 게이트 공용: 열림=통과 / 닫힘=차단
+const gated = { open: fx('pass'), closed: fx('block') } as const;
+
+export const DEFAULT_DEFS: Record<PieceType, PieceBehaviorDef> = {
+  // 발사기: 소스 기물(trace 가 type==='ray' 로 빔 생성). 입사 빔은 흡수.
+  ray: { faces: {}, fallback: fx('absorb'), rotationStep: 90 },
+
+  // 표적: 정면(rel 90)만 충족, 그 외 면 흡수
   target: {
-    isTarget: true,
-    interact: (inDir, cell) => {
-      const rel = (inDir - cell.rotation + 360) % 360;
-      return rel === 90 ? { satisfied: true } : {}; // 정면만 충족, 그 외 흡수
-    },
+    faces: { 90: fx('absorb', undefined, true) },
+    fallback: fx('absorb'),
+    rotationStep: 90,
   },
-  block:  { interact: (inDir) => ({ outDirs: [inDir] }) }, // 기존 block은 통과
+
+  block: { faces: {}, fallback: fx('pass'), rotationStep: 90 },   // 기존 block 은 통과
+
+  // 터널: 통과축(rel 90/270)만 통과, 그 외 차단
   tunnel: {
-    interact: (inDir, cell) => {
-      const tunnelRot = cell.rotation % 180;
-      const passH = tunnelRot === 0 && (inDir === 90 || inDir === 270);
-      const passV = tunnelRot === 90 && (inDir === 180 || inDir === 0);
-      return passH || passV ? { outDirs: [inDir] } : { partial: true };
-    },
+    faces: { 90: fx('pass'), 270: fx('pass') },
+    fallback: fx('block'),
+    rotationStep: 90,
   },
-  mirror:          { interact: fullMirror(135) },
-  half_mirror:     { interact: halfMirror(135) },
-  mirror_45:       { interact: fullMirror(337.5) },
-  half_mirror_45:  { interact: halfMirror(337.5) },
-  single_mirror:   { interact: oneSidedMirror(225, 135) },
-  target_mirror_a: { interact: oneSidedMirror(225, 135) },
-  target_mirror_b: { interact: oneSidedMirror(225, 135) },
-  diag_single_mirror_a: { interact: oneSidedMirror(112.5, 202.5) },
-  diag_single_mirror_b: { interact: oneSidedMirror(67.5, 157.5) },
-  v_mirror:        { interact: fullMirror(0) },
-  v_half_mirror:   { interact: halfMirror(0) },
-  v_single_mirror: { interact: oneSidedMirror(90, 0) },
-  v_target_mirror_a: { interact: oneSidedMirror(270, 0) },
-  v_target_mirror_b: { interact: oneSidedMirror(270, 0) },
+
+  mirror:         { faces: {}, fallback: fx('reflect', 135), rotationStep: 90 },
+  half_mirror:    { faces: {}, fallback: fx('split', 135), rotationStep: 90 },
+  mirror_45:      { faces: {}, fallback: fx('reflect', 337.5), rotationStep: 45 },
+  half_mirror_45: { faces: {}, fallback: fx('split', 337.5), rotationStep: 45 },
+
+  // 단면거울류: 반사면(rel 집합)만 반사, 뒷면 차단
+  // (rel 집합 = 기존 oneSidedMirror(normalBase) 의 전면 범위 (90,270) 를 이산화)
+  single_mirror: {
+    faces: { 0: fx('reflect', 135), 45: fx('reflect', 135), 90: fx('reflect', 135) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  target_mirror_a: {
+    faces: { 0: fx('reflect', 135), 45: fx('reflect', 135), 90: fx('reflect', 135) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  target_mirror_b: {
+    faces: { 0: fx('reflect', 135), 45: fx('reflect', 135), 90: fx('reflect', 135) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  diag_single_mirror_a: {
+    faces: { 225: fx('reflect', 202.5), 270: fx('reflect', 202.5), 315: fx('reflect', 202.5), 0: fx('reflect', 202.5) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  diag_single_mirror_b: {
+    faces: { 180: fx('reflect', 157.5), 225: fx('reflect', 157.5), 270: fx('reflect', 157.5), 315: fx('reflect', 157.5) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  v_mirror:      { faces: {}, fallback: fx('reflect', 0), rotationStep: 90 },
+  v_half_mirror: { faces: {}, fallback: fx('split', 0), rotationStep: 90 },
+  v_single_mirror: {
+    faces: { 225: fx('reflect', 0), 270: fx('reflect', 0), 315: fx('reflect', 0) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  v_target_mirror_a: {
+    faces: { 45: fx('reflect', 0), 90: fx('reflect', 0), 135: fx('reflect', 0) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
+  v_target_mirror_b: {
+    faces: { 45: fx('reflect', 0), 90: fx('reflect', 0), 135: fx('reflect', 0) },
+    fallback: fx('block'),
+    rotationStep: 90,
+  },
 
   /* ── Group A: 무상태 기믹 기물 ──────────────────────── */
 
-  // 일방터널: 화살표 방향(= ray 와 동일 규약, rotation+270)으로 진행하는 빔만 통과
+  // 일방터널: 화살표 방향(rel 270)으로 진행하는 빔만 통과
   diode: {
-    interact: (inDir, cell) =>
-      inDir === (cell.rotation + 270) % 360 ? { outDirs: [inDir] } : { partial: true },
+    faces: { 270: fx('pass') },
+    fallback: fx('block'),
+    rotationStep: 90,
   },
-  // 수직 양면거울: 정면 축 빔 180° 되돌림, 대각 빔은 v_mirror 와 같은 면각 반사, 평행 축은 차단
+  // 수직 양면거울: 정면 축 되돌림, 평행 축 차단, 대각은 면각 반사
   v_mirror_double: {
-    interact: (inDir, cell) => {
-      const rel = (inDir - cell.rotation + 360) % 360;
-      if (rel === 0 || rel === 180) return { outDirs: [(inDir + 180) % 360] };
-      if (rel === 90 || rel === 270) return { partial: true };
-      return { outDirs: [calculateReflection(inDir, cell.rotation % 360)] };
-    },
+    faces: { 0: fx('reverse'), 180: fx('reverse'), 90: fx('block'), 270: fx('block') },
+    fallback: fx('reflect', 0),
+    rotationStep: 90,
   },
-  // 수직 양면 반거울: 양면거울 + 통과 분기
+  // 수직 양면 반거울: 정면 축 통과+되돌림(split 90 ≡ reverse 분기), 평행 축 통과, 대각 split
   v_half_mirror_double: {
-    interact: (inDir, cell) => {
-      const rel = (inDir - cell.rotation + 360) % 360;
-      if (rel === 0 || rel === 180) return { outDirs: [inDir, (inDir + 180) % 360] };
-      if (rel === 90 || rel === 270) return { outDirs: [inDir] };
-      return { outDirs: [inDir, calculateReflection(inDir, cell.rotation % 360)] };
-    },
+    faces: { 0: fx('split', 90), 180: fx('split', 90), 90: fx('pass'), 270: fx('pass') },
+    fallback: fx('split', 0),
+    rotationStep: 90,
   },
-  // 소형 표적: 정면 피격만 충족, 수직 축·대각은 통과, 뒷면은 차단
+  // 소형 표적: 정면 충족, 뒷면 차단, 수직축·대각 통과
   small_target: {
-    isTarget: true,
-    interact: (inDir, cell) => {
-      const rel = (inDir - cell.rotation + 360) % 360;
-      if (rel === 90) return { satisfied: true };          // 정면 흡수+충족
-      if (rel === 270) return { partial: true };           // 뒷면 차단
-      if (rel === 0 || rel === 180) return { outDirs: [inDir] }; // 수직축 통과
-      return { outDirs: [inDir] };                         // 대각 통과 (상급)
-    },
+    faces: { 90: fx('absorb', undefined, true), 270: fx('block'), 0: fx('pass'), 180: fx('pass') },
+    fallback: fx('pass'),
+    rotationStep: 90,
   },
   // 전방위 표적: 어느 방향이든 흡수+충족
   omni_target: {
-    isTarget: true,
-    interact: () => ({ satisfied: true }),
+    faces: {},
+    fallback: fx('absorb', undefined, true),
+    rotationStep: 90,
   },
-  // 높은 블럭: 빔 완전 차단 (기존 block 은 통과 — 별개 타입)
-  high_block: { interact: () => ({ partial: true }) },
+  // 높은 블럭: 완전 차단
+  high_block: { faces: {}, fallback: fx('block'), rotationStep: 90 },
 
-  /* ── Group B: 조건부/상태형 기믹 기물 (고정점 루프 필요) ── */
+  /* ── Group B: 조건부/상태형 기믹 기물 (고정점 루프) ──── */
 
-  // 관문: 아래(제어축, rel 270) 피격 시 좌우(수직축, rel 0/180) 통과 개방
+  // 관문: 아래(rel 270) 피격 시 좌우 축(rel 0/180) 개방
   transistor_gate: {
-    conditional: {
-      init: false,
-      resolve: (rels) => rels.has(270),
-    },
-    interact: (inDir, cell, active) => {
-      const rel = relDir(inDir, cell.rotation);
-      if (rel === 270) return {};                          // 제어 빔 흡수
-      if (rel === 0 || rel === 180) {
-        return active ? { outDirs: [inDir] } : { partial: true };
-      }
-      return { partial: true };                            // 위/대각 차단
-    },
+    faces: { 270: fx('absorb'), 0: gated, 180: gated },
+    fallback: fx('block'),
+    rotationStep: 90,
+    conditional: { init: false, groups: [[270]] },
   },
   // 교차 관문: H·V 둘 다 있어야 둘 다 통과 (AND)
   cross_gate: {
-    conditional: {
-      init: false,
-      resolve: (rels) =>
-        (rels.has(0) || rels.has(180)) && (rels.has(90) || rels.has(270)),
-    },
-    interact: (inDir, cell, active) => {
-      const rel = relDir(inDir, cell.rotation);
-      if (rel % 90 !== 0) return { partial: true };        // 대각 차단
-      return active ? { outDirs: [inDir] } : { partial: true };
-    },
+    faces: { 0: gated, 90: gated, 180: gated, 270: gated },
+    fallback: fx('block'),
+    rotationStep: 90,
+    conditional: { init: false, groups: [[0, 180], [90, 270]] },
   },
-  // 우선순위 관문: 둘 다 오면 직선축(rel 0/180)만 통과, 하나만 오면 그대로 통과
+  // 우선순위 관문: 양 축 동시(=활성)면 직선축(0/180)만, 단독이면 그대로 통과
   priority_gate: {
-    conditional: {
-      init: false, // active = "양 축 동시 입사" 상태
-      resolve: (rels) =>
-        (rels.has(0) || rels.has(180)) && (rels.has(90) || rels.has(270)),
+    faces: {
+      0: fx('pass'), 180: fx('pass'),
+      90: { open: fx('block'), closed: fx('pass') },
+      270: { open: fx('block'), closed: fx('pass') },
     },
-    interact: (inDir, cell, active) => {
-      const rel = relDir(inDir, cell.rotation);
-      if (rel % 90 !== 0) return { partial: true };        // 대각 차단
-      if (!active) return { outDirs: [inDir] };            // 단독 축은 통과
-      return rel === 0 || rel === 180 ? { outDirs: [inDir] } : { partial: true };
-    },
+    fallback: fx('block'),
+    rotationStep: 90,
+    conditional: { init: false, groups: [[0, 180], [90, 270]] },
   },
-  // 표적 프로젝터(광집기): 측면(rel 0/180) 피격 시에만 정면으로 발사 + 충족
+  // 표적 프로젝터(광집기): 측면(rel 0/180) 피격 시 충족 + 정면 발사
   target_projector: {
-    isTarget: true,
-    emits: true,
-    conditional: {
-      init: false,
-      resolve: (rels) => rels.has(0) || rels.has(180),
-    },
-    interact: (inDir, cell) => {
-      const rel = relDir(inDir, cell.rotation);
-      if (rel === 0 || rel === 180) return { satisfied: true }; // 측면 흡수 + 충족
-      return { partial: true };                                  // 그 외 차단
-    },
+    faces: { 0: fx('absorb', undefined, true), 180: fx('absorb', undefined, true) },
+    fallback: fx('block'),
+    rotationStep: 90,
+    conditional: { init: false, groups: [[0, 180]] },
+    emit: { fromRel: 270, whenActive: true },
   },
-  // 반전 프로젝터(가변추출기): 기본 발사, 다른 3면(rel 0/180/270) 피격 시 꺼짐
+  // 반전 프로젝터(가변추출기): 기본 발사, 측후면(rel 0/180/270) 피격 시 소등
   inverting_projector: {
-    emits: true,
-    conditional: {
-      init: true,
-      resolve: (rels) => !(rels.has(0) || rels.has(180) || rels.has(270)),
-    },
-    interact: (inDir, cell) => {
-      const rel = relDir(inDir, cell.rotation);
-      if (rel === 0 || rel === 180 || rel === 270) return {};    // 흡수 (소등 제어)
-      return { partial: true };                                  // 정면/대각 차단
-    },
+    faces: { 0: fx('absorb'), 180: fx('absorb'), 270: fx('absorb') },
+    fallback: fx('block'),
+    rotationStep: 90,
+    conditional: { init: true, groups: [[0, 180, 270]], negate: true },
+    emit: { fromRel: 270, whenActive: true },
   },
 };
+
+/* ── 접근자 + 오버라이드 레이어 ────────────────────────── */
+
+// 미지 타입(구버전 클라이언트 보호): 통과
+const PASSIVE: PieceBehavior = {
+  isTarget: false,
+  interact: (inDir) => ({ outDirs: [inDir] }),
+};
+
+let overrideDefs: Partial<Record<PieceType, PieceBehaviorDef>> = {};
+let behaviorCache = new Map<PieceType, PieceBehavior>();
+
+// 어드민 config 오버라이드 주입 (pieceConfig.ts 가 호출). 캐시 무효화 포함.
+export function setBehaviorOverrides(defs: Partial<Record<PieceType, PieceBehaviorDef>>): void {
+  overrideDefs = defs;
+  behaviorCache = new Map();
+}
+
+export function getBehaviorDef(type: PieceType): PieceBehaviorDef | undefined {
+  return overrideDefs[type] ?? DEFAULT_DEFS[type];
+}
+
+export function getBehavior(type: PieceType): PieceBehavior {
+  let b = behaviorCache.get(type);
+  if (!b) {
+    const def = getBehaviorDef(type);
+    b = def ? buildBehavior(def) : PASSIVE;
+    behaviorCache.set(type, b);
+  }
+  return b;
+}
+
+// 엔진 isTarget 판정과 UI 통계를 일치시키기 위한 헬퍼
+export function isTargetType(type: PieceType): boolean {
+  return getBehavior(type).isTarget;
+}
 
 /* ── 순수 계산 (고정점 루프) ───────────────────────────── */
 
@@ -271,7 +380,7 @@ function trace(
     if (satisfied) inc.satisfied = true;
   }
 
-  // 빔 소스: 발사기 + 활성 상태의 프로젝터
+  // 빔 소스: 발사기 + 사출 조건을 만족한 프로젝터
   const beams: { x: number; y: number; dir: number }[] = [];
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
@@ -279,8 +388,11 @@ function trace(
       if (!cell) continue;
       if (cell.type === 'ray') {
         beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
-      } else if (REGISTRY[cell.type]?.emits && states.get(`${c},${r}`)) {
-        beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
+        continue;
+      }
+      const emit = getBehavior(cell.type).emit;
+      if (emit && (states.get(`${c},${r}`) ?? false) === emit.whenActive) {
+        beams.push({ x: c, y: r, dir: (cell.rotation + emit.fromRel) % 360 });
       }
     }
   }
@@ -304,7 +416,7 @@ function trace(
 
     const item = mapData[nextY][nextX];
     const outcome: BeamOutcome = item
-      ? (REGISTRY[item.type] ?? PASSIVE).interact(cDir, item, states.get(`${nextX},${nextY}`))
+      ? getBehavior(item.type).interact(cDir, item, states.get(`${nextX},${nextY}`))
       : { outDirs: [cDir] };
 
     record(nextX, nextY, cDir, !!outcome.satisfied);
@@ -327,7 +439,7 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       const cell = mapData[r][c];
-      const behavior = cell ? REGISTRY[cell.type] : undefined;
+      const behavior = cell ? getBehavior(cell.type) : undefined;
       if (cell && behavior?.conditional) {
         const key = `${c},${r}`;
         conditionals.push({ key, cell, behavior });
@@ -369,7 +481,7 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       const cell = mapData[r][c];
-      if (cell && REGISTRY[cell.type]?.isTarget) {
+      if (cell && getBehavior(cell.type).isTarget) {
         targetsTotal++;
         if (result.incidence.get(`${c},${r}`)?.satisfied) targetsHit++;
       }
