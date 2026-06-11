@@ -3,10 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
 import { Button, Tabs, TextArea, cx } from '../ui';
-import { PALETTE_ORDER, getPieceTab, type PieceTab } from '../../lib/pieceConfig';
+import { PALETTE_ORDER, getFolders, getPieceFolder, getCustomTypes } from '../../lib/pieceConfig';
 import type { CellData } from '../../types/game';
-
-type Tab = PieceTab;
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -36,8 +34,8 @@ function ModChip({
 }
 
 export function PalettePanel() {
-  const [activeTab, setActiveTab] = useState<Tab>('basic');
-  useGameStore(s => s.pieceConfigRev); // config 오버레이(탭/SVG) 갱신 시 리렌더
+  const [activeTab, setActiveTab] = useState<string>('basic');
+  useGameStore(s => s.pieceConfigRev); // config 오버레이(폴더/SVG) 갱신 시 리렌더
   const [jsonText, setJsonText] = useState('');
 
   const {
@@ -111,8 +109,13 @@ export function PalettePanel() {
     }
   }
 
-  // 탭 구성은 config 오버레이(getPieceTab)를 따른다. 표시 순서는 PALETTE_ORDER 고정.
-  const tools = PALETTE_ORDER.filter(t => getPieceTab(t) === activeTab);
+  // 폴더 구성은 config 오버레이(getFolders/getPieceFolder)를 따른다.
+  // 표시 순서: 빌트인은 PALETTE_ORDER 고정, 커스텀은 그 뒤에 config 순서.
+  const allTypes: string[] = [...PALETTE_ORDER, ...getCustomTypes()];
+  const byFolder = (folderId: string) => allTypes.filter(t => getPieceFolder(t) === folderId);
+  const folders = getFolders().filter(f => byFolder(f.id).length > 0); // 빈 폴더는 탭 숨김
+  const currentFolder = folders.some(f => f.id === activeTab) ? activeTab : folders[0]?.id;
+  const tools = currentFolder ? byFolder(currentFolder) : [];
 
   return (
     <div className="flex flex-col gap-3">
@@ -121,13 +124,9 @@ export function PalettePanel() {
       <div className="border border-line rounded-tile overflow-hidden">
         <Tabs
           variant="folder"
-          items={[
-            { id: 'basic', label: '초급' },
-            { id: 'intermediate', label: '중급' },
-            { id: 'advanced', label: '상급' },
-          ]}
-          value={activeTab}
-          onChange={(id) => setActiveTab(id as Tab)}
+          items={folders.map(f => ({ id: f.id, label: f.name }))}
+          value={currentFolder ?? ''}
+          onChange={setActiveTab}
         />
         <div className="p-1.5 bg-surface">
           <div className="grid grid-cols-3 gap-1.5">
