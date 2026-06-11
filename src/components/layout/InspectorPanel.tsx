@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
+import { isTargetType } from '../../lib/laserEngine';
 import { SelectedPieceInfo } from '../game/SelectedPieceInfo';
 import { Select } from '../ui';
 
@@ -49,7 +50,7 @@ export function InspectorPanel() {
       if (!cell) continue;
       pieces++;
       if (cell.type === 'ray') rays++;
-      if (cell.type.includes('target')) targets++;
+      if (isTargetType(cell.type)) targets++; // 엔진 승리판정(isTarget)과 동일 기준
       if (cell.isInventory) inventory++;
     }
   }

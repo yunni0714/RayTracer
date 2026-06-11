@@ -1,6 +1,6 @@
 import {
   collection, addDoc, doc, getDoc, getDocs,
-  setDoc, query, orderBy, limit, updateDoc, increment, deleteDoc,
+  setDoc, query, orderBy, limit, updateDoc, increment, deleteDoc, deleteField,
 } from 'firebase/firestore';
 import {
   GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -113,4 +113,26 @@ export async function fetchSuggestionsFromDB(mapId: string): Promise<SuggestionD
 
 export async function deleteSuggestionFromDB(mapId: string, sugId: string): Promise<void> {
   await deleteDoc(doc(db, 'maps', mapId, 'suggestions', sugId));
+}
+
+// ── 기물 config (어드민 오버레이) ───────────────────────
+// 쓰기는 firestore.rules 의 관리자 화이트리스트로 강제된다.
+
+export async function fetchPieceConfig(): Promise<Record<string, unknown> | null> {
+  const snap = await getDoc(doc(db, 'config', 'pieces'));
+  return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
+}
+
+export async function savePieceConfigEntry(
+  pieceType: string, entry: Record<string, unknown>,
+): Promise<void> {
+  await setDoc(
+    doc(db, 'config', 'pieces'),
+    { version: 1, pieces: { [pieceType]: entry } },
+    { merge: true },
+  );
+}
+
+export async function deletePieceConfigEntry(pieceType: string): Promise<void> {
+  await updateDoc(doc(db, 'config', 'pieces'), { [`pieces.${pieceType}`]: deleteField() });
 }

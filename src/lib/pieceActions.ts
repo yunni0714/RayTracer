@@ -1,4 +1,5 @@
 import { useGameStore } from '../store/gameStore';
+import { getBehaviorDef } from './laserEngine';
 import type { CellData, PieceType, Rotation } from '../types/game';
 
 export const PIECE_LABELS: Record<PieceType, string> = {
@@ -54,12 +55,24 @@ function isAdvancedMap(
 }
 
 export function getRotationStep(type: PieceType): 45 | 90 {
-  if (type === 'mirror_45' || type === 'half_mirror_45') return 45;
   if (type === 'ray' || type === 'target') {
+    // 상급 맵에서는 발사기/표적이 45° 단위로 회전 (def 와 무관한 동적 규칙)
     const { mapData, playerInventory } = useGameStore.getState();
     return isAdvancedMap(mapData, playerInventory) ? 45 : 90;
   }
-  return 90;
+  return getBehaviorDef(type)?.rotationStep ?? 90;
+}
+
+/* ── 어드민 config 라벨 오버라이드 (pieceConfig.ts 가 주입) ── */
+
+let labelOverrides: Partial<Record<PieceType, string>> = {};
+
+export function setLabelOverrides(overrides: Partial<Record<PieceType, string>>): void {
+  labelOverrides = overrides;
+}
+
+export function getPieceLabel(type: PieceType): string {
+  return labelOverrides[type] ?? PIECE_LABELS[type] ?? type;
 }
 
 // 회전이 무의미한 기물 (방향성 없음)

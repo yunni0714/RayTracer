@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Routes, Route, useSearchParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
+import { loadPieceConfig } from './lib/pieceConfig';
 import { EditorPage } from './pages/EditorPage';
+import { AdminPage } from './pages/AdminPage';
 import type { CellData, Rotation } from './types/game';
 
 function useUrlMapLoader() {
@@ -45,10 +47,25 @@ function useUrlMapLoader() {
   }, [currentUserUid]);
 }
 
+// 부팅 시 1회: 기물 config 오버레이 로드 (실패해도 코드 기본값으로 동작)
+function usePieceConfigLoader() {
+  const bump = useGameStore(s => s.bumpPieceConfigRev);
+  useEffect(() => {
+    loadPieceConfig().then(result => { if (result) bump(); });
+  }, [bump]);
+}
+
 export function App() {
   useTheme();
   useAuth();
   useUrlMapLoader();
+  usePieceConfigLoader();
 
-  return <EditorPage />;
+  return (
+    <Routes>
+      <Route path="/" element={<EditorPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="*" element={<EditorPage />} />
+    </Routes>
+  );
 }

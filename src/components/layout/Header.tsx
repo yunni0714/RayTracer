@@ -2,6 +2,8 @@ import { useRef, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { signInWithGoogle, signOutUser } from '../../lib/firebaseService';
+import { isAdminUid } from '../../lib/admin';
+import { Link } from 'react-router-dom';
 import { Button, IconButton, Tabs } from '../ui';
 
 export function Header() {
@@ -82,6 +84,12 @@ export function Header() {
             if ((id === 'edit') !== isEditorMode) toggleMode();
           }}
         />
+      )}
+
+      {isAdminUid(currentUserUid) && (
+        <Link to="/admin">
+          <Button variant="secondary" title="기물 어드민">🛠 어드민</Button>
+        </Link>
       )}
 
       <IconButton

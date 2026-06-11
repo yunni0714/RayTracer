@@ -105,6 +105,7 @@ interface GameStore {
   activeModal: ActiveModal;
   theme: 'light' | 'dark';
   confirmState: ConfirmOpts | null;
+  pieceConfigRev: number; // 기물 config 오버레이 적용 시 증가 → SVG/라벨 리렌더 트리거
 
   // ── 액션: 그리드 ─────────────────────────────
   setMapData: (data: (CellData | null)[][]) => void;
@@ -162,6 +163,7 @@ interface GameStore {
   closeModal: () => void;
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark') => void;
+  bumpPieceConfigRev: () => void;
   requestConfirm: (opts: ConfirmOpts) => Promise<boolean>;
   resolveConfirm: (result: boolean) => void;
 
@@ -202,6 +204,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   activeModal: null,
   theme: initialTheme(),
   confirmState: null,
+  pieceConfigRev: 0,
 
   // ── 그리드 ───────────────────────────────────
   setMapData: (data) => set({ mapData: data, gridSize: data.length }),
@@ -443,6 +446,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   closeModal: () => set({ activeModal: null }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   setTheme: (t) => set({ theme: t }),
+  bumpPieceConfigRev: () => set((s) => ({ pieceConfigRev: s.pieceConfigRev + 1 })),
 
   // ── 확인 다이얼로그 (네이티브 confirm 대체) ──
   requestConfirm: (opts) => new Promise<boolean>((resolve) => {

@@ -1,5 +1,12 @@
 # Fable 인계 B2 — 어드민/콘피그 패널 (Firestore 공유) · 면별 behavior 모델
 
+> ## ✅ 구현 완료 (2026-06) — 스키마 확정 노트
+> 권장 순서 1~5 구현 완료(6 코드 편집창은 보안 사유로 미구현). 확정 스키마가 본문 "개념" 스키마와 다른 점 2가지:
+> 1. **조건부 면 = 명시적 open/closed 쌍** — `FaceSpec = FaceEffect | { open, closed }`. "닫힘=암묵 차단" 규칙 대신 면마다 두 상태를 선언(우선순위 관문의 "활성 시 수직축 차단"까지 표현됨).
+> 2. **conditional = AND-of-OR 면 그룹** — `{ init, groups: number[][], negate? }`. 그룹 내 any + 그룹 간 all (cross_gate `[[0,180],[90,270]]`), `negate`는 전부 미피격 시 활성(반전 프로젝터). `openWhenHitFaces/mode` 대체.
+>
+> 잔여(메이커 액션): ① `firestore.rules`·`src/lib/admin.ts` 의 관리자 UID 플레이스홀더 교체 후 `firebase deploy --only firestore:rules`. ② 표적거울 표적면·터널 satisfy 등은 어드민 면 그리드에서 직접 정의(예: target_mirror 의 특정 rel 면에 reflect+🎯충족).
+
 > 브랜치 `claude/focused-meitner-loc4ey`. B1(라이브러리 L1) 완료·커밋 후 착수. **대형 신규 기능** — 시작 전 별도 구현 플랜 필수.
 > 목적: 메이커(사용자)가 코드 수정 없이 **기물 SVG·기본 특성·면별 동작(표적/거울/통과/조건부)** 을 직접 편집하고, 변경이 **Firestore로 모든 플레이어(배포본)에 반영**되게 한다.
 > 어휘 기준: `docs/PIECE_TAXONOMY.md`(사용자 정본 분류 — 레이저/거울/목표 3축, 면별 특성).

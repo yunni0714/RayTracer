@@ -1,8 +1,8 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import { SVG_ART } from '../../lib/svgArt';
+import { getSvgArt } from '../../lib/svgArt';
 import {
-  PIECE_LABELS, NON_ROTATABLE, rotatePiece, deletePiece, refundPiece,
+  getPieceLabel, NON_ROTATABLE, rotatePiece, deletePiece, refundPiece,
   toggleRotateLock, toggleUserSupply, clearTraits,
 } from '../../lib/pieceActions';
 import { Button, Pill } from '../ui';
@@ -15,6 +15,7 @@ export function SelectedPieceInfo() {
     mapData: s.mapData,
     isEditorMode: s.isEditorMode,
   })));
+  useGameStore(s => s.pieceConfigRev); // config 오버레이 갱신 시 리렌더
 
   const cell = selectedCell ? mapData[selectedCell.row][selectedCell.col] : null;
 
@@ -32,10 +33,10 @@ export function SelectedPieceInfo() {
       {/* 미리보기 + 이름 */}
       <div className="flex items-center gap-2">
         <div className="w-9 h-9 shrink-0 border border-line rounded-tile bg-[var(--cell)] p-1">
-          <div style={{ transform: `rotate(${cell.rotation}deg)` }} dangerouslySetInnerHTML={{ __html: SVG_ART[cell.type] }} />
+          <div style={{ transform: `rotate(${cell.rotation}deg)` }} dangerouslySetInnerHTML={{ __html: getSvgArt(cell.type) }} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold text-ink truncate">{PIECE_LABELS[cell.type]}</p>
+          <p className="text-xs font-bold text-ink truncate">{getPieceLabel(cell.type)}</p>
           <p className="text-[11px] text-ink-muted">({row}, {col}) · {cell.rotation}°</p>
         </div>
       </div>

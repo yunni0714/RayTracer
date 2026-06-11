@@ -40,3 +40,15 @@ export const SVG_ART: Record<PieceType, string> = {
 // (e2e 헬퍼와 기본값 호환을 위해 유지)
 export const GRID_SIZE = 5;
 export const CELL_SIZE = 100;
+
+/* ── 어드민 config SVG 오버라이드 (pieceConfig.ts 가 주입) ── */
+
+let svgOverrides: Partial<Record<PieceType, string>> = {};
+
+export function setSvgOverrides(overrides: Partial<Record<PieceType, string>>): void {
+  svgOverrides = overrides;
+}
+
+export function getSvgArt(type: PieceType): string {
+  return svgOverrides[type] ?? SVG_ART[type] ?? '';
+}
