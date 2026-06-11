@@ -6,7 +6,7 @@
 
 ## 0. 한 줄 요약
 
-순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 전면 재설계 + 완전 반응형 + 다크모드** 작업. **Phase 1~5 + 엔진트랙(추가 기물·NxN 그리드) 완료**(Fable). 이후 **보정 라운드 1 완료**(Opus, commit `6e3da5c`): 표적 정면판정·상급탭 상시노출·회전트레잇 표시·인벤타일·테스트 3열. **다음(Fable 인계) = B1 라이브러리 L1(`docs/LIBRARY_L1.md`) + B2 어드민 = 면별(per-face) 기물 behavior 모델 + 에디터(`docs/ADMIN_PANEL.md`, 어휘 `docs/PIECE_TAXONOMY.md`, firestore.rules 선행).** 복합기물(표적거울)·터널 목표화 등 동작 누락은 코드 땜질 대신 **에디터에서 사용자가 면별 정의**(결정됨). 상세 진행상태 `docs/DESIGN.md` §7.
+순정 JS/HTML → React 포팅된 레이저 퍼즐 에디터(`raytracer`)의 **UI 재설계 + 반응형 + 다크모드 + 어드민(면별 기물 config)** 작업. **Phase 1~5 + 엔진트랙 + B1(라이브러리 L1) + B2(면별 어드민) 완료**(Fable). Opus **보정 라운드 1**(`6e3da5c`: 표적 정면판정·상급탭·회전트레잇·인벤타일·테스트 3열) + **라운드 2**(`149d2b5`·`e512161`: rules 실배포 동기화·ADMIN.html 충돌해소·SVG 새니타이즈·면효과 4종 단순화·8방향 반사화살표·canMove 종속·트리거 면별 체크) 완료. **다음(Fable 인계) = B3 기물 관리**(커스텀 폴더 + 기물 생성/삭제) — 스펙 `docs/PIECE_ADMIN_V2.md`. 메이커 액션 잔여: firestore.rules 배포(`config` 블록 포함) + admin UID 동기화. 복합기물(표적거울)·터널 목표화는 어드민 면 그리드에서 정의. 상세 `docs/DESIGN.md` §7.
 
 ---
 
