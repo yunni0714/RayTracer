@@ -26,13 +26,21 @@ export interface PieceDefaults {
 export interface PieceConfigEntry {
   svg?: string;
   labelKo?: string;
-  tab?: PieceTab;
+  tab?: PieceTab;        // 레거시 — folderId 가 없으면 folderId 로 읽는다 (하위호환)
+  folderId?: string;     // 팔레트 폴더 (tab 대체)
   defaults?: Partial<PieceDefaults>;
   behavior?: PieceBehaviorDef;
 }
 
+export interface PieceFolder {
+  id: string;
+  name: string;
+  order: number;
+}
+
 export interface PieceConfigDoc {
   version: number;
+  folders?: PieceFolder[]; // 없으면 기본 3폴더 (하위호환)
   pieces: Partial<Record<string, PieceConfigEntry>>;
 }
 
@@ -76,12 +84,44 @@ const DEFAULT_PIECE_DEFAULTS: PieceDefaults = { canRotate: false, canMove: false
 
 /* ── 오버라이드 상태 (모듈 캐시) ────────────────────────── */
 
-let tabOverrides: Partial<Record<string, PieceTab>> = {};
+let folderOverrides: Partial<Record<string, string>> = {};
+let configFolders: PieceFolder[] | null = null;
 let defaultsOverrides: Partial<Record<string, Partial<PieceDefaults>>> = {};
 let rawEntries: Partial<Record<string, PieceConfigEntry>> = {};
 
+/* ── 폴더 ───────────────────────────────────────────────── */
+
+// 기본 3폴더 — config 에 folders 없을 때 + 항상 존재 보장 (삭제 시 재생성)
+export const DEFAULT_FOLDERS: readonly PieceFolder[] = [
+  { id: 'basic', name: '초급', order: 0 },
+  { id: 'intermediate', name: '중급', order: 1 },
+  { id: 'advanced', name: '상급', order: 2 },
+];
+
+const FOLDER_ID_RE = /^[a-z0-9_]+$/;
+const FOLDER_ID_MAX = 48;
+
+export function isValidFolderId(id: string): boolean {
+  return id.length > 0 && id.length <= FOLDER_ID_MAX && FOLDER_ID_RE.test(id);
+}
+
+// order 순 정렬된 폴더 목록. 기본 3폴더는 config 가 빠뜨려도 항상 포함.
+export function getFolders(): PieceFolder[] {
+  const list = configFolders ? configFolders.map(f => ({ ...f })) : DEFAULT_FOLDERS.map(f => ({ ...f }));
+  for (const def of DEFAULT_FOLDERS) {
+    if (!list.some(f => f.id === def.id)) list.push({ ...def });
+  }
+  return list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+}
+
+export function getPieceFolder(type: string): string {
+  return folderOverrides[type] ?? (DEFAULT_TABS as Partial<Record<string, PieceTab>>)[type] ?? 'intermediate';
+}
+
+// 레거시 접근자 — 폴더가 기본 3종 밖이면 'intermediate' 로 수렴.
 export function getPieceTab(type: string): PieceTab {
-  return tabOverrides[type] ?? (DEFAULT_TABS as Partial<Record<string, PieceTab>>)[type] ?? 'intermediate';
+  const f = getPieceFolder(type);
+  return (TABS as string[]).includes(f) ? (f as PieceTab) : 'intermediate';
 }
 
 export function getPieceDefaults(type: string): PieceDefaults {
@@ -159,6 +199,22 @@ export function sanitizeSvg(svg: string): string {
     .replace(/javascript:/gi, '');
 }
 
+// config 의 folders 배열 검증 — 유효 항목만 통과, 비면 null (기본 3폴더 사용).
+function sanitizeFolders(raw: unknown): PieceFolder[] | null {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set<string>();
+  const out: PieceFolder[] = [];
+  for (const f of raw) {
+    if (!f || typeof f !== 'object') continue;
+    const { id, name, order } = f as PieceFolder;
+    if (typeof id !== 'string' || !isValidFolderId(id) || seen.has(id)) continue;
+    if (typeof name !== 'string' || !name.trim()) continue;
+    seen.add(id);
+    out.push({ id, name: name.trim(), order: typeof order === 'number' ? order : out.length });
+  }
+  return out.length > 0 ? out : null;
+}
+
 function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const e = raw as PieceConfigEntry;
@@ -169,6 +225,7 @@ function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   }
   if (typeof e.labelKo === 'string' && e.labelKo.trim()) out.labelKo = e.labelKo.trim();
   if (e.tab && TABS.includes(e.tab)) out.tab = e.tab;
+  if (typeof e.folderId === 'string' && isValidFolderId(e.folderId)) out.folderId = e.folderId;
   if (e.defaults && typeof e.defaults === 'object') {
     const d: Partial<PieceDefaults> = {};
     for (const k of ['canRotate', 'canMove', 'isInventory'] as const) {
@@ -200,10 +257,14 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   const behaviorDefs: Partial<Record<string, PieceBehaviorDef>> = {};
   const svgs: Partial<Record<string, string>> = {};
   const labels: Partial<Record<string, string>> = {};
-  const tabs: Partial<Record<string, PieceTab>> = {};
+  const folderIds: Partial<Record<string, string>> = {};
   const defaults: Partial<Record<string, Partial<PieceDefaults>>> = {};
   const entries: Partial<Record<string, PieceConfigEntry>> = {};
   const customs: string[] = [];
+
+  const folders = sanitizeFolders((raw as PieceConfigDoc | null)?.folders);
+  // 유효 폴더 id 집합 — 기본 3폴더는 항상 유효 (getFolders 가 재생성 보장)
+  const folderIdSet = new Set([...(folders ?? []).map(f => f.id), ...DEFAULT_FOLDERS.map(f => f.id)]);
 
   const pieces = (raw as PieceConfigDoc | null)?.pieces;
   if (pieces && typeof pieces === 'object') {
@@ -217,7 +278,9 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
       if (entry.behavior) behaviorDefs[type] = entry.behavior;
       if (entry.svg) svgs[type] = entry.svg;
       if (entry.labelKo) labels[type] = entry.labelKo;
-      if (entry.tab) tabs[type] = entry.tab;
+      // 하위호환: folderId 없으면 레거시 tab 을 폴더로 읽는다. 존재하지 않는 폴더는 무시(기본값 폴백).
+      const folderId = entry.folderId ?? entry.tab;
+      if (folderId && folderIdSet.has(folderId)) folderIds[type] = folderId;
       if (entry.defaults) defaults[type] = entry.defaults;
       if (!isBuiltin) customs.push(type);
       applied.push(type);
@@ -227,7 +290,8 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   setBehaviorOverrides(behaviorDefs);
   setSvgOverrides(svgs);
   setLabelOverrides(labels);
-  tabOverrides = tabs;
+  configFolders = folders;
+  folderOverrides = folderIds;
   defaultsOverrides = defaults;
   rawEntries = entries;
   customTypes = customs;
@@ -239,7 +303,8 @@ export function resetPieceConfig(): void {
   setBehaviorOverrides({});
   setSvgOverrides({});
   setLabelOverrides({});
-  tabOverrides = {};
+  configFolders = null;
+  folderOverrides = {};
   defaultsOverrides = {};
   rawEntries = {};
   customTypes = [];

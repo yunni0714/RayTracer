@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
   applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults,
-  getCustomTypes, isValidCustomTypeId,
+  getCustomTypes, isValidCustomTypeId, getFolders, getPieceFolder,
 } from '../src/lib/pieceConfig';
 import { computeLaser, getBehavior, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
 import { getSvgArt, SVG_ART, PLACEHOLDER_SVG } from '../src/lib/svgArt';
@@ -198,6 +198,61 @@ describe('applyPieceConfig — 커스텀 타입', () => {
     expect(getCustomTypes()).toEqual([]);
     expect(isTargetType('my_custom')).toBe(false);       // PASSIVE 폴백
     expect(getSvgArt('my_custom')).toBe(PLACEHOLDER_SVG); // 플레이스홀더 폴백
+  });
+});
+
+describe('폴더 모델 (folders/folderId)', () => {
+  it('config 없음 → 기본 3폴더, 기본 매핑 (회귀 0)', () => {
+    expect(getFolders().map(f => f.id)).toEqual(['basic', 'intermediate', 'advanced']);
+    expect(getPieceFolder('mirror')).toBe('basic');
+    expect(getPieceFolder('diode')).toBe('intermediate');
+    expect(getPieceFolder('mirror_45')).toBe('advanced');
+  });
+
+  it('커스텀 폴더 + folderId 할당이 반영되고 order 로 정렬된다', () => {
+    applyPieceConfig({
+      version: 2,
+      folders: [
+        { id: 'my_folder', name: '내 폴더', order: 3 },
+        { id: 'basic', name: '초급', order: 0 },
+        { id: 'intermediate', name: '중급', order: 1 },
+        { id: 'advanced', name: '상급', order: 2 },
+      ],
+      pieces: { mirror: { folderId: 'my_folder' } },
+    });
+    expect(getFolders().map(f => f.id)).toEqual(['basic', 'intermediate', 'advanced', 'my_folder']);
+    expect(getPieceFolder('mirror')).toBe('my_folder');
+    expect(getPieceFolder('target')).toBe('basic'); // 다른 기물은 기본 유지
+  });
+
+  it('config folders 가 기본 폴더를 빠뜨려도 항상 재생성된다', () => {
+    applyPieceConfig({
+      version: 2,
+      folders: [{ id: 'solo', name: '혼자', order: 9 }],
+      pieces: {},
+    });
+    const ids = getFolders().map(f => f.id);
+    expect(ids).toEqual(expect.arrayContaining(['basic', 'intermediate', 'advanced', 'solo']));
+  });
+
+  it('레거시 tab 엔트리는 folderId 로 읽힌다 (하위호환)', () => {
+    applyPieceConfig({ version: 1, pieces: { mirror: { tab: 'intermediate' } } });
+    expect(getPieceFolder('mirror')).toBe('intermediate');
+    expect(getPieceTab('mirror')).toBe('intermediate');
+  });
+
+  it('존재하지 않는 폴더를 가리키는 folderId 는 무시되고 기본값 폴백', () => {
+    applyPieceConfig({ version: 2, pieces: { mirror: { folderId: 'ghost_folder', labelKo: 'x' } } });
+    expect(getPieceFolder('mirror')).toBe('basic');
+  });
+
+  it('손상 folders (잘못된 id/이름) 는 걸러진다', () => {
+    applyPieceConfig({
+      version: 2,
+      folders: [{ id: 'BAD ID', name: 'x', order: 0 }, { id: 'ok_folder', name: ' ', order: 1 }, 42, null],
+      pieces: {},
+    });
+    expect(getFolders().map(f => f.id)).toEqual(['basic', 'intermediate', 'advanced']);
   });
 });
 
