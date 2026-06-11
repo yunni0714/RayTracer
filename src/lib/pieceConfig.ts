@@ -67,7 +67,9 @@ export function getPieceTab(type: PieceType): PieceTab {
 }
 
 export function getPieceDefaults(type: PieceType): PieceDefaults {
-  return { ...DEFAULT_PIECE_DEFAULTS, ...defaultsOverrides[type] };
+  const merged = { ...DEFAULT_PIECE_DEFAULTS, ...defaultsOverrides[type] };
+  // canMove 는 isInventory(유저지급)에 종속한다 — 유저지급 기물만 플레이 중 이동 가능.
+  return { ...merged, canMove: merged.isInventory };
 }
 
 // 어드민 에디터용: 현재 적용된 raw 오버라이드 엔트리
@@ -124,11 +126,29 @@ function isValidDef(v: unknown): v is PieceBehaviorDef {
   return true;
 }
 
+// SVG 새니타이즈 — config 의 SVG 는 전 플레이어에게 innerHTML 로 렌더되므로
+// 실행 가능한 요소/속성을 제거한다 (저장형 XSS 방어, 심층 방어).
+// 정규식 기반 스크러버: script/foreignObject 제거, on* 핸들러·javascript: URI 제거.
+export function sanitizeSvg(svg: string): string {
+  return svg
+    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '')
+    .replace(/<\s*script\b[^>]*\/?>/gi, '')
+    .replace(/<\s*foreignObject[\s\S]*?<\s*\/\s*foreignObject\s*>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/(href|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
 function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   if (!raw || typeof raw !== 'object') return null;
   const e = raw as PieceConfigEntry;
   const out: PieceConfigEntry = {};
-  if (typeof e.svg === 'string' && e.svg.trim().startsWith('<svg')) out.svg = e.svg;
+  if (typeof e.svg === 'string') {
+    const cleaned = sanitizeSvg(e.svg);
+    if (cleaned.trim().startsWith('<svg')) out.svg = cleaned;
+  }
   if (typeof e.labelKo === 'string' && e.labelKo.trim()) out.labelKo = e.labelKo.trim();
   if (e.tab && TABS.includes(e.tab)) out.tab = e.tab;
   if (e.defaults && typeof e.defaults === 'object') {

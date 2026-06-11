@@ -3,75 +3,75 @@ rules_version = '2';
 // RayTracer Firestore 보안 규칙
 //
 // 배포: firebase deploy --only firestore:rules
+//       (또는 Firebase Console > Firestore > 규칙 탭에 붙여넣고 게시)
 // 주의: 클라이언트 UID 게이트(src/lib/admin.ts)는 UI 숨김일 뿐이다.
-//       서버 강제는 이 파일이 전부다 — config 쓰기 권한은 반드시 여기서 막는다.
+//       서버 강제는 이 파일이 전부다. src/lib/admin.ts 의 ADMIN_UIDS 와
+//       아래 isAdmin() 목록을 반드시 동기화할 것.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 관리자 UID 화이트리스트.
-    // src/lib/admin.ts 의 ADMIN_UIDS 와 반드시 동기화할 것.
-    // TODO(maker): 본인 Firebase Auth UID 로 교체 후 배포.
+    // 관리자 UID 화이트리스트 (src/lib/admin.ts ADMIN_UIDS 와 동기화)
     function isAdmin() {
-      return request.auth != null
-        && request.auth.uid in ['REPLACE_WITH_ADMIN_UID'];
+      return request.auth != null && request.auth.uid in [
+        "gy0yLjz0wLgZsFnC2f4ZOB1nTa53",
+        "UFBL4fCtI4fgJ95yHAkR4upv0fh1"
+      ];
     }
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    // ── 기물 정의 등 공유 설정 ─────────────────────────────
+    // ── 기물 정의 등 공유 설정 (어드민 오버레이) ──────────────
     // 모든 플레이어가 런타임 오버레이로 읽는다. 쓰기는 관리자만.
     match /config/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ── 사용자 프로필 (닉네임) ─────────────────────────────
-    match /users/{uid} {
-      allow read: if true;
-      allow create, update: if signedIn() && request.auth.uid == uid;
-      allow delete: if false;
-    }
-
     // ── 맵 ────────────────────────────────────────────────
     match /maps/{mapId} {
       allow read: if true;
 
-      // 생성: 로그인 + authorUid 가 본인
-      allow create: if signedIn()
-        && request.resource.data.authorUid == request.auth.uid;
+      // 생성: 로그인한 사용자
+      allow create: if request.auth != null;
 
-      // 수정: 작성자는 전체. 그 외 로그인 유저는 반응/난이도투표 카운터 필드만
-      // (클라이언트가 increment() 로 직접 쓰는 기존 경로 유지).
-      allow update: if signedIn() && (
-        resource.data.authorUid == request.auth.uid
-        || request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['reactionOk', 'reactionGod', 'diffVotes'])
-      );
+      // 수정:
+      //   관리자        → 모든 필드(소유권 이전 포함) — ADMIN.html 맵 관리 툴이 의존
+      //   맵 소유자      → authorUid 제외 모든 필드
+      //   로그인 사용자  → 반응/난이도투표 카운터만 (기존 increment() 경로)
+      allow update: if isAdmin()
+        || (request.auth != null
+            && request.auth.uid == resource.data.authorUid
+            && request.resource.data.authorUid == resource.data.authorUid)
+        || (request.auth != null
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['reactionOk', 'reactionGod', 'diffVotes']));
 
-      // 삭제: 작성자 또는 관리자
-      allow delete: if signedIn()
-        && (resource.data.authorUid == request.auth.uid || isAdmin());
+      // 삭제: 관리자 또는 소유자
+      allow delete: if isAdmin()
+        || (request.auth != null && request.auth.uid == resource.data.authorUid);
 
       // ── 풀이 제안 ───────────────────────────────────────
       match /suggestions/{sugId} {
         allow read: if true;
 
-        // 생성: 로그인 + suggesterUid 가 본인
-        allow create: if signedIn()
+        // 생성: 본인 UID 로만 (사칭 방지)
+        allow create: if request.auth != null
           && request.resource.data.suggesterUid == request.auth.uid;
 
         allow update: if false;
 
-        // 삭제: 제안자 본인 또는 맵 작성자 또는 관리자
-        allow delete: if signedIn() && (
-          resource.data.suggesterUid == request.auth.uid
-          || get(/databases/$(database)/documents/maps/$(mapId)).data.authorUid
-               == request.auth.uid
-          || isAdmin()
-        );
+        // 삭제: 관리자, 제안 작성자, 또는 맵 소유자
+        allow delete: if isAdmin()
+          || (request.auth != null && (
+            request.auth.uid == resource.data.suggesterUid
+            || request.auth.uid == get(/databases/$(database)/documents/maps/$(mapId)).data.authorUid
+          ));
       }
+    }
+
+    // ── 사용자 프로필 (닉네임) ─────────────────────────────
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();
     }
 
     // 그 외 전부 차단
