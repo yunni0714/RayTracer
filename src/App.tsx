@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Routes, Route, useSearchParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
@@ -7,6 +7,7 @@ import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
 import { loadPieceConfig } from './lib/pieceConfig';
 import { EditorPage } from './pages/EditorPage';
+import { AdminPage } from './pages/AdminPage';
 import type { CellData, Rotation } from './types/game';
 
 function useUrlMapLoader() {
@@ -60,5 +61,11 @@ export function App() {
   useUrlMapLoader();
   usePieceConfigLoader();
 
-  return <EditorPage />;
+  return (
+    <Routes>
+      <Route path="/" element={<EditorPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="*" element={<EditorPage />} />
+    </Routes>
+  );
 }

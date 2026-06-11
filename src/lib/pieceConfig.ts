@@ -75,6 +75,11 @@ export function getPieceConfigEntry(type: PieceType): PieceConfigEntry | undefin
   return rawEntries[type];
 }
 
+// 어드민 에디터용: 전체 오버라이드 스냅샷 (저장 후 로컬 즉시반영에 사용)
+export function getAllConfigEntries(): Partial<Record<PieceType, PieceConfigEntry>> {
+  return { ...rawEntries };
+}
+
 /* ── 검증 ───────────────────────────────────────────────── */
 
 const KINDS: FaceEffectKind[] = ['pass', 'block', 'absorb', 'reflect', 'split', 'reverse'];
