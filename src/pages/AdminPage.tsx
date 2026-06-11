@@ -11,7 +11,7 @@ import {
 } from '../lib/laserEngine';
 import {
   PALETTE_ORDER, getPieceFolder, getPieceDefaults, getAllConfigEntries, applyPieceConfig,
-  getFolders, getCustomTypes, DEFAULT_FOLDERS,
+  getFolders, getCustomTypes, DEFAULT_FOLDERS, isPieceHidden, isValidCustomTypeId,
   type PieceConfigEntry, type PieceFolder,
 } from '../lib/pieceConfig';
 import { savePieceConfigEntry, deletePieceConfigEntry, savePieceConfigPatch } from '../lib/firebaseService';
@@ -54,6 +54,11 @@ function outToSurface(rel: number, out: number): number {
 const RELS = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
 const DEFAULT_FOLDER_IDS = new Set(DEFAULT_FOLDERS.map(f => f.id));
+const BUILTIN_SET = new Set<string>(PALETTE_ORDER);
+
+// 새 커스텀 기물의 시작 SVG (어드민이 SVG 편집창에서 교체)
+const NEW_PIECE_SVG =
+  `<svg viewBox="0 0 100 100"><rect x="22" y="22" width="56" height="56" fill="none" stroke="currentColor" stroke-width="8"/></svg>`;
 
 // 면 그리드 배치: 각 칸 = "그 방향에서 들어오는 빔"(rel = 진행방향-회전).
 // rel 0 = 오른쪽으로 진행 = 왼쪽 면으로 입사 → 중앙 기준 왼쪽 칸.
@@ -279,6 +284,7 @@ export function AdminPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
   const [dropFolder, setDropFolder] = useState<string | null>(null);
+  const [creating, setCreating] = useState<{ id: string; name: string; folderId: string } | null>(null);
 
   if (!isAdminUid(currentUserUid)) {
     return <Navigate to="/" replace />;
@@ -426,6 +432,90 @@ export function AdminPage() {
     }
   }
 
+  /* ── 기물 생성 / 삭제(빌트인 숨김 · 커스텀 제거) ───────── */
+
+  async function createPiece() {
+    if (!creating) return;
+    const id = creating.id.trim();
+    if (!isValidCustomTypeId(id)) {
+      showNotification('잘못된 id — 소문자/숫자/_ 만, 32자 이하, 빌트인과 중복 불가.', '#e74c3c');
+      return;
+    }
+    if (getCustomTypes().includes(id)) {
+      showNotification('이미 존재하는 기물 id 입니다.', '#e74c3c');
+      return;
+    }
+    setSaving(true);
+    try {
+      const entry: PieceConfigEntry = {
+        svg: NEW_PIECE_SVG,
+        labelKo: creating.name.trim() || id,
+        folderId: creating.folderId,
+        behavior: { faces: {}, fallback: { kind: 'pass' }, rotationStep: 90 },
+        defaults: { canRotate: false, canMove: false, isInventory: false },
+      };
+      await savePieceConfigEntry(id, entry as unknown as Record<string, unknown>);
+      applyLocal(getFolders(), { ...getAllConfigEntries(), [id]: entry });
+      setCreating(null);
+      setSelectedType(id);
+      setDraft(makeDraft(id));
+      setDirty(false);
+      showNotification(`[${entry.labelKo}] 생성 완료 — 면 그리드와 SVG 를 채워주세요.`);
+    } catch {
+      showNotification('생성 실패 — 권한(firestore.rules) 또는 네트워크를 확인하세요.', '#e74c3c');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // 삭제(통합): 빌트인 = hidden 토글(코드 정의는 못 지움), 커스텀 = config 엔트리 완전 제거
+  async function handleDelete() {
+    const label = getPieceLabel(selectedType);
+    const isBuiltin = BUILTIN_SET.has(selectedType);
+    const message = isBuiltin
+      ? `[${label}] 을 팔레트에서 숨길까요? 맵에 이미 놓인 기물은 그대로 동작하며, 복구 버튼으로 되돌릴 수 있습니다.`
+      : `[${label}] 커스텀 기물을 완전히 삭제할까요? 이 기물을 쓰는 맵은 해당 칸이 비활성(통과)으로 보일 수 있습니다.`;
+    if (!(await requestConfirm({ message, danger: true }))) return;
+    setSaving(true);
+    try {
+      if (isBuiltin) {
+        await savePieceConfigPatch({ pieces: { [selectedType]: { hidden: true } } });
+        const entries = getAllConfigEntries();
+        entries[selectedType] = { ...(entries[selectedType] ?? {}), hidden: true };
+        applyLocal(getFolders(), entries);
+        showNotification(`[${label}] 숨김 — 팔레트에서 보이지 않습니다.`);
+      } else {
+        await deletePieceConfigEntry(selectedType);
+        const rest = getAllConfigEntries();
+        delete rest[selectedType];
+        applyLocal(getFolders(), rest);
+        setSelectedType(PALETTE_ORDER[0]);
+        setDraft(makeDraft(PALETTE_ORDER[0]));
+        setDirty(false);
+        showNotification(`[${label}] 삭제 완료.`);
+      }
+    } catch {
+      showNotification('삭제 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRestore() {
+    setSaving(true);
+    try {
+      await savePieceConfigPatch({ pieces: { [selectedType]: { hidden: false } } });
+      const entries = getAllConfigEntries();
+      entries[selectedType] = { ...(entries[selectedType] ?? {}), hidden: false };
+      applyLocal(getFolders(), entries);
+      showNotification(`[${getPieceLabel(selectedType)}] 복구 — 팔레트에 다시 표시됩니다.`);
+    } catch {
+      showNotification('복구 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const def = draft.def;
   const hasConditional = !!def.conditional;
   // 조건부 트리거: 면→그룹번호 매핑 (면 그리드 체크박스 ↔ conditional.groups)
@@ -447,7 +537,16 @@ export function AdminPage() {
       <header className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-line shadow-card">
         <h1 className="text-lg font-extrabold tracking-tight mr-auto">🛠 기물 어드민</h1>
         {dirty && <Pill tone="danger">저장 안 됨</Pill>}
-        <Button variant="secondary" onClick={handleReset} disabled={saving}>↩ 기본값으로</Button>
+        {!BUILTIN_SET.has(selectedType) && <Pill tone="info">커스텀</Pill>}
+        {isPieceHidden(selectedType) && <Pill tone="neutral">숨김</Pill>}
+        {isPieceHidden(selectedType)
+          ? <Button variant="secondary" onClick={handleRestore} disabled={saving}>👁 복구</Button>
+          : <Button variant="danger" onClick={handleDelete} disabled={saving}>
+              {BUILTIN_SET.has(selectedType) ? '🙈 숨기기' : '🗑 삭제'}
+            </Button>}
+        {BUILTIN_SET.has(selectedType) && (
+          <Button variant="secondary" onClick={handleReset} disabled={saving}>↩ 기본값으로</Button>
+        )}
         <Button variant="success" onClick={handleSave} disabled={saving || !dirty}>
           {saving ? '저장 중…' : '💾 저장 (전 플레이어 반영)'}
         </Button>
@@ -540,7 +639,11 @@ export function AdminPage() {
                     }`}
                   >
                     <span className="w-7 h-7 shrink-0" dangerouslySetInnerHTML={{ __html: getSvgArt(type) }} />
-                    <span className="min-w-0 flex-1 truncate font-medium">{getPieceLabel(type)}</span>
+                    <span className={cx('min-w-0 flex-1 truncate font-medium', isPieceHidden(type) && 'line-through opacity-50')}>
+                      {getPieceLabel(type)}
+                    </span>
+                    {!BUILTIN_SET.has(type) && <Pill tone="info" className="!text-[9px] !px-1 !py-0">커스텀</Pill>}
+                    {isPieceHidden(type) && <Pill tone="neutral" className="!text-[9px] !px-1 !py-0">숨김</Pill>}
                     {getPieceConfigBadge(type)}
                   </button>
                 ))}
@@ -551,6 +654,45 @@ export function AdminPage() {
             );
           })}
           <Button variant="secondary" className="!text-xs mt-1" onClick={addFolder}>➕ 폴더 추가</Button>
+
+          {/* 새 기물 생성 */}
+          {creating ? (
+            <div className="border border-line rounded-tile p-2 flex flex-col gap-1.5 mt-1">
+              <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">새 기물</h5>
+              <TextInput
+                autoFocus
+                placeholder="id (소문자/숫자/_)"
+                value={creating.id}
+                onChange={e => setCreating({ ...creating, id: e.target.value })}
+                className="!text-xs !py-1 !px-1.5 font-mono"
+              />
+              <TextInput
+                placeholder="이름 (라벨)"
+                value={creating.name}
+                onChange={e => setCreating({ ...creating, name: e.target.value })}
+                className="!text-xs !py-1 !px-1.5"
+              />
+              <Select
+                value={creating.folderId}
+                onChange={e => setCreating({ ...creating, folderId: e.target.value })}
+                className="!text-xs !py-1 !px-1.5"
+              >
+                {getFolders().map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </Select>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button variant="success" className="!text-xs" onClick={createPiece} disabled={saving}>생성</Button>
+                <Button variant="secondary" className="!text-xs" onClick={() => setCreating(null)}>취소</Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="accent"
+              className="!text-xs"
+              onClick={() => setCreating({ id: '', name: '', folderId: getFolders()[0].id })}
+            >
+              ➕ 새 기물
+            </Button>
+          )}
         </aside>
 
         {/* 우: 편집 폼 */}

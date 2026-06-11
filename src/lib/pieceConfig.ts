@@ -28,6 +28,7 @@ export interface PieceConfigEntry {
   labelKo?: string;
   tab?: PieceTab;        // 레거시 — folderId 가 없으면 folderId 로 읽는다 (하위호환)
   folderId?: string;     // 팔레트 폴더 (tab 대체)
+  hidden?: boolean;      // 빌트인 "삭제" = 팔레트에서 숨김 (코드 정의는 못 지움)
   defaults?: Partial<PieceDefaults>;
   behavior?: PieceBehaviorDef;
 }
@@ -60,6 +61,13 @@ let customTypes: string[] = [];
 // 현재 config 가 등록한 커스텀 타입 목록 (팔레트/어드민이 빌트인과 합쳐 렌더)
 export function getCustomTypes(): string[] {
   return [...customTypes];
+}
+
+let hiddenTypes: ReadonlySet<string> = new Set();
+
+// 팔레트 숨김 여부 (빌트인 "삭제"). 맵에 이미 놓인 기물 동작에는 영향 없음.
+export function isPieceHidden(type: string): boolean {
+  return hiddenTypes.has(type);
 }
 
 /* ── 팔레트 탭 기본값 (표시 순서 보존) ──────────────────── */
@@ -226,6 +234,7 @@ function sanitizeEntry(raw: unknown): PieceConfigEntry | null {
   if (typeof e.labelKo === 'string' && e.labelKo.trim()) out.labelKo = e.labelKo.trim();
   if (e.tab && TABS.includes(e.tab)) out.tab = e.tab;
   if (typeof e.folderId === 'string' && isValidFolderId(e.folderId)) out.folderId = e.folderId;
+  if (typeof e.hidden === 'boolean') out.hidden = e.hidden;
   if (e.defaults && typeof e.defaults === 'object') {
     const d: Partial<PieceDefaults> = {};
     for (const k of ['canRotate', 'canMove', 'isInventory'] as const) {
@@ -261,6 +270,7 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   const defaults: Partial<Record<string, Partial<PieceDefaults>>> = {};
   const entries: Partial<Record<string, PieceConfigEntry>> = {};
   const customs: string[] = [];
+  const hidden = new Set<string>();
 
   const folders = sanitizeFolders((raw as PieceConfigDoc | null)?.folders);
   // 유효 폴더 id 집합 — 기본 3폴더는 항상 유효 (getFolders 가 재생성 보장)
@@ -282,6 +292,7 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
       const folderId = entry.folderId ?? entry.tab;
       if (folderId && folderIdSet.has(folderId)) folderIds[type] = folderId;
       if (entry.defaults) defaults[type] = entry.defaults;
+      if (entry.hidden) hidden.add(type);
       if (!isBuiltin) customs.push(type);
       applied.push(type);
     }
@@ -295,6 +306,7 @@ export function applyPieceConfig(raw: unknown): ApplyResult {
   defaultsOverrides = defaults;
   rawEntries = entries;
   customTypes = customs;
+  hiddenTypes = hidden;
 
   return { applied, skipped };
 }
@@ -308,6 +320,7 @@ export function resetPieceConfig(): void {
   defaultsOverrides = {};
   rawEntries = {};
   customTypes = [];
+  hiddenTypes = new Set();
 }
 
 // 부팅 시 1회 호출 (App.tsx). 실패해도 코드 기본값으로 동작 — 절대 throw 하지 않는다.

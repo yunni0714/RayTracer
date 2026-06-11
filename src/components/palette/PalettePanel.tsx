@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, emptyGrid } from '../../store/gameStore';
 import { ToolItem } from './ToolItem';
 import { Button, Tabs, TextArea, cx } from '../ui';
-import { PALETTE_ORDER, getFolders, getPieceFolder, getCustomTypes } from '../../lib/pieceConfig';
+import { PALETTE_ORDER, getFolders, getPieceFolder, getCustomTypes, isPieceHidden } from '../../lib/pieceConfig';
 import type { CellData } from '../../types/game';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -111,7 +111,7 @@ export function PalettePanel() {
 
   // 폴더 구성은 config 오버레이(getFolders/getPieceFolder)를 따른다.
   // 표시 순서: 빌트인은 PALETTE_ORDER 고정, 커스텀은 그 뒤에 config 순서.
-  const allTypes: string[] = [...PALETTE_ORDER, ...getCustomTypes()];
+  const allTypes: string[] = [...PALETTE_ORDER, ...getCustomTypes()].filter(t => !isPieceHidden(t));
   const byFolder = (folderId: string) => allTypes.filter(t => getPieceFolder(t) === folderId);
   const folders = getFolders().filter(f => byFolder(f.id).length > 0); // 빈 폴더는 탭 숨김
   const currentFolder = folders.some(f => f.id === activeTab) ? activeTab : folders[0]?.id;

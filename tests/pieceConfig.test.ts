@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
   applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults,
-  getCustomTypes, isValidCustomTypeId, getFolders, getPieceFolder,
+  getCustomTypes, isValidCustomTypeId, getFolders, getPieceFolder, isPieceHidden,
 } from '../src/lib/pieceConfig';
 import { computeLaser, getBehavior, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
 import { getSvgArt, SVG_ART, PLACEHOLDER_SVG } from '../src/lib/svgArt';
@@ -253,6 +253,33 @@ describe('폴더 모델 (folders/folderId)', () => {
       pieces: {},
     });
     expect(getFolders().map(f => f.id)).toEqual(['basic', 'intermediate', 'advanced']);
+  });
+});
+
+describe('hidden (빌트인 숨김)', () => {
+  it('hidden:true 는 isPieceHidden 에만 반영 — 엔진 동작은 불변', () => {
+    expect(isPieceHidden('mirror')).toBe(false);
+    applyPieceConfig({ version: 2, pieces: { mirror: { hidden: true } } });
+    expect(isPieceHidden('mirror')).toBe(true);
+
+    // 맵에 이미 놓인 mirror 는 계속 반사
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90); // dir 0
+    g[2][2] = piece('mirror');
+    const r = computeLaser(g);
+    expect(r.segments.some(s => s.x1 === 2 && s.y1 === 2 && s.y2 === 1)).toBe(true);
+  });
+
+  it('hidden:false / 비불리언은 숨김으로 안 친다', () => {
+    applyPieceConfig({ version: 2, pieces: { mirror: { hidden: false }, target: { hidden: 'yes', labelKo: 't' } } });
+    expect(isPieceHidden('mirror')).toBe(false);
+    expect(isPieceHidden('target')).toBe(false);
+  });
+
+  it('reset 으로 숨김 해제', () => {
+    applyPieceConfig({ version: 2, pieces: { mirror: { hidden: true } } });
+    resetPieceConfig();
+    expect(isPieceHidden('mirror')).toBe(false);
   });
 });
 
