@@ -100,8 +100,9 @@ export function EditorPage() {
                 <GameBoard />
               </section>
 
-              {/* ③ 우 존 (데스크탑): 인스펙터/맵정보 + (플레이) 다음문제·풀이제안 */}
-              <aside className="hidden lg:flex w-64 shrink-0 bg-surface border-l border-line p-3 overflow-y-auto flex-col gap-3">
+              {/* ③ 우 존 (데스크탑): 인스펙터/맵정보 + (플레이) 다음문제·풀이제안.
+                  플레이 모드는 카드 패널이 들어가므로 살짝 넓게 */}
+              <aside className={`hidden lg:flex ${isEditorMode ? 'w-64' : 'w-72'} shrink-0 bg-surface border-l border-line p-3 overflow-y-auto flex-col gap-3`}>
                 {infoZone}
               </aside>
 

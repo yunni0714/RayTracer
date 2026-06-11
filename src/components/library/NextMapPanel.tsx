@@ -47,17 +47,6 @@ function formatDate(iso: string): string {
   }
 }
 
-function mapDocToGrid(map: MapDocument): (CellData | null)[][] {
-  const size = map.gridSize ?? 5;
-  const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
-  for (const item of map.mapData) {
-    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size && !item.isInventory) {
-      grid[item.y][item.x] = { type: item.type, rotation: item.rotation as Rotation, canMove: item.canMove, canRotate: item.canRotate, isInventory: false };
-    }
-  }
-  return grid;
-}
-
 export function NextMapPanel() {
   const {
     allLibraryMaps, currentLoadedMapObj, setLibraryMode,
@@ -106,47 +95,36 @@ export function NextMapPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="mb-1 pb-2.5 text-[13px] font-extrabold text-ink border-b-2 border-line">
-        다음 문제
-      </p>
+    <div className="flex flex-col gap-2">
       {nextMaps.map(map => {
         const userDiff = calculateUserDifficulty(map.diffVotes);
         const evalLabel = userDiff ?? 'None';
-        const mapItems = map.mapData.filter(i => !i.isInventory);
-        const gridData = mapDocToGrid(map);
-        const gridAsDTO = gridData.flatMap((row, r) =>
-          row.map((cell, c) => cell ? { x: c, y: r, ...cell } : null).filter(Boolean) as typeof map.mapData
-        );
 
         return (
           <div key={map.id} className="next-map-card" onClick={() => playMap(map)}>
-            {/* 좌측: 미니 그리드 44% */}
-            <div className="w-[44%] shrink-0">
-              <MiniGrid mapData={mapItems.length > 0 ? map.mapData : gridAsDTO} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
+            {/* 썸네일 + 제목/작성자 */}
+            <div className="flex items-center gap-2">
+              <div className="w-14 shrink-0">
+                <MiniGrid mapData={map.mapData} hideInventory variant="v2" gridSize={map.gridSize ?? 5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-[13px] font-extrabold text-ink truncate" title={map.title}>
+                  {map.title}
+                </h4>
+                <p className="text-[11px] text-ink-muted truncate">
+                  {map.author} · {formatDate(map.createdAt)}
+                </p>
+              </div>
             </div>
 
-            {/* 우측: 정보 */}
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
-              <h4 className="text-[15px] font-extrabold text-ink whitespace-nowrap overflow-hidden text-ellipsis" title={map.title}>
-                {map.title}
-              </h4>
-              <p className="text-[11px] text-ink-muted">
-                {map.author} · {formatDate(map.createdAt)}
-              </p>
-              {map.description && (
-                <p className="text-xs text-ink-muted flex-1 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                  {map.description}
-                </p>
-              )}
-              <div className="flex gap-1 flex-wrap">
-                <span className={`diff-pill diff-${map.difficulty}`}>공식: {map.difficulty}</span>
-                <span className={`diff-pill diff-${evalLabel}`}>평가: {evalLabel}</span>
-              </div>
-              <div className="flex justify-end gap-2.5 text-[13px] font-bold">
+            {/* 배지 + 반응 */}
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className={`diff-pill diff-${map.difficulty}`}>공식: {map.difficulty}</span>
+              <span className={`diff-pill diff-${evalLabel}`}>평가: {evalLabel}</span>
+              <span className="ml-auto flex gap-2 text-xs font-bold">
                 <span className="text-success">✅ {map.reactionOk}</span>
                 <span className="text-danger">🔥 {map.reactionGod}</span>
-              </div>
+              </span>
             </div>
           </div>
         );

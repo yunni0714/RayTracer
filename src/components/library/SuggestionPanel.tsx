@@ -7,10 +7,6 @@ import { Button, Pill } from '../ui';
 import type { SuggestionDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
 
-function sugMapToDTO(mapData: SuggestionDocument['mapData']) {
-  return mapData;
-}
-
 export function SuggestionPanel() {
   const {
     currentLoadedMapObj, currentUserUid, currentLoadedMapAuthorUid,
@@ -39,9 +35,6 @@ export function SuggestionPanel() {
   if (!currentLoadedMapObj) return null;
 
   const isMapOwner = !!currentUserUid && currentUserUid === currentLoadedMapAuthorUid;
-  const panelTitle = isMapOwner
-    ? `💡 제안 관리 및 맵 수정 (${suggestions.length}건)`
-    : `💡 다른 풀이 제안 (${suggestions.length}건)`;
 
   function testSuggestion(sug: SuggestionDocument) {
     const size = currentLoadedMapObj?.gridSize ?? 5;
@@ -73,73 +66,77 @@ export function SuggestionPanel() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm font-medium text-ink-muted">불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (suggestions.length === 0) {
+    return (
+      <div className="px-4 py-8 text-center bg-surface-2 rounded-card">
+        <p className="text-sm font-medium text-ink-muted leading-relaxed">
+          아직 등록된 제안이 없습니다.<br />첫 번째로 풀이를 뽐내보세요!
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-3">
-      <p className="mb-1 pb-2.5 text-[13px] font-extrabold text-ink border-b-2 border-line">
-        {panelTitle}
-      </p>
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] text-ink-muted">총 {suggestions.length}건</p>
+      {suggestions.map(sug => {
+        const canDelete = isMapOwner || currentUserUid === sug.suggesterUid;
+        const dateStr = new Date(sug.createdAt).toLocaleDateString('ko-KR');
 
-      {loading ? (
-        <div className="py-8 text-center">
-          <p className="text-sm font-medium text-ink-muted">불러오는 중...</p>
-        </div>
-      ) : suggestions.length === 0 ? (
-        <div className="mt-4 px-5 py-10 text-center bg-surface-2 rounded-card">
-          <p className="text-sm font-medium text-ink-muted leading-relaxed">
-            아직 등록된 제안이 없습니다.<br />첫 번째로 풀이를 뽐내보세요!
-          </p>
-        </div>
-      ) : (
-        <div className="suggestion-list">
-          {suggestions.map(sug => {
-            const canDelete = isMapOwner || currentUserUid === sug.suggesterUid;
-            const dateStr = new Date(sug.createdAt).toLocaleDateString('ko-KR');
-
-            return (
-              <div key={sug.id} className="suggestion-item">
-                {/* 미니 그리드 38% */}
-                <div className="w-[38%] shrink-0">
-                  <MiniGrid mapData={sugMapToDTO(sug.mapData)} variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
-                </div>
-
-                {/* 내용 */}
-                <div className="flex-1 min-w-0 flex flex-col gap-1.5 justify-center">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {sug.category === 'NG' ? (
-                      <Pill tone="danger">🆖 기물 줄임</Pill>
-                    ) : (
-                      <Pill tone="info">🔠 복수정답</Pill>
-                    )}
-                    <span className="text-[11px] text-ink-muted">{dateStr}</span>
-                  </div>
-                  <p
-                    className="text-xs font-semibold text-ink leading-normal overflow-hidden"
-                    style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}
-                  >
-                    {sug.comment}
-                  </p>
-                </div>
-
-                {/* 액션 버튼 */}
-                <div className="flex flex-col gap-2 shrink-0 self-center">
-                  <Button variant="success" className="!text-xs whitespace-nowrap" onClick={() => testSuggestion(sug)}>
-                    ▶ 이 풀이로 테스트
-                  </Button>
-                  {canDelete && (
-                    <Button
-                      variant="secondary"
-                      className="!text-xs !bg-transparent !text-danger !border !border-danger whitespace-nowrap"
-                      onClick={() => deleteSuggestion(sug.id)}
-                    >
-                      🗑️ 삭제
-                    </Button>
-                  )}
-                </div>
+        return (
+          <div key={sug.id} className="suggestion-item">
+            {/* 썸네일 + 분류/날짜 */}
+            <div className="flex items-center gap-2">
+              <div className="w-14 shrink-0">
+                <MiniGrid mapData={sug.mapData} variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                {sug.category === 'NG' ? (
+                  <Pill tone="danger" className="self-start">🆖 기물 줄임</Pill>
+                ) : (
+                  <Pill tone="info" className="self-start">🔠 복수정답</Pill>
+                )}
+                <span className="text-[11px] text-ink-muted">{dateStr}</span>
+              </div>
+            </div>
+
+            {/* 코멘트 */}
+            {sug.comment && (
+              <p
+                className="text-xs font-semibold text-ink leading-normal overflow-hidden"
+                style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}
+              >
+                {sug.comment}
+              </p>
+            )}
+
+            {/* 액션 */}
+            <div className="flex gap-1.5">
+              <Button variant="success" block className="!text-xs" onClick={() => testSuggestion(sug)}>
+                ▶ 이 풀이로 테스트
+              </Button>
+              {canDelete && (
+                <Button
+                  variant="secondary"
+                  className="!text-xs !bg-transparent !text-danger !border !border-danger shrink-0"
+                  onClick={() => deleteSuggestion(sug.id)}
+                  aria-label="제안 삭제"
+                >
+                  🗑️
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
