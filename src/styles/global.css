@@ -197,47 +197,32 @@ html { transition: background-color .2s ease, color .2s ease; }
   scroll-snap-align: start;
 }
 
-/* ── 다음문제 카드 ───────────────────────────────────── */
+/* ── 다음문제 카드 (좁은 우 존용 세로 스택) ──────────── */
 .next-map-card {
   display: flex;
-  flex-direction: row;
-  gap: 14px;
-  padding: 14px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   cursor: pointer;
   background: var(--surface-2);
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .next-map-card:hover {
   border-color: var(--primary);
   box-shadow: 0 2px 8px rgba(41, 128, 185, 0.12);
-  transform: translateX(2px);
 }
 
-/* ── 제안 아이템 ─────────────────────────────────────── */
+/* ── 제안 아이템 (좁은 우 존용 세로 스택) ────────────── */
 .suggestion-item {
   display: flex;
-  flex-direction: row;
-  gap: 12px;
-  background: var(--surface);
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 12px;
+  padding: 10px;
   transition: border-color 0.2s;
 }
 .suggestion-item:hover { border-color: var(--line-strong); }
-
-/* ── 제안 목록 스크롤 ────────────────────────────────── */
-.suggestion-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 536px;
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scroll-thumb) transparent;
-}
-.suggestion-list::-webkit-scrollbar { width: 4px; }
-.suggestion-list::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
