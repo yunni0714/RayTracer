@@ -5,9 +5,11 @@ import { GridContainer } from './GridContainer';
 import { LaserCanvas } from './LaserCanvas';
 import { PiecePopover } from './PiecePopover';
 
-// 셀 1칸의 기준 픽셀 크기 — 보드 최대 폭이 그리드 크기에 비례하도록 한다
-// (5x5=500px, 9x9=900px). 화면이 좁으면 w-full로 자동 축소된다.
+// 셀 1칸의 기준 픽셀 크기. 그리드가 커질수록 셀을 한 단계당 CELL_SHRINK_PX씩
+// 줄여서, 보드 전체는 완만하게만 커지고 셀은 식별 가능한 크기를 유지한다.
+// (5x5: 100px 셀 → 보드 500px, 9x9: 72px 셀 → 보드 648px)
 const BASE_CELL_PX = 100;
+const CELL_SHRINK_PX = 7;
 
 export function GameBoard() {
   const { isEditorMode, gridSize } = useGameStore(useShallow(s => ({
@@ -17,10 +19,12 @@ export function GameBoard() {
 
   const canvasRef = useLaserCanvas();
 
+  const cellPx = BASE_CELL_PX - (gridSize - 5) * CELL_SHRINK_PX;
+
   return (
     <div
       className="flex flex-col items-start gap-2 w-full"
-      style={{ maxWidth: gridSize * BASE_CELL_PX }}
+      style={{ maxWidth: gridSize * cellPx }}
     >
       <div className="relative w-full aspect-square">
         <GridContainer />
