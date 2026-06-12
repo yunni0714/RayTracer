@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <title>Project Ray</title>
   <script>
-    sessionStorage.setItem('spa_redirect', location.search);
+    // 경로+쿼리+해시를 통째로 보존한다 — 경로를 빼면 /admin 등에서
+    // 새로고침 시 홈으로 튕긴다. index.html 인라인 스크립트가 복원.
+    sessionStorage.setItem(
+      'spa_redirect',
+      location.pathname.replace(/^\/RayTracer/, '') + location.search + location.hash
+    );
     location.replace('/RayTracer/');
   </script>
 </head>
