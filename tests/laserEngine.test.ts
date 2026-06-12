@@ -167,3 +167,38 @@ describe('computeLaser — NxN 그리드', () => {
     expect(r.segments[6].x2).toBe(7);
   });
 });
+
+describe('computeLaser — excludeEmitterAt (회전 애니메이션 중 빔 끄기)', () => {
+  it('제외된 발사기의 빔만 꺼지고 다른 발사기 빔은 유지된다', () => {
+    const g = emptyGrid();
+    g[1][0] = piece('ray', 90); // (0,1) → 오른쪽
+    g[3][0] = piece('ray', 90); // (0,3) → 오른쪽
+    const full = computeLaser(g);
+    const excluded = computeLaser(g, { x: 0, y: 1 });
+    // 두 발사기 각각 5세그먼트 → 제외 시 절반
+    expect(full.segments).toHaveLength(10);
+    expect(excluded.segments).toHaveLength(5);
+    expect(excluded.segments.every(s => s.y1 === 3 && s.y2 === 3)).toBe(true);
+  });
+
+  it('제외된 발사기도 기물로는 남아 다른 빔을 흡수한다', () => {
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);   // (0,2) → 오른쪽
+    g[2][4] = piece('ray', 270);  // (4,2) → 왼쪽 (마주봄)
+    const excluded = computeLaser(g, { x: 4, y: 2 });
+    // 왼쪽 발사기 빔은 (4,2) 발사기에 흡수 — 경계 밖 partial 세그먼트가 없어야 한다
+    expect(excluded.segments.some(s => s.x2 > 4 || s.x2 < 0)).toBe(false);
+    expect(excluded.segments).toHaveLength(4); // (0,2)→(4,2) 4칸 전진 후 흡수
+  });
+
+  it('사출 프로젝터 제외 시 사출 빔이 꺼진다', () => {
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);          // (0,2) → 오른쪽 (dir 0)
+    g[2][2] = piece('target_projector'); // rel 0 측면 피격 → 활성 → rel 270 사출 (위)
+    const full = computeLaser(g);
+    const excluded = computeLaser(g, { x: 2, y: 2 });
+    // full: 프로젝터까지 2 + 사출 빔 / excluded: 프로젝터까지 2 만
+    expect(full.segments.length).toBeGreaterThan(2);
+    expect(excluded.segments).toHaveLength(2);
+  });
+});

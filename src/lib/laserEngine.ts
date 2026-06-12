@@ -360,10 +360,18 @@ interface TraceResult {
   incidence: Map<string, CellIncidence>;
 }
 
+// 빔 발사 제외 셀 (회전 애니메이션 중 그 기물의 빔만 잠시 끄기).
+// 발사만 막는다 — 기물 자체는 그대로 있어 입사 빔 흡수/차단 등은 정상 동작.
+export interface ExcludeEmitterAt {
+  x: number;
+  y: number;
+}
+
 // 주어진 조건부 상태(states)로 전체 빔을 1패스 추적한다.
 function trace(
   mapData: (CellData | null)[][],
   states: Map<string, boolean>,
+  excludeEmitterAt?: ExcludeEmitterAt,
 ): TraceResult {
   const gridSize = mapData.length;
   const segments: BeamSegment[] = [];
@@ -386,6 +394,7 @@ function trace(
     for (let c = 0; c < gridSize; c++) {
       const cell = mapData[r][c];
       if (!cell) continue;
+      if (excludeEmitterAt && excludeEmitterAt.x === c && excludeEmitterAt.y === r) continue;
       if (cell.type === 'ray') {
         beams.push({ x: c, y: r, dir: (cell.rotation + 270) % 360 });
         continue;
@@ -430,7 +439,10 @@ function trace(
   return { segments, incidence };
 }
 
-export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
+export function computeLaser(
+  mapData: (CellData | null)[][],
+  excludeEmitterAt?: ExcludeEmitterAt,
+): LaserResult {
   const gridSize = mapData.length;
 
   // 조건부 기물 수집 + 초기 상태
@@ -450,7 +462,7 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
 
   // 고정점 반복: 직전 패스의 incidence 로 상태 재평가, 수렴 시 종료.
   // MAX_ITERS 내 미수렴(진동)이면 전부 OFF 강제 후 최종 1패스 → 결정적 종결.
-  let result = trace(mapData, states);
+  let result = trace(mapData, states, excludeEmitterAt);
   if (conditionals.length > 0) {
     let converged = false;
     for (let iter = 0; iter < MAX_ITERS; iter++) {
@@ -467,11 +479,11 @@ export function computeLaser(mapData: (CellData | null)[][]): LaserResult {
       }
       if (same) { converged = true; break; }
       states = next;
-      result = trace(mapData, states);
+      result = trace(mapData, states, excludeEmitterAt);
     }
     if (!converged) {
       states = new Map([...states.keys()].map(k => [k, false]));
-      result = trace(mapData, states);
+      result = trace(mapData, states, excludeEmitterAt);
     }
   }
 
@@ -555,9 +567,10 @@ export function simulateLaser(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   mapData: (CellData | null)[][],
+  excludeEmitterAt?: ExcludeEmitterAt,
 ): LaserResult {
   clearLaser(ctx, canvas);
-  const result = computeLaser(mapData);
+  const result = computeLaser(mapData, excludeEmitterAt);
   const cellSize = (canvas.clientWidth || canvas.width) / mapData.length;
   drawSegments(ctx, result.segments, cellSize);
   return result;
