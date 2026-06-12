@@ -132,7 +132,9 @@ export async function savePieceConfigEntry(
   const ref = doc(db, 'config', 'pieces');
   const snap = await getDoc(ref);
   const data = (snap.exists() ? snap.data() : { version: 1 }) as Record<string, unknown>;
-  const pieces = { ...(data.pieces as Record<string, unknown> | undefined), [pieceType]: entry };
+  // UI 가 만든 객체에 남은 undefined 값은 setDoc 이 거부한다 — JSON 왕복으로 제거
+  const cleaned = JSON.parse(JSON.stringify(entry)) as Record<string, unknown>;
+  const pieces = { ...(data.pieces as Record<string, unknown> | undefined), [pieceType]: cleaned };
   await setDoc(ref, { ...data, pieces });
 }
 

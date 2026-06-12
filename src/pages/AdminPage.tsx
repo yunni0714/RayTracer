@@ -84,7 +84,7 @@ interface Draft {
 function errDetail(err: unknown): string {
   if (err instanceof Error) {
     const code = (err as { code?: string }).code;
-    return ` — ${code ?? err.name}: ${err.message.slice(0, 120)}`;
+    return ` — ${code ?? err.name}: ${err.message.slice(0, 300)}`;
   }
   return ' — 권한(firestore.rules) 또는 네트워크를 확인하세요.';
 }
@@ -181,7 +181,10 @@ function EffectEditor({
     const kind: FaceEffectKind = (value.kind === 'absorb' || value.kind === 'block')
       ? (checked ? 'absorb' : 'block')
       : value.kind;
-    onChange({ ...value, kind, satisfy: checked || undefined });
+    // satisfy 해제는 키 자체를 제거 — undefined 값은 Firestore setDoc 이 거부한다
+    const { satisfy: _drop, ...rest } = value;
+    void _drop;
+    onChange({ ...rest, kind, ...(checked && { satisfy: true }) });
   }
   function setSurface(sa: number) {
     if (!value) return;
