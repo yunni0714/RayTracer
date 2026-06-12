@@ -162,6 +162,7 @@ RayTracer/
 ├── .github/workflows/deploy.yml         # main 푸시 → 빌드(VITE_FIREBASE_* 시크릿) → Pages 배포
 ├── firestore.rules                      # Firestore 보안 규칙 (admin.ts와 UID 동기화 필수)
 ├── ADMIN.html                           # 독립 정적 관리자 툴 (맵/제안 관리, 빌드 무관)
+├── PIECE_EDITOR.html                    # 독립 정적 기물 SVG 에디터 (100×100 그리드 드로잉 → svgArt.ts/config 용 SVG 문자열, 빌드 무관)
 ├── index.html                           # SPA 리다이렉트 복원 + 첫 페인트 전 다크 테마 적용
 ├── vite.config.ts                       # base: '/RayTracer/', React 플러그인
 ├── vitest.config.ts                     # tests/**/*.test.ts 만 (e2e 분리)
@@ -357,6 +358,7 @@ Header
 | **E2E 테스트 추가** | `e2e/helpers.ts` | `e2e/*.spec.ts`, `playwright.config.ts` |
 | **배포 설정** | `.github/workflows/deploy.yml` | `vite.config.ts` (base) |
 | **레거시 맵/제안 일괄 관리** | `ADMIN.html` (독립 툴) | `firestore.rules` (isAdmin 업데이트 경로) |
+| **기물 SVG 아이콘 제작/수정** | `PIECE_EDITOR.html` (독립 툴) | `src/lib/svgArt.ts` (SVG_ART), 어드민 기물 config |
 
 ---
 
