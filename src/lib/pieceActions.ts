@@ -79,6 +79,25 @@ export function getPieceLabel(type: string): string {
 // 회전이 무의미한 기물 (방향성 없음)
 export const NON_ROTATABLE: readonly string[] = ['block', 'high_block', 'omni_target'];
 
+/* ── 회전 애니메이션 마커 ───────────────────────────────
+   rotatePiece 가 기록하고 GridCell(셀 회전 연출)·useLaserCanvas(레이저
+   지연 갱신)가 읽는다. 맵 로드/undo/스왑 등 mapData 통째 교체는 마커가
+   없으므로 즉시 스냅(기존 동작). 모듈 변수 — 스토어 리렌더 불필요. */
+
+export const ROTATION_ANIM_MS = 180;
+
+interface RotationEvent {
+  row: number;
+  col: number;
+  ts: number;
+}
+
+let lastRotationEvent: RotationEvent | null = null;
+
+export function getLastRotationEvent(): RotationEvent | null {
+  return lastRotationEvent;
+}
+
 // 회전. 에디터: 방향성 기물 전부, 테스트: canRotate 기물만. 성공 여부 반환.
 export function rotatePiece(row: number, col: number): boolean {
   const state = useGameStore.getState();
@@ -93,6 +112,7 @@ export function rotatePiece(row: number, col: number): boolean {
   } else {
     newRotation = (cell.rotation + step) % 360;
   }
+  lastRotationEvent = { row, col, ts: Date.now() };
   state.setCell(row, col, { ...cell, rotation: newRotation as Rotation });
   return true;
 }

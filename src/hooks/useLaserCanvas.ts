@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { simulateLaser, clearLaser, setupCanvas } from '../lib/laserEngine';
+import { getLastRotationEvent, ROTATION_ANIM_MS } from '../lib/pieceActions';
+
+// 회전 애니메이션이 진행 중이면 레이저 갱신을 종료 시점까지 미룬다.
+// 연속 회전 시 effect 재실행 → cleanup 으로 타이머가 갱신돼 마지막만 그린다.
+function rotationAnimRemaining(): number {
+  const ev = getLastRotationEvent();
+  if (!ev) return 0;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+  return Math.max(0, ev.ts + ROTATION_ANIM_MS - Date.now());
+}
 
 export function useLaserCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,11 +44,19 @@ export function useLaserCanvas() {
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
 
-    if (isLaserOn) {
-      simulateLaser(ctx, canvas, mapData);
-    } else {
+    if (!isLaserOn) {
       clearLaser(ctx, canvas);
+      return;
     }
+
+    const remaining = rotationAnimRemaining();
+    if (remaining === 0) {
+      simulateLaser(ctx, canvas, mapData);
+      return;
+    }
+    // +20ms: 애니메이션 종료 프레임과 레이저 갱신이 겹쳐 보이지 않게 약간 여유
+    const timer = window.setTimeout(() => simulateLaser(ctx, canvas, mapData), remaining + 20);
+    return () => window.clearTimeout(timer);
   }, [isLaserOn, mapData, theme]);
 
   return canvasRef;
