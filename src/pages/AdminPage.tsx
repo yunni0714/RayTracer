@@ -80,6 +80,15 @@ interface Draft {
   defaults: { canRotate: boolean; canMove: boolean; isInventory: boolean };
 }
 
+// Firestore 실패 토스트에 실제 원인(code/message)을 붙인다 — 권한/네트워크 오진 방지
+function errDetail(err: unknown): string {
+  if (err instanceof Error) {
+    const code = (err as { code?: string }).code;
+    return ` — ${code ?? err.name}: ${err.message.slice(0, 120)}`;
+  }
+  return ' — 권한(firestore.rules) 또는 네트워크를 확인하세요.';
+}
+
 function makeDraft(type: string): Draft {
   const def = getBehaviorDef(type)!;
   return {
@@ -332,8 +341,8 @@ export function AdminPage() {
       applyLocal(getFolders(), { ...getAllConfigEntries(), [selectedType]: entry });
       setDirty(false);
       showNotification(`[${draft.label}] 저장 완료 — 전 플레이어에 반영됩니다.`);
-    } catch {
-      showNotification('저장 실패 — 권한(firestore.rules) 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`저장 실패${errDetail(err)}`, '#e74c3c');
     } finally {
       setSaving(false);
     }
@@ -351,8 +360,8 @@ export function AdminPage() {
       setDraft(makeDraft(selectedType));
       setDirty(false);
       showNotification('기본값으로 복원되었습니다.');
-    } catch {
-      showNotification('복원 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`복원 실패${errDetail(err)}`, '#e74c3c');
     } finally {
       setSaving(false);
     }
@@ -375,8 +384,8 @@ export function AdminPage() {
         reassign ? { folders: next, pieces: piecePatch } : { folders: next },
       );
       applyLocal(next, entries);
-    } catch {
-      showNotification('폴더 저장 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`폴더 저장 실패${errDetail(err)}`, '#e74c3c');
     }
   }
 
@@ -431,8 +440,8 @@ export function AdminPage() {
       entries[type] = { ...(entries[type] ?? {}), folderId };
       applyLocal(getFolders(), entries);
       if (type === selectedType) setDraft(d => ({ ...d, folderId }));
-    } catch {
-      showNotification('이동 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`이동 실패${errDetail(err)}`, '#e74c3c');
     }
   }
 
@@ -467,8 +476,8 @@ export function AdminPage() {
       setDraft(makeDraft(id));
       setDirty(false);
       showNotification(`[${entry.labelKo}] 생성 완료 — 면 그리드와 SVG 를 채워주세요.`);
-    } catch {
-      showNotification('생성 실패 — 권한(firestore.rules) 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`생성 실패${errDetail(err)}`, '#e74c3c');
     } finally {
       setSaving(false);
     }
@@ -500,8 +509,8 @@ export function AdminPage() {
         setDirty(false);
         showNotification(`[${label}] 삭제 완료.`);
       }
-    } catch {
-      showNotification('삭제 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`삭제 실패${errDetail(err)}`, '#e74c3c');
     } finally {
       setSaving(false);
     }
@@ -515,8 +524,8 @@ export function AdminPage() {
       entries[selectedType] = { ...(entries[selectedType] ?? {}), hidden: false };
       applyLocal(getFolders(), entries);
       showNotification(`[${getPieceLabel(selectedType)}] 복구 — 팔레트에 다시 표시됩니다.`);
-    } catch {
-      showNotification('복구 실패 — 권한 또는 네트워크를 확인하세요.', '#e74c3c');
+    } catch (err) {
+      showNotification(`복구 실패${errDetail(err)}`, '#e74c3c');
     } finally {
       setSaving(false);
     }

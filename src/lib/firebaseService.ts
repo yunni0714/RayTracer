@@ -1,6 +1,6 @@
 import {
   collection, addDoc, doc, getDoc, getDocs,
-  setDoc, query, orderBy, limit, updateDoc, increment, deleteDoc, deleteField,
+  setDoc, query, orderBy, limit, updateDoc, increment, deleteDoc,
 } from 'firebase/firestore';
 import {
   GoogleAuthProvider, signInWithPopup, signInWithRedirect,
@@ -126,19 +126,24 @@ export async function fetchPieceConfig(): Promise<Record<string, unknown> | null
 export async function savePieceConfigEntry(
   pieceType: string, entry: Record<string, unknown>,
 ): Promise<void> {
-  // setDoc(merge:true) 는 중첩 맵을 깊은 병합한다 — behavior.faces 에서 지운
-  // 면(satisfy 포함)이 Firestore 에 남아 부활하므로, 필드 경로 업데이트로
-  // 엔트리 서브트리를 통째 교체한다. 문서 미존재 시에만 새로 생성.
-  try {
-    await updateDoc(doc(db, 'config', 'pieces'), { [`pieces.${pieceType}`]: entry });
-  } catch (err: unknown) {
-    if ((err as { code?: string }).code !== 'not-found') throw err;
-    await setDoc(doc(db, 'config', 'pieces'), { version: 1, pieces: { [pieceType]: entry } });
-  }
+  // setDoc(merge:true) 는 중첩 맵을 깊은 병합해 지운 face(satisfy 포함)가
+  // 부활하고, updateDoc 필드 경로 방식은 실패 사례가 있어 read-modify-write 로
+  // 엔트리 서브트리를 통째 교체한다. 어드민 전용 문서라 쓰기 경합은 사실상 없다.
+  const ref = doc(db, 'config', 'pieces');
+  const snap = await getDoc(ref);
+  const data = (snap.exists() ? snap.data() : { version: 1 }) as Record<string, unknown>;
+  const pieces = { ...(data.pieces as Record<string, unknown> | undefined), [pieceType]: entry };
+  await setDoc(ref, { ...data, pieces });
 }
 
 export async function deletePieceConfigEntry(pieceType: string): Promise<void> {
-  await updateDoc(doc(db, 'config', 'pieces'), { [`pieces.${pieceType}`]: deleteField() });
+  const ref = doc(db, 'config', 'pieces');
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const data = snap.data() as Record<string, unknown>;
+  const pieces = { ...(data.pieces as Record<string, unknown> | undefined) };
+  delete pieces[pieceType];
+  await setDoc(ref, { ...data, pieces });
 }
 
 // 임의 부분 패치 (folders 교체, 복수 기물 folderId 일괄 머지 등)
