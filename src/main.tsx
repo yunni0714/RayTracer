@@ -12,7 +12,9 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* basename 필수 — 없으면 GH Pages(/RayTracer/)에서 라우트 이동 시
+        베이스 밖 URL 이 되어 새로고침에 GitHub 기본 404 로 튕긴다 */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <App />
     </BrowserRouter>
   </StrictMode>,

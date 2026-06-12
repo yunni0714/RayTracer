@@ -10,7 +10,8 @@
         var redirect = sessionStorage.getItem('spa_redirect');
         if (redirect) {
           sessionStorage.removeItem('spa_redirect');
-          history.replaceState(null, '', '/RayTracer/' + redirect);
+          // 404.html 이 저장한 '/admin?x#y' 형태 — 베이스를 붙여 원래 라우트 복원
+          history.replaceState(null, '', '/RayTracer' + (redirect.charAt(0) === '/' ? '' : '/') + redirect);
         }
         // 첫 페인트 전 테마 적용 (깜빡임 방지)
         try {
