@@ -12,6 +12,7 @@ import {
 import {
   PALETTE_ORDER, getPieceFolder, getPieceDefaults, getAllConfigEntries, applyPieceConfig,
   getFolders, getCustomTypes, DEFAULT_FOLDERS, isPieceHidden, isValidCustomTypeId,
+  encodeBehaviorForStore,
   type PieceConfigEntry, type PieceFolder,
 } from '../lib/pieceConfig';
 import { savePieceConfigEntry, deletePieceConfigEntry, savePieceConfigPatch } from '../lib/firebaseService';
@@ -324,7 +325,10 @@ export function AdminPage() {
         folderId: draft.folderId,
         defaults: draft.defaults,
       };
-      await savePieceConfigEntry(selectedType, entry as unknown as Record<string, unknown>);
+      // Firestore 는 중첩 배열을 못 받으므로 behavior(conditional.groups)를 인코딩해 저장
+      await savePieceConfigEntry(selectedType, {
+        ...entry, behavior: encodeBehaviorForStore(draft.def),
+      } as unknown as Record<string, unknown>);
       applyLocal(getFolders(), { ...getAllConfigEntries(), [selectedType]: entry });
       setDirty(false);
       showNotification(`[${draft.label}] 저장 완료 — 전 플레이어에 반영됩니다.`);
@@ -454,7 +458,9 @@ export function AdminPage() {
         behavior: { faces: {}, fallback: { kind: 'pass' }, rotationStep: 90 },
         defaults: { canRotate: false, canMove: false, isInventory: false },
       };
-      await savePieceConfigEntry(id, entry as unknown as Record<string, unknown>);
+      await savePieceConfigEntry(id, {
+        ...entry, behavior: encodeBehaviorForStore(entry.behavior!),
+      } as unknown as Record<string, unknown>);
       applyLocal(getFolders(), { ...getAllConfigEntries(), [id]: entry });
       setCreating(null);
       setSelectedType(id);

@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import {
   applyPieceConfig, resetPieceConfig, getPieceTab, getPieceDefaults,
   getCustomTypes, isValidCustomTypeId, getFolders, getPieceFolder, isPieceHidden,
+  encodeBehaviorForStore,
 } from '../src/lib/pieceConfig';
 import { computeLaser, getBehavior, getBehaviorDef, isTargetType } from '../src/lib/laserEngine';
 import { getSvgArt, SVG_ART, PLACEHOLDER_SVG } from '../src/lib/svgArt';
@@ -280,6 +281,60 @@ describe('hidden (빌트인 숨김)', () => {
     applyPieceConfig({ version: 2, pieces: { mirror: { hidden: true } } });
     resetPieceConfig();
     expect(isPieceHidden('mirror')).toBe(false);
+  });
+});
+
+describe('조건부 기물 — conditional.groups Firestore 인코딩/디코딩', () => {
+  it('encodeBehaviorForStore: groups(number[][]) → 인덱스 키 맵 (중첩 배열 제거)', () => {
+    const def = getBehaviorDef('cross_gate')!;
+    const enc = encodeBehaviorForStore(def) as { conditional: { groups: unknown } };
+    expect(Array.isArray(enc.conditional.groups)).toBe(false);
+    expect(enc.conditional.groups).toEqual({ '0': [0, 180], '1': [90, 270] });
+  });
+
+  it('conditional 없는 behavior 는 인코딩 no-op', () => {
+    const def = getBehaviorDef('mirror')!;
+    expect(encodeBehaviorForStore(def)).toBe(def);
+  });
+
+  it('인코딩된 behavior 를 applyPieceConfig 가 디코딩해 적용 — SVG 오버라이드 함께 반영', () => {
+    const customSvg = '<svg viewBox="0 0 100 100"><rect width="10" height="10"/></svg>';
+    const r = applyPieceConfig({
+      version: 2,
+      pieces: {
+        transistor_gate: {
+          svg: customSvg,
+          behavior: encodeBehaviorForStore(getBehaviorDef('transistor_gate')!),
+        },
+      },
+    });
+    expect(r.applied).toContain('transistor_gate');
+    expect(getSvgArt('transistor_gate')).toBe(customSvg);
+    expect(getBehaviorDef('transistor_gate')?.conditional?.groups).toEqual([[270]]);
+  });
+
+  it('디코딩된 조건부 behavior 는 엔진에서 정상 동작 (관문 개방 시나리오)', () => {
+    applyPieceConfig({
+      version: 2,
+      pieces: {
+        transistor_gate: { behavior: encodeBehaviorForStore(getBehaviorDef('transistor_gate')!) },
+      },
+    });
+    const g = emptyGrid();
+    g[2][0] = piece('ray', 90);            // dir 0 → 관문 좌측면(rel 0)
+    g[2][2] = piece('transistor_gate');
+    g[4][2] = piece('ray', 0);             // dir 270(위) → 관문 아래면(rel 270) 피격 → 개방
+    const r = computeLaser(g);
+    expect(r.segments.some(s => s.x1 === 2 && s.y1 === 2 && s.x2 > 2)).toBe(true); // 좌→우 통과
+  });
+
+  it('배열 형태 groups(레거시 미인코딩)도 그대로 적용된다 (하위호환)', () => {
+    const r = applyPieceConfig({
+      version: 2,
+      pieces: { transistor_gate: { behavior: getBehaviorDef('transistor_gate') } },
+    });
+    expect(r.applied).toContain('transistor_gate');
+    expect(getBehaviorDef('transistor_gate')?.conditional?.groups).toEqual([[270]]);
   });
 });
 
