@@ -69,6 +69,7 @@ RayTracer/
 │   │   ├── firebase.ts                  # Firebase 초기화 (db, auth 인스턴스)
 │   │   ├── firebaseService.ts           # Auth/User/Maps/Suggestions/PieceConfig CRUD
 │   │   ├── laserEngine.ts               # 면별 behavior 스키마 + 순수 계산 + 캔버스 렌더
+│   │   ├── artClip.ts                   # 빔-아트 클리핑 (SVG 래스터 알파 샘플링, 렌더 보조)
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
@@ -324,7 +325,7 @@ Header
 | **새 빌트인 기물 추가** | `types/game.ts` (PieceType), `lib/laserEngine.ts` (DEFAULT_DEFS) | `lib/svgArt.ts` (SVG_ART), `lib/pieceActions.ts` (PIECE_LABELS), `lib/pieceConfig.ts` (BASIC/INTERMEDIATE/ADVANCED 배열), `tests/` |
 | **커스텀 기물 / 기물 동작 런타임 수정** | (코드 수정 불필요) `/admin` 어드민 페이지 | `lib/pieceConfig.ts`, `pages/AdminPage.tsx` |
 | **레이저 반사/기물 동작 로직 수정** | `lib/laserEngine.ts` (PieceBehaviorDef, applyEffect, trace) | `tests/laserEngine.test.ts`, `tests/groupA/B.test.ts` |
-| **레이저 렌더 스타일 변경** | `lib/laserEngine.ts` (drawSegments) | `styles/global.css` (`--laser` 토큰) |
+| **레이저 렌더 스타일 변경** | `lib/laserEngine.ts` (drawSegments) | `styles/global.css` (`--laser` 토큰), `lib/artClip.ts` (빔 끝점 아트 클리핑) |
 | **승리 판정 / 타겟 카운트** | `lib/laserEngine.ts` (computeLaser, isTargetType) | `components/layout/StatusBar.tsx`, `components/layout/InspectorPanel.tsx` |
 | **드래그앤드롭 버그** | `hooks/useGridDragDrop.ts` | `store/gameStore.ts` (setCell, swapCells), `components/game/GridCell.tsx` |
 | **셀 클릭/회전/삭제 동작** | `lib/pieceActions.ts` | `hooks/useGridDragDrop.ts` (onContextMenu/onPointerUp), `components/game/PiecePopover.tsx`, `components/game/SelectedPieceInfo.tsx` |

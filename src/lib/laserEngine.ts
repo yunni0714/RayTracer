@@ -1,4 +1,5 @@
 import type { CellData, PieceType } from '../types/game';
+import { getArtStopT } from './artClip';
 
 /* ════════════════════════════════════════════════════════
    레이저 엔진 — 계산(순수)과 렌더(캔버스)의 분리
@@ -27,10 +28,13 @@ export function calculateReflection(inDir: number, surfaceAngle: number): number
 /* ── 결과 타입 ─────────────────────────────────────────── */
 
 // 셀 인덱스 좌표계 세그먼트. partial=true 면 목적지 셀 경계(중간점)에서 멈춘다.
+// hit: 끝점 셀의 기물 정보 (렌더러가 SVG 아트 라인에서 빔을 끊는 데 사용).
+//      terminal=true 면 이 세그먼트에서 빔이 소멸한다 (흡수/표적 — 이어지는 빔 없음).
 export interface BeamSegment {
   x1: number; y1: number;
   x2: number; y2: number;
   partial: boolean;
+  hit?: { type: string; rotation: number; terminal: boolean };
 }
 
 export interface CellIncidence {
@@ -429,7 +433,12 @@ function trace(
       : { outDirs: [cDir] };
 
     record(nextX, nextY, cDir, !!outcome.satisfied);
-    segments.push({ x1: cx, y1: cy, x2: nextX, y2: nextY, partial: !!outcome.partial });
+    segments.push({
+      x1: cx, y1: cy, x2: nextX, y2: nextY, partial: !!outcome.partial,
+      hit: item
+        ? { type: item.type, rotation: item.rotation, terminal: !outcome.partial && (outcome.outDirs?.length ?? 0) === 0 }
+        : undefined,
+    });
 
     for (const d of outcome.outDirs ?? []) {
       beams.push({ x: nextX, y: nextY, dir: d });
@@ -550,7 +559,20 @@ export function drawSegments(
     const y1 = seg.y1 * cellSize + offset;
     let x2 = seg.x2 * cellSize + offset;
     let y2 = seg.y2 * cellSize + offset;
-    if (seg.partial) {
+
+    // 기물에서 멈추는 빔(표면 차단/흡수·표적)은 SVG 아트 라인에서 끊는다.
+    // 래스터 미준비 등으로 t 를 못 구하면 기존 동작(경계/중심)으로 폴백.
+    let clipped = false;
+    if (seg.hit && (seg.partial || seg.hit.terminal)) {
+      const t = getArtStopT(seg.hit.type, seg.hit.rotation, seg.x2 - seg.x1, seg.y2 - seg.y1);
+      if (t !== null) {
+        const f = 0.5 + t; // 출발 셀 중심 기준 진행 비율 (0.5=경계, 1=목적 셀 중심)
+        x2 = (seg.x1 + f * (seg.x2 - seg.x1)) * cellSize + offset;
+        y2 = (seg.y1 + f * (seg.y2 - seg.y1)) * cellSize + offset;
+        clipped = true;
+      }
+    }
+    if (!clipped && seg.partial) {
       x2 = ((seg.x1 + seg.x2) / 2) * cellSize + offset;
       y2 = ((seg.y1 + seg.y2) / 2) * cellSize + offset;
     }

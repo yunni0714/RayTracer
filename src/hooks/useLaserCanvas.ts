@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { simulateLaser, clearLaser, setupCanvas, getBehavior } from '../lib/laserEngine';
+import { onArtRasterReady } from '../lib/artClip';
 import { getLastRotationEvent, ROTATION_ANIM_MS } from '../lib/pieceActions';
 import type { CellData } from '../types/game';
 
@@ -41,7 +42,13 @@ export function useLaserCanvas() {
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
-    return () => observer.disconnect();
+
+    // SVG 래스터(아트 클리핑용)가 비동기 준비되면 끝점이 바뀌므로 다시 그린다
+    const offReady = onArtRasterReady(() => {
+      const s = useGameStore.getState();
+      if (s.isLaserOn && ctxRef.current) simulateLaser(ctxRef.current, canvas, s.mapData);
+    });
+    return () => { observer.disconnect(); offReady(); };
   }, []);
 
   // isLaserOn / mapData / theme 변경 시마다 레이저 재계산
