@@ -560,11 +560,13 @@ export function drawSegments(
     let x2 = seg.x2 * cellSize + offset;
     let y2 = seg.y2 * cellSize + offset;
 
-    // 기물에서 멈추는 빔(표면 차단/흡수·표적)은 SVG 아트 라인에서 끊는다.
+    // "정지" 면(차단=partial / 흡수·표적=terminal)에서 멈추는 빔만 SVG 아트
+    // 라인에서 끊는다 — 통과/반사/분기 면은 클립하지 않는다.
     // 래스터 미준비 등으로 t 를 못 구하면 기존 동작(경계/중심)으로 폴백.
+    // insetFrac: GridCell 의 p-2(8px) 패딩과 동기 — 패딩 변경 시 함께 수정.
     let clipped = false;
     if (seg.hit && (seg.partial || seg.hit.terminal)) {
-      const t = getArtStopT(seg.hit.type, seg.hit.rotation, seg.x2 - seg.x1, seg.y2 - seg.y1);
+      const t = getArtStopT(seg.hit.type, seg.hit.rotation, seg.x2 - seg.x1, seg.y2 - seg.y1, 8 / cellSize);
       if (t !== null) {
         const f = 0.5 + t; // 출발 셀 중심 기준 진행 비율 (0.5=경계, 1=목적 셀 중심)
         x2 = (seg.x1 + f * (seg.x2 - seg.x1)) * cellSize + offset;

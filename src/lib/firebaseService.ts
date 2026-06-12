@@ -126,11 +126,15 @@ export async function fetchPieceConfig(): Promise<Record<string, unknown> | null
 export async function savePieceConfigEntry(
   pieceType: string, entry: Record<string, unknown>,
 ): Promise<void> {
-  await setDoc(
-    doc(db, 'config', 'pieces'),
-    { version: 1, pieces: { [pieceType]: entry } },
-    { merge: true },
-  );
+  // setDoc(merge:true) 는 중첩 맵을 깊은 병합한다 — behavior.faces 에서 지운
+  // 면(satisfy 포함)이 Firestore 에 남아 부활하므로, 필드 경로 업데이트로
+  // 엔트리 서브트리를 통째 교체한다. 문서 미존재 시에만 새로 생성.
+  try {
+    await updateDoc(doc(db, 'config', 'pieces'), { [`pieces.${pieceType}`]: entry });
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code !== 'not-found') throw err;
+    await setDoc(doc(db, 'config', 'pieces'), { version: 1, pieces: { [pieceType]: entry } });
+  }
 }
 
 export async function deletePieceConfigEntry(pieceType: string): Promise<void> {

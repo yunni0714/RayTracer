@@ -33,11 +33,21 @@ export function resetArtClipCache(): void {
   cache.clear();
 }
 
+// 래스터용 SVG 정규화: viewBox 만 있는 아트는 고유 크기가 없어 drawImage 가
+// 깨진다(300×150 취급/미렌더) — 루트에 width/height 를 강제하고 xmlns 를 보장한다.
+// (export 는 단위테스트용 — 렌더 경로는 rasterize 내부에서만 쓴다)
+export function normalizeForRaster(svg: string): string {
+  return svg.replace(/<svg\b[^>]*>/, tag => {
+    let t = tag.replace(/\s(width|height)\s*=\s*("[^"]*"|'[^']*')/gi, '');
+    t = t.replace(/<svg\b/, m => `${m} width="${RASTER}" height="${RASTER}"`);
+    if (!/\sxmlns\s*=/.test(t)) t = t.replace(/<svg\b/, m => `${m} xmlns="http://www.w3.org/2000/svg"`);
+    return t;
+  });
+}
+
 function rasterize(svg: string): void {
   cache.set(svg, false);
-  // Blob 이미지 로드는 xmlns 가 필수 — 인라인 아트 문자열엔 없으므로 주입
-  const src = svg.includes('xmlns') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-  const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml' }));
+  const url = URL.createObjectURL(new Blob([normalizeForRaster(svg)], { type: 'image/svg+xml' }));
   const img = new Image();
   img.onload = () => {
     URL.revokeObjectURL(url);
@@ -62,9 +72,13 @@ function rasterize(svg: string): void {
 /**
  * 빔이 (dx,dy) 방향으로 셀에 진입할 때 기물 아트 라인에 처음 닿는 지점.
  * 반환값 t: 셀 진입 경계 = 0, 셀 중심 = 0.5 (셀 스텝 단위 비율).
+ * insetFrac: 셀 내 아트 박스 인셋 비율 — GridCell 이 p-2(8px) 패딩 박스 안에
+ *            SVG 를 그리므로 아트 좌표는 그만큼 축소돼 있다.
  * 아트 미준비/실패/경로상 아트 없음 → null (호출자가 기존 동작으로 폴백).
  */
-export function getArtStopT(type: string, rotation: number, dx: number, dy: number): number | null {
+export function getArtStopT(
+  type: string, rotation: number, dx: number, dy: number, insetFrac = 0,
+): number | null {
   const svg = getSvgArt(type);
   let data = cache.get(svg);
   if (data === undefined) {
@@ -76,14 +90,16 @@ export function getArtStopT(type: string, rotation: number, dx: number, dy: numb
   // 기물은 CSS rotate(rotation) 로 그려진다 → 셀 좌표를 -rotation 회전해 아트 좌표로 샘플링
   const rad = (-rotation * Math.PI) / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
+  const span = 1 - 2 * insetFrac; // 아트 박스가 차지하는 셀 비율
 
   for (let i = 0; i <= SAMPLE_STEPS; i++) {
     const t = (i / SAMPLE_STEPS) * 0.5;
     // 셀 정규좌표(0..1): 중심 + (t-0.5)·(dx,dy) — t=0 진입 경계, t=0.5 중심
     const px = 0.5 + (t - 0.5) * dx;
     const py = 0.5 + (t - 0.5) * dy;
-    const rx = 0.5 + (px - 0.5) * cos - (py - 0.5) * sin;
-    const ry = 0.5 + (px - 0.5) * sin + (py - 0.5) * cos;
+    // 회전(아트 박스도 셀 중심 기준으로 돈다) 후 패딩 인셋을 벗겨 아트 좌표로
+    const rx = (0.5 + (px - 0.5) * cos - (py - 0.5) * sin - insetFrac) / span;
+    const ry = (0.5 + (px - 0.5) * sin + (py - 0.5) * cos - insetFrac) / span;
     if (rx < 0 || rx > 1 || ry < 0 || ry > 1) continue;
     const ix = Math.min(RASTER - 1, Math.max(0, Math.round(rx * (RASTER - 1))));
     const iy = Math.min(RASTER - 1, Math.max(0, Math.round(ry * (RASTER - 1))));
