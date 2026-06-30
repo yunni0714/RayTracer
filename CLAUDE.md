@@ -35,7 +35,7 @@ npm run lint       # ESLint
 - **UI는 공용 프리미티브 사용** (`src/components/ui/`): 버튼=`Button`/`IconButton`, 다이얼로그=`Modal`, 배지=`Pill`, 탭=`Tabs`, 입력=`Field`. 인라인 hover 스타일 금지.
 - **인벤토리 키 규칙** (`invKey()`): `type_canRotate_rot`. 회전 가능 기물은 rot=0 통일, block은 항상 rot=0. 이 규칙은 저장/환수/카운트 전부가 공유 — 변경 시 전 경로 영향.
 - **canMove는 isInventory에 종속** — 유저지급 기물만 플레이 중 이동 가능 (`getPieceDefaults()`, 덧칠, 팝오버 토글 모두 이 규칙을 지킨다).
-- 업로드 시 `canRotate=true` 기물은 `rotation: 0`으로 저장 (UploadModal/JSON 내보내기 공통).
+- 맵 업로드/수정(UploadModal)은 `canRotate=true` 기물도 **작성자가 맞춘 회전값을 그대로 저장** — "정답 보기"(`showAnswer`)가 회전을 복원하려면 필요. 팔레트/인벤토리는 로드 시 `buildInventory`/`invKey`가 다시 `rotation: 0`으로 정규화하므로 영향 없음. (JSON 내보내기 `PalettePanel`·제안 `SuggestionModal`은 아직 0 정규화 — 정답 회전 보존 필요 시 동일 수정.)
 
 ## 테스트
 

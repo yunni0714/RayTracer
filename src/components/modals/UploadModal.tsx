@@ -37,7 +37,9 @@ export function UploadModal() {
       for (let c = 0; c < size; c++) {
         const cell = mapData[r][c];
         if (cell) {
-          items.push({ x: c, y: r, ...cell, rotation: cell.canRotate ? 0 : cell.rotation });
+          // 회전형 기물도 작성자가 맞춘 회전값을 그대로 저장 → "정답 보기"가 회전을 복원할 수 있다.
+          // 인벤토리/팔레트는 로드 시 buildInventory/invKey 가 다시 0 으로 정규화하므로 영향 없음.
+          items.push({ x: c, y: r, ...cell });
         }
       }
     }
