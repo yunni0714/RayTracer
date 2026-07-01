@@ -35,6 +35,10 @@
   --cell-border: #e2e8f0;
   --cell-marker: #aab6c6;
   --laser:       #ef4444;
+  /* 펜/스케치 오버레이 (테스트 모드 필기) */
+  --pen-blue:    #3b82f6;
+  --pen-green:   #22c55e;
+  --pen-red:     #e11d48;
   /* 난이도 */
   --diff-tutor:  #3498db;
   --diff-easy:   #22c55e;
@@ -73,6 +77,9 @@
   --cell-border: #1e2a44;
   --cell-marker: #3a4a6a;
   --laser:       #ff4d5e;
+  --pen-blue:    #60a5fa;
+  --pen-green:   #4ade80;
+  --pen-red:     #fb7185;
   --diff-tutor:  #3b9fe0;
   --diff-easy:   #34d27d;
   --diff-normal: #fbb024;
@@ -135,6 +142,18 @@ html { transition: background-color .2s ease, color .2s ease; }
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
   border-color: var(--line-strong);
+}
+
+/* ── 펜 방사형 메뉴 촤르륵 팝 ─────────────────────────── */
+@keyframes pen-radial-pop {
+  from { opacity: 0; scale: .3; }
+  to   { opacity: 1; scale: 1; }
+}
+.pen-radial-item {
+  animation: pen-radial-pop .22s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pen-radial-item { animation-duration: .01s; }
 }
 
 /* ── 미니 그리드 v2 ──────────────────────────────────── */

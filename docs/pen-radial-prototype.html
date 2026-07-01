@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Ray — 펜/방사형 메뉴 프로토타입</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --grid-bg: #0d1426;
+    --cell-border: #1e2a44;
+    --ink: #e5edff;
+    --ink-muted: #6b7a99;
+    --pen-blue: #60a5fa;
+    --pen-green: #4ade80;
+    --pen-red: #f87171;
+    --eraser: #94a3b8;
+    --danger: #ff4d5e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* 그리기 캔버스 — 화면 전체(그리드 + 여백) */
+  #pen {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  /* 중앙 그리드(시각용) */
+  #board {
+    position: fixed;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(5, 100px);
+    grid-template-rows: repeat(5, 100px);
+    border: 2px solid var(--cell-border);
+    background: var(--grid-bg);
+    pointer-events: none;
+  }
+  #board > div {
+    border: 1px solid var(--cell-border);
+  }
+
+  .hint {
+    position: fixed;
+    left: 16px; bottom: 14px;
+    z-index: 1;
+    color: var(--ink-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    pointer-events: none;
+  }
+  .hint b { color: var(--ink); }
+  .swatch {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; vertical-align: middle; margin: 0 2px;
+  }
+  #toolLabel { color: var(--ink); }
+
+  /* ── 방사형 메뉴 ── */
+  #radial {
+    position: fixed;
+    z-index: 10;
+    width: 0; height: 0;
+    pointer-events: none;
+  }
+  #radial.open { pointer-events: auto; }
+  #radial .center {
+    position: absolute;
+    left: -5px; top: -5px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--ink-muted);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  #radial.open .center { opacity: .5; }
+
+  .item {
+    position: absolute;
+    left: 0; top: 0;
+    width: 46px; height: 46px;
+    margin: -23px 0 0 -23px;      /* 아이콘 중심을 좌표에 맞춤 */
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: #131b30;
+    border: 1px solid var(--cell-border);
+    box-shadow: 0 4px 14px rgba(0,0,0,.45);
+    font-size: 20px;
+    /* 닫힘 상태: 중심에 모여있고 투명 */
+    transform: translate(0px, 0px) scale(.3);
+    opacity: 0;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s;
+    cursor: pointer;
+  }
+  #radial.open .item {
+    opacity: 1;
+    /* 각 아이템 --tx/--ty 로 펼쳐짐(촤르륵) */
+    transform: translate(var(--tx), var(--ty)) scale(1);
+  }
+  .item:hover { border-color: var(--ink); filter: brightness(1.25); }
+  .item .dot {
+    width: 22px; height: 22px; border-radius: 50%;
+  }
+  /* 순차 지연으로 촤르륵 느낌 */
+  #radial.open .item:nth-child(2){ transition-delay: .00s; }
+  #radial.open .item:nth-child(3){ transition-delay: .03s; }
+  #radial.open .item:nth-child(4){ transition-delay: .06s; }
+  #radial.open .item:nth-child(5){ transition-delay: .09s; }
+  #radial.open .item:nth-child(6){ transition-delay: .12s; }
+</style>
+</head>
+<body>
+
+  <!-- 중앙 5x5 그리드(시각용) -->
+  <div id="board"></div>
+
+  <!-- 그리기 캔버스 -->
+  <canvas id="pen"></canvas>
+
+  <!-- 방사형 메뉴 -->
+  <div id="radial">
+    <div class="center"></div>
+    <div class="item" data-tool="blue"  title="파랑"><span class="dot" style="background:var(--pen-blue)"></span></div>
+    <div class="item" data-tool="green" title="초록"><span class="dot" style="background:var(--pen-green)"></span></div>
+    <div class="item" data-tool="red"   title="빨강"><span class="dot" style="background:var(--pen-red)"></span></div>
+    <div class="item" data-tool="erase" title="지우개">🩹</div>
+    <div class="item" data-tool="clear" title="전체 지우기">🗑️</div>
+  </div>
+
+  <div class="hint">
+    <b>우클릭</b>(그리드 밖만): 방사형 메뉴 촤르륵 —
+    <span class="swatch" style="background:var(--pen-blue)"></span>파랑
+    <span class="swatch" style="background:var(--pen-green)"></span>초록
+    <span class="swatch" style="background:var(--pen-red)"></span>빨강
+    · 🩹지우개 · 🗑️전체지우기<br>
+    <b>좌드래그</b>: 그리기 · 지우개는 <b>지나간 획을 통째로</b> 삭제 &nbsp;|&nbsp; 현재 도구: <span id="toolLabel">파랑</span><br>
+    <span style="color:var(--ink-muted)">그리드 위 우클릭 = 메뉴 안 뜸(빨강 깜빡) — 실제 앱에선 기물 회전 자리</span>
+  </div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('pen');
+  const ctx = canvas.getContext('2d');
+  const radial = document.getElementById('radial');
+  const toolLabel = document.getElementById('toolLabel');
+  const board = document.getElementById('board');
+
+  // 그리드 위 우클릭 시: 여기선 메뉴 안 뜬다는 걸 시각적으로 알림(실앱=기물 회전 자리)
+  let flashTimer = 0;
+  function flashGrid() {
+    board.style.boxShadow = '0 0 0 2px var(--danger)';
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { board.style.boxShadow = 'none'; }, 220);
+  }
+
+  const COLORS = {
+    blue:  getVar('--pen-blue'),
+    green: getVar('--pen-green'),
+    red:   getVar('--pen-red'),
+  };
+  const LABELS = { blue:'파랑', green:'초록', red:'빨강', erase:'지우개' };
+
+  let tool = 'blue';          // blue|green|red|erase
+  let strokes = [];           // {tool, width, points:[{x,y}]} — 픽셀 좌표(프로토타입)
+  let cur = null;             // 그리는 중인 획
+  let dpr = 1;
+
+  function getVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  // ── 캔버스 리사이즈(dpr 반영) + 전체 다시 그리기 ──
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    canvas.width  = Math.floor(innerWidth  * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+    canvas.style.width  = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  }
+  window.addEventListener('resize', resize);
+
+  function redraw() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const s of strokes) drawStroke(s);
+  }
+  function drawStroke(s) {
+    if (s.points.length < 1) return;
+    ctx.save();
+    ctx.lineJoin = ctx.lineCap = 'round';
+    if (s.tool === 'erase') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = s.width * 4;
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = s.width;
+      ctx.strokeStyle = COLORS[s.tool];
+      ctx.shadowColor = COLORS[s.tool];
+      ctx.shadowBlur = 6;
+    }
+    ctx.beginPath();
+    const p = s.points;
+    ctx.moveTo(p[0].x, p[0].y);
+    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x, p[i].y);
+    if (p.length === 1) ctx.lineTo(p[0].x + 0.1, p[0].y + 0.1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── 획 단위 지우개: 점→선분 최단거리 hit-test ──
+  function distToSeg(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx*dx + dy*dy;
+    let t = len2 ? ((px-ax)*dx + (py-ay)*dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t*dx, cy = ay + t*dy;
+    return Math.hypot(px-cx, py-cy);
+  }
+  // 커서 근처 획을 통째로 삭제 (그려질 당시의 줄 단위)
+  function eraseAt(x, y) {
+    const HIT = 12;                        // 커서 반경(px)
+    const before = strokes.length;
+    strokes = strokes.filter(s => {
+      const p = s.points;
+      if (p.length === 1) return Math.hypot(x-p[0].x, y-p[0].y) > HIT + s.width;
+      for (let i = 1; i < p.length; i++) {
+        if (distToSeg(x, y, p[i-1].x, p[i-1].y, p[i].x, p[i].y) <= HIT + s.width/2) return false;
+      }
+      return true;
+    });
+    if (strokes.length !== before) redraw();
+  }
+
+  // ── 그리기 입력 ──
+  let erasing = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;           // 좌클릭만
+    if (radial.classList.contains('open')) { closeRadial(); return; }
+    canvas.setPointerCapture(e.pointerId);
+    if (tool === 'erase') { erasing = true; eraseAt(e.clientX, e.clientY); return; }
+    cur = { tool, width: 3, points: [{ x: e.clientX, y: e.clientY }] };
+    strokes.push(cur);
+    drawStroke(cur);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (erasing) { eraseAt(e.clientX, e.clientY); return; }
+    if (!cur) return;
+    cur.points.push({ x: e.clientX, y: e.clientY });
+    redraw();
+  });
+  const endStroke = () => { cur = null; erasing = false; };
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+
+  // 그리드(중앙 보드) 영역 안이면 = 실제 앱에서 기물 우클릭(회전) 자리 → 메뉴 안 뜸
+  function isOverGrid(x, y) {
+    const r = board.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  // ── 우클릭 → 방사형 메뉴 (그리드 밖에서만) ──
+  window.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (isOverGrid(e.clientX, e.clientY)) { flashGrid(); return; }
+    openRadial(e.clientX, e.clientY);
+  });
+
+  function openRadial(x, y) {
+    // 화면 밖으로 안 나가게 살짝 보정
+    const m = 70;
+    x = Math.max(m, Math.min(innerWidth  - m, x));
+    y = Math.max(m, Math.min(innerHeight - m, y));
+    radial.style.left = x + 'px';
+    radial.style.top  = y + 'px';
+
+    // 아이템을 원형으로 배치 (위쪽 -90°부터 시계방향)
+    const items = radial.querySelectorAll('.item');
+    const R = 70;
+    const start = -Math.PI / 2;
+    const step = (Math.PI * 2) / items.length;
+    items.forEach((it, i) => {
+      const a = start + step * i;
+      it.style.setProperty('--tx', Math.cos(a) * R + 'px');
+      it.style.setProperty('--ty', Math.sin(a) * R + 'px');
+    });
+    radial.classList.add('open');
+  }
+  function closeRadial() { radial.classList.remove('open'); }
+
+  radial.addEventListener('click', (e) => {
+    const it = e.target.closest('.item');
+    if (!it) return;
+    const t = it.dataset.tool;
+    if (t === 'clear') {
+      strokes = []; redraw();
+    } else {
+      tool = t;
+      toolLabel.textContent = LABELS[t];
+    }
+    closeRadial();
+  });
+
+  // 바깥 클릭/Esc 로 닫기
+  window.addEventListener('pointerdown', (e) => {
+    if (radial.classList.contains('open') && !e.target.closest('#radial')) closeRadial();
+  }, true);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRadial(); });
+
+  resize();
+})();
+</script>
+</body>
+</html>
