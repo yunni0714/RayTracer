@@ -141,12 +141,13 @@
   </div>
 
   <div class="hint">
-    <b>우클릭</b>(빈 곳): 방사형 메뉴 촤르륵 —
+    <b>우클릭</b>(그리드 밖만): 방사형 메뉴 촤르륵 —
     <span class="swatch" style="background:var(--pen-blue)"></span>파랑
     <span class="swatch" style="background:var(--pen-green)"></span>초록
     <span class="swatch" style="background:var(--pen-red)"></span>빨강
     · 🩹지우개 · 🗑️전체지우기<br>
-    <b>좌드래그</b>: 그리기 &nbsp;|&nbsp; 현재 도구: <span id="toolLabel">파랑</span>
+    <b>좌드래그</b>: 그리기 · 지우개는 <b>지나간 획을 통째로</b> 삭제 &nbsp;|&nbsp; 현재 도구: <span id="toolLabel">파랑</span><br>
+    <span style="color:var(--ink-muted)">그리드 위 우클릭 = 메뉴 안 뜸(빨강 깜빡) — 실제 앱에선 기물 회전 자리</span>
   </div>
 
 <script>
@@ -155,6 +156,15 @@
   const ctx = canvas.getContext('2d');
   const radial = document.getElementById('radial');
   const toolLabel = document.getElementById('toolLabel');
+  const board = document.getElementById('board');
+
+  // 그리드 위 우클릭 시: 여기선 메뉴 안 뜬다는 걸 시각적으로 알림(실앱=기물 회전 자리)
+  let flashTimer = 0;
+  function flashGrid() {
+    board.style.boxShadow = '0 0 0 2px var(--danger)';
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { board.style.boxShadow = 'none'; }, 220);
+  }
 
   const COLORS = {
     blue:  getVar('--pen-blue'),
@@ -210,27 +220,61 @@
     ctx.restore();
   }
 
+  // ── 획 단위 지우개: 점→선분 최단거리 hit-test ──
+  function distToSeg(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx*dx + dy*dy;
+    let t = len2 ? ((px-ax)*dx + (py-ay)*dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t*dx, cy = ay + t*dy;
+    return Math.hypot(px-cx, py-cy);
+  }
+  // 커서 근처 획을 통째로 삭제 (그려질 당시의 줄 단위)
+  function eraseAt(x, y) {
+    const HIT = 12;                        // 커서 반경(px)
+    const before = strokes.length;
+    strokes = strokes.filter(s => {
+      const p = s.points;
+      if (p.length === 1) return Math.hypot(x-p[0].x, y-p[0].y) > HIT + s.width;
+      for (let i = 1; i < p.length; i++) {
+        if (distToSeg(x, y, p[i-1].x, p[i-1].y, p[i].x, p[i].y) <= HIT + s.width/2) return false;
+      }
+      return true;
+    });
+    if (strokes.length !== before) redraw();
+  }
+
   // ── 그리기 입력 ──
+  let erasing = false;
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;           // 좌클릭만 그림
+    if (e.button !== 0) return;           // 좌클릭만
     if (radial.classList.contains('open')) { closeRadial(); return; }
     canvas.setPointerCapture(e.pointerId);
+    if (tool === 'erase') { erasing = true; eraseAt(e.clientX, e.clientY); return; }
     cur = { tool, width: 3, points: [{ x: e.clientX, y: e.clientY }] };
     strokes.push(cur);
     drawStroke(cur);
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (erasing) { eraseAt(e.clientX, e.clientY); return; }
     if (!cur) return;
     cur.points.push({ x: e.clientX, y: e.clientY });
-    redraw();                              // 지우개 합성 때문에 전체 재그리기
+    redraw();
   });
-  const endStroke = () => { cur = null; };
+  const endStroke = () => { cur = null; erasing = false; };
   canvas.addEventListener('pointerup', endStroke);
   canvas.addEventListener('pointercancel', endStroke);
 
-  // ── 우클릭 → 방사형 메뉴 ──
+  // 그리드(중앙 보드) 영역 안이면 = 실제 앱에서 기물 우클릭(회전) 자리 → 메뉴 안 뜸
+  function isOverGrid(x, y) {
+    const r = board.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  // ── 우클릭 → 방사형 메뉴 (그리드 밖에서만) ──
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    if (isOverGrid(e.clientX, e.clientY)) { flashGrid(); return; }
     openRadial(e.clientX, e.clientY);
   });
 
