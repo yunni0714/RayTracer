@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGameStore } from '../../store/gameStore';
+import type { PenTool } from '../../store/gameStore';
 
 // 테스트(플레이) 모드 전용 필기 오버레이.
 // - 그리드 밖(여백)에서 우클릭 → 마우스 중심 방사형 메뉴(3색/지우개/전체지우기/펜끄기).
-// - 색·지우개 선택 시 캔버스가 포인터를 잡아 좌드래그로 그림. off면 pointer-events:none 이라
-//   아래 그리드(기물 드래그/회전/선택)가 그대로 동작한다.
+// - 캔버스는 항상 pointer-events:none — 그리드(기물 배치/회전/선택/드래그)는 언제나 살아있다.
+//   그리기는 중앙 섹션에 붙은 리스너가 처리하되, '그리드 밖'에서 시작한 드래그만 그린다.
+// - 인벤/팔레트 기물 선택(setSelectedTool)이나 회전 가능 기물 회전(rotatePiece) 시
+//   스토어가 penTool 을 'off' 로 되돌린다 → 기물 조작이 항상 우선.
 // - 획은 컴포넌트 로컬 state → 언마운트(테스트 종료)/맵 전환(key 리마운트) 시 자동 소멸.
-// - 레이저와 완전 분리된 별도 캔버스라 지우개는 레이저에 영향 없음.
+// - 레이저와 분리된 별도 캔버스라 지우개는 레이저에 영향 없음.
 
-type PenTool = 'off' | 'blue' | 'green' | 'red' | 'erase';
 type Pt = { x: number; y: number };                 // 캔버스 기준 0~1 정규화
 interface Stroke { tool: 'blue' | 'green' | 'red'; width: number; pts: Pt[]; }
 
-// 캔버스가 보드(그리드) 밖으로 얼마나 확장되는가 — 여백에 필기/우클릭 가능
-const MARGIN_PX = 44;
 const RADIAL_R = 70;   // 아이템 배치 반경
 const HIT_PX = 12;     // 지우개 hit 반경
 const STROKE_W = 3;
@@ -47,12 +48,16 @@ export function PenLayer() {
   const strokesRef = useRef<Stroke[]>([]);          // 렌더는 ref로(리렌더 없이 그림)
   const curRef = useRef<Stroke | null>(null);
   const erasingRef = useRef(false);
-  const toolRef = useRef<PenTool>('off');
 
-  const [tool, setTool] = useState<PenTool>('off');
+  const tool = useGameStore(s => s.penTool);
+  const setTool = useGameStore(s => s.setPenTool);
+  const toolRef = useRef<PenTool>(tool);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+
   const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
 
-  useEffect(() => { toolRef.current = tool; }, [tool]);
+  // 테스트 종료(언마운트) 시 펜 상태 초기화
+  useEffect(() => () => { useGameStore.getState().setPenTool('off'); }, []);
 
   // ── 색 문자열 해석(토큰 → 실제 색) ──
   const resolvedColor = useCallback((t: 'blue' | 'green' | 'red') => {
@@ -101,7 +106,6 @@ export function PenLayer() {
     redraw();
   }, [redraw]);
 
-  // 리사이즈 감시
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -117,21 +121,26 @@ export function PenLayer() {
     return { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height };
   }, []);
 
-  // 그리드(보드) 영역 = 캔버스 부모 rect. 이 안의 우클릭은 기물 회전 몫 → 메뉴 안 뜸.
+  // 그리드(보드) 영역 = data-board-grid 마커 rect. 이 안은 기물 몫 → 그리기/메뉴 제외.
   const isOverGrid = useCallback((clientX: number, clientY: number): boolean => {
-    const parent = canvasRef.current?.parentElement;
-    if (!parent) return false;
-    const r = parent.getBoundingClientRect();
+    const grid = document.querySelector('[data-board-grid]');
+    if (!grid) return false;
+    const r = grid.getBoundingClientRect();
     return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  }, []);
+
+  const inCanvas = useCallback((clientX: number, clientY: number): boolean => {
+    const r = canvasRef.current?.getBoundingClientRect();
+    return !!r && clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
   }, []);
 
   // ── 지우개: 커서 근처 획 통째 삭제 ──
   const eraseAt = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
     const W = canvas.clientWidth, H = canvas.clientHeight;
-    const px = clientX - canvas.getBoundingClientRect().left;
-    const py = clientY - canvas.getBoundingClientRect().top;
+    const px = clientX - rect.left, py = clientY - rect.top;
     const before = strokesRef.current.length;
     strokesRef.current = strokesRef.current.filter(s => {
       const p = s.pts;
@@ -144,37 +153,53 @@ export function PenLayer() {
     if (strokesRef.current.length !== before) redraw();
   }, [redraw]);
 
-  // ── 그리기 입력 (도구 활성 시에만 pointer-events:auto) ──
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    if (radial) { setRadial(null); return; }
-    const t = toolRef.current;
-    if (t === 'off') return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    if (t === 'erase') { erasingRef.current = true; eraseAt(e.clientX, e.clientY); return; }
-    const s: Stroke = { tool: t, width: STROKE_W, pts: [toNorm(e.clientX, e.clientY)] };
-    strokesRef.current.push(s);
-    curRef.current = s;
-    drawStroke(s);
-  }, [radial, eraseAt, toNorm, drawStroke]);
+  // ── 그리기 입력: 중앙 섹션(캔버스 부모)에 리스너. 캔버스는 pointer-events:none 이라
+  //    그리드는 항상 살아있고, 여기선 '그리드 밖'에서 시작한 좌드래그만 그린다. ──
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const section = canvas?.parentElement;
+    if (!section) return;
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (erasingRef.current) { eraseAt(e.clientX, e.clientY); return; }
-    if (!curRef.current) return;
-    curRef.current.pts.push(toNorm(e.clientX, e.clientY));
-    redraw();
-  }, [eraseAt, toNorm, redraw]);
+    function onDown(e: PointerEvent) {
+      if (e.button !== 0) return;
+      if (radial) return;                                   // 메뉴 열림 상태는 바깥클릭 핸들러가 처리
+      const t = toolRef.current;
+      if (t === 'off') return;
+      if (isOverGrid(e.clientX, e.clientY)) return;         // 그리드 위 → 기물 조작에 양보
+      if (!inCanvas(e.clientX, e.clientY)) return;
+      section!.setPointerCapture?.(e.pointerId);
+      if (t === 'erase') { erasingRef.current = true; eraseAt(e.clientX, e.clientY); return; }
+      const s: Stroke = { tool: t, width: STROKE_W, pts: [toNorm(e.clientX, e.clientY)] };
+      strokesRef.current.push(s);
+      curRef.current = s;
+      drawStroke(s);
+    }
+    function onMove(e: PointerEvent) {
+      if (erasingRef.current) { eraseAt(e.clientX, e.clientY); return; }
+      if (!curRef.current) return;
+      curRef.current.pts.push(toNorm(e.clientX, e.clientY));
+      redraw();
+    }
+    function onUp() { curRef.current = null; erasingRef.current = false; }
 
-  const endStroke = useCallback(() => { curRef.current = null; erasingRef.current = false; }, []);
+    section.addEventListener('pointerdown', onDown);
+    section.addEventListener('pointermove', onMove);
+    section.addEventListener('pointerup', onUp);
+    section.addEventListener('pointercancel', onUp);
+    return () => {
+      section.removeEventListener('pointerdown', onDown);
+      section.removeEventListener('pointermove', onMove);
+      section.removeEventListener('pointerup', onUp);
+      section.removeEventListener('pointercancel', onUp);
+    };
+  }, [radial, isOverGrid, inCanvas, eraseAt, toNorm, drawStroke, redraw]);
 
-  // ── 우클릭 → 방사형 메뉴 (그리드 밖에서만; 도구 활성 중엔 어디서든 = 전환/끄기용) ──
+  // ── 우클릭 → 방사형 메뉴 (그리드 밖 + 중앙 섹션 안에서만; 그리드 위는 기물 회전) ──
   useEffect(() => {
     function onCtx(e: MouseEvent) {
       if (radial) { e.preventDefault(); setRadial(null); return; }
-      if (toolRef.current === 'off' && isOverGrid(e.clientX, e.clientY)) return; // 기물 회전에 양보
-      // 캔버스(여백) 밖이면 무시 (다른 UI 우클릭 보존)
-      const r = canvasRef.current?.getBoundingClientRect();
-      if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      if (isOverGrid(e.clientX, e.clientY)) return;         // 기물 회전에 양보
+      if (!inCanvas(e.clientX, e.clientY)) return;          // 사이드 패널 등 다른 UI 보존
       e.preventDefault();
       setRadial({ x: e.clientX, y: e.clientY });
     }
@@ -184,7 +209,7 @@ export function PenLayer() {
     window.addEventListener('contextmenu', onCtx);
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('contextmenu', onCtx); window.removeEventListener('keydown', onKey); };
-  }, [radial, isOverGrid]);
+  }, [radial, isOverGrid, inCanvas, setTool]);
 
   // 메뉴 열렸을 때 바깥 클릭 닫기
   useEffect(() => {
@@ -200,23 +225,14 @@ export function PenLayer() {
     if (t === 'clear') { strokesRef.current = []; redraw(); }
     else setTool(t);
     setRadial(null);
-  }, [redraw]);
+  }, [redraw, setTool]);
 
   return (
     <>
+      {/* 항상 pointer-events:none — 그리드/기물 조작을 절대 막지 않는다 */}
       <canvas
         ref={canvasRef}
-        className="absolute z-[3] touch-none"
-        style={{
-          top: -MARGIN_PX, left: -MARGIN_PX, right: -MARGIN_PX, bottom: -MARGIN_PX,
-          width: `calc(100% + ${MARGIN_PX * 2}px)`, height: `calc(100% + ${MARGIN_PX * 2}px)`,
-          pointerEvents: tool === 'off' ? 'none' : 'auto',
-          cursor: tool === 'off' ? 'default' : (tool === 'erase' ? 'cell' : 'crosshair'),
-        }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endStroke}
-        onPointerCancel={endStroke}
+        className="absolute inset-0 w-full h-full z-[3] pointer-events-none touch-none"
       />
 
       {/* 현재 도구 표시(도구 활성 시) */}
@@ -225,7 +241,7 @@ export function PenLayer() {
           {tool !== 'erase'
             ? <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: COLOR_VAR[tool] }} />
             : <span>🩹</span>}
-          {TOOL_LABEL[tool]} · 우클릭 메뉴 · Esc 끄기
+          {TOOL_LABEL[tool]} · 그리드 밖 필기 · 우클릭 메뉴 · Esc 끄기
         </div>
       )}
 
