@@ -108,6 +108,7 @@ RayTracer/
 │   │   │   ├── GridCell.tsx             # 개별 셀 (SVG + 회전 + 🎒/🔒/🔄 특성 배지)
 │   │   │   ├── LaserCanvas.tsx          # 레이저 오버레이 캔버스
 │   │   │   ├── PiecePopover.tsx         # 선택 기물 플로팅 미니 메뉴 (데스크탑 전용)
+│   │   │   ├── PenLayer.tsx             # 필기 오버레이 (테스트 모드 전용, 그리드 밖 우클릭→방사형 3색/지우개)
 │   │   │   └── SelectedPieceInfo.tsx    # 선택 기물 정보+편집 (인스펙터/모바일 시트 공용)
 │   │   │
 │   │   ├── palette/
@@ -325,6 +326,7 @@ Header
 | **새 빌트인 기물 추가** | `types/game.ts` (PieceType), `lib/laserEngine.ts` (DEFAULT_DEFS) | `lib/svgArt.ts` (SVG_ART), `lib/pieceActions.ts` (PIECE_LABELS), `lib/pieceConfig.ts` (BASIC/INTERMEDIATE/ADVANCED 배열), `tests/` |
 | **커스텀 기물 / 기물 동작 런타임 수정** | (코드 수정 불필요) `/admin` 어드민 페이지 | `lib/pieceConfig.ts`, `pages/AdminPage.tsx` |
 | **레이저 반사/기물 동작 로직 수정** | `lib/laserEngine.ts` (PieceBehaviorDef, applyEffect, trace) | `tests/laserEngine.test.ts`, `tests/groupA/B.test.ts` |
+| **펜/필기 오버레이** | `components/game/PenLayer.tsx` (별도 캔버스, 방사형 메뉴, 획 로컬 state) | `components/game/GameBoard.tsx` (테스트 모드 마운트·key), `styles/global.css` (`--pen-*`, pen-radial-pop) |
 | **레이저 렌더 스타일 변경** | `lib/laserEngine.ts` (drawSegments) | `styles/global.css` (`--laser` 토큰), `lib/artClip.ts` (빔 끝점 아트 클리핑) |
 | **승리 판정 / 타겟 카운트** | `lib/laserEngine.ts` (computeLaser, isTargetType) | `components/layout/StatusBar.tsx`, `components/layout/InspectorPanel.tsx` |
 | **드래그앤드롭 버그** | `hooks/useGridDragDrop.ts` | `store/gameStore.ts` (setCell, swapCells), `components/game/GridCell.tsx` |
