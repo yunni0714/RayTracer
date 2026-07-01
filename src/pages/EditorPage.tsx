@@ -6,6 +6,7 @@ import { Notification } from '../components/layout/Notification';
 import { StatusBar } from '../components/layout/StatusBar';
 import { InspectorPanel } from '../components/layout/InspectorPanel';
 import { GameBoard } from '../components/game/GameBoard';
+import { PenLayer } from '../components/game/PenLayer';
 import { SelectedPieceInfo } from '../components/game/SelectedPieceInfo';
 import { PalettePanel } from '../components/palette/PalettePanel';
 import { TestModeInventory } from '../components/palette/TestModeInventory';
@@ -95,9 +96,12 @@ export function EditorPage() {
                 {toolsZone}
               </aside>
 
-              {/* ② 중앙: 캔버스(보드) — 모바일은 전체폭 */}
-              <section className="flex-1 overflow-auto p-3 lg:p-4 flex items-start justify-center min-h-0">
+              {/* ② 중앙: 캔버스(보드) — 모바일은 전체폭.
+                  relative: 필기 오버레이(PenLayer)가 이 중앙 영역 전체를 덮는다. */}
+              <section className="relative flex-1 overflow-auto p-3 lg:p-4 flex items-start justify-center min-h-0">
                 <GameBoard />
+                {/* 필기 오버레이: 플레이 모드에서만. 종료(언마운트)/맵전환(key 리마운트) 시 소멸 */}
+                {!isEditorMode && <PenLayer key={currentLoadedMapObj?.id ?? 'local'} />}
               </section>
 
               {/* ③ 우 존 (데스크탑): 인스펙터/맵정보 + (플레이) 다음문제·풀이제안.

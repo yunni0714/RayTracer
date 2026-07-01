@@ -59,6 +59,9 @@ interface NotificationState {
 
 export type ActiveModal = 'upload' | 'suggestion' | 'nickname' | 'changeNickname' | null;
 
+// 필기 오버레이(PenLayer) 도구. 'off'면 그리기 비활성.
+export type PenTool = 'off' | 'blue' | 'green' | 'red' | 'erase';
+
 interface GameStore {
   // ── 게임 그리드 ──────────────────────────────
   mapData: (CellData | null)[][];
@@ -87,6 +90,9 @@ interface GameStore {
 
   // ── 레이저 ───────────────────────────────────
   isLaserOn: boolean;
+
+  // ── 필기 오버레이 (테스트 모드) ──────────────
+  penTool: PenTool;
 
   // ── 라이브러리 ───────────────────────────────
   isLibraryMode: boolean;
@@ -146,6 +152,9 @@ interface GameStore {
   toggleLaser: () => void;
   setLaserOn: (on: boolean) => void;
 
+  // ── 액션: 필기 ───────────────────────────────
+  setPenTool: (t: PenTool) => void;
+
   // ── 액션: 라이브러리 ─────────────────────────
   setLibraryMode: (on: boolean) => void;
   setAllLibraryMaps: (maps: MapDocument[]) => void;
@@ -192,6 +201,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isModLockActive: false,
   isModInvActive: false,
   isLaserOn: false,
+  penTool: 'off',
   isLibraryMode: false,
   allLibraryMaps: [],
   currentLoadedMapObj: null,
@@ -416,7 +426,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   // ── 도구 선택 ─────────────────────────────────
-  setSelectedTool: (tool) => set({ selectedTool: tool }),
+  // 기물 도구를 고르면(인벤/팔레트) 필기 펜은 자동 해제 — 기물 배치/조작이 우선.
+  setSelectedTool: (tool) => set(tool ? { selectedTool: tool, penTool: 'off' } : { selectedTool: tool }),
   setSelectedCell: (cell) => set({ selectedCell: cell }),
   setModRotatable: (v) => set({ isModRotatableActive: v }),
   setModLock: (v) => set({ isModLockActive: v }),
@@ -425,6 +436,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // ── 레이저 ───────────────────────────────────
   toggleLaser: () => set((s) => ({ isLaserOn: !s.isLaserOn })),
   setLaserOn: (on) => set({ isLaserOn: on }),
+
+  // ── 필기 ─────────────────────────────────────
+  setPenTool: (t) => set({ penTool: t }),
 
   // ── 라이브러리 ───────────────────────────────
   setLibraryMode: (on) => set({ isLibraryMode: on }),
