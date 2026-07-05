@@ -104,8 +104,7 @@ export function rotatePiece(row: number, col: number): boolean {
   const cell = state.mapData[row][col];
   if (!cell || NON_ROTATABLE.includes(cell.type)) return false;
   if (!state.isEditorMode && !cell.canRotate) return false;
-  // 회전 가능 기물을 회전시키면 필기 펜은 자동 해제 — 기물 조작이 우선.
-  if (state.penTool !== 'off') state.setPenTool('off');
+  // 회전해도 필기 펜은 유지 — 기물을 돌린 뒤 이어서 경로를 그릴 수 있게.
   state.saveUndoSnapshot();
   const step = getRotationStep(cell.type);
   let newRotation: number;

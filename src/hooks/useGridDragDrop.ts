@@ -75,6 +75,9 @@ export function useGridDragDrop(gridRef: React.RefObject<HTMLDivElement | null>)
     function onPointerDown(e: PointerEvent): void {
       if (!e.isPrimary) return; // 멀티터치 보조 포인터 무시
       if (e.button !== 0) return; // 주 버튼(좌클릭/터치)만
+      // 필기 펜 활성 중엔 좌클릭을 그리기에 양보 (그리드 위에서도 그릴 수 있게).
+      // 기물 회전은 우클릭(onContextMenu)이라 영향 없음.
+      if (useGameStore.getState().penTool !== 'off') return;
 
       const target = e.target as HTMLElement;
       const cellEl = target.closest('[data-row]') as HTMLElement | null;

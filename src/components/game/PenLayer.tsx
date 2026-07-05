@@ -4,10 +4,10 @@ import type { PenTool } from '../../store/gameStore';
 
 // 테스트(플레이) 모드 전용 필기 오버레이.
 // - 그리드 밖(여백)에서 우클릭 → 마우스 중심 방사형 메뉴(3색/지우개/전체지우기/펜끄기).
-// - 캔버스는 항상 pointer-events:none — 그리드(기물 배치/회전/선택/드래그)는 언제나 살아있다.
-//   그리기는 중앙 섹션에 붙은 리스너가 처리하되, '그리드 밖'에서 시작한 드래그만 그린다.
-// - 인벤/팔레트 기물 선택(setSelectedTool)이나 회전 가능 기물 회전(rotatePiece) 시
-//   스토어가 penTool 을 'off' 로 되돌린다 → 기물 조작이 항상 우선.
+// - 캔버스는 항상 pointer-events:none. 펜 활성 중엔 useGridDragDrop 이 좌클릭을 필기에
+//   양보하므로 그리드 안/밖 어디서든 그리기를 시작할 수 있다. 우클릭 회전은 그대로 동작.
+// - 인벤/팔레트 기물 선택(setSelectedTool) 시엔 스토어가 penTool 을 'off' 로 되돌린다.
+//   기물 회전(rotatePiece)은 펜을 끄지 않는다 — 회전 후에도 이어서 그릴 수 있게.
 // - 획은 컴포넌트 로컬 state → 언마운트(테스트 종료)/맵 전환(key 리마운트) 시 자동 소멸.
 // - 레이저와 분리된 별도 캔버스라 지우개는 레이저에 영향 없음.
 
@@ -153,8 +153,8 @@ export function PenLayer() {
     if (strokesRef.current.length !== before) redraw();
   }, [redraw]);
 
-  // ── 그리기 입력: 중앙 섹션(캔버스 부모)에 리스너. 캔버스는 pointer-events:none 이라
-  //    그리드는 항상 살아있고, 여기선 '그리드 밖'에서 시작한 좌드래그만 그린다. ──
+  // ── 그리기 입력: 중앙 섹션(캔버스 부모)에 리스너. 캔버스는 pointer-events:none 이고
+  //    펜 활성 중엔 그리드가 좌클릭을 양보하므로 그리드 안/밖 모두 좌드래그로 그린다. ──
   useEffect(() => {
     const canvas = canvasRef.current;
     const section = canvas?.parentElement;
@@ -165,7 +165,8 @@ export function PenLayer() {
       if (radial) return;                                   // 메뉴 열림 상태는 바깥클릭 핸들러가 처리
       const t = toolRef.current;
       if (t === 'off') return;
-      if (isOverGrid(e.clientX, e.clientY)) return;         // 그리드 위 → 기물 조작에 양보
+      // 선택 기물 팝오버(회전/회수 등) 버튼 위 클릭은 그리기 대신 버튼 조작에 양보
+      if ((e.target as HTMLElement).closest('[data-testid="piece-popover"]')) return;
       if (!inCanvas(e.clientX, e.clientY)) return;
       section!.setPointerCapture?.(e.pointerId);
       if (t === 'erase') { erasingRef.current = true; eraseAt(e.clientX, e.clientY); return; }
@@ -241,7 +242,7 @@ export function PenLayer() {
           {tool !== 'erase'
             ? <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: COLOR_VAR[tool] }} />
             : <span>🩹</span>}
-          {TOOL_LABEL[tool]} · 그리드 밖 필기 · 우클릭 메뉴 · Esc 끄기
+          {TOOL_LABEL[tool]} · 그리드 위/밖 필기 · 우클릭 메뉴 · Esc 끄기
         </div>
       )}
 
