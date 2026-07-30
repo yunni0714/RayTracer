@@ -119,7 +119,7 @@ RayTracer/
 │   │   ├── library/
 │   │   │   ├── LibraryScreen.tsx        # 라이브러리 (카테고리 5종, 검색/정렬, 미리보기 패널)
 │   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 제목, 난이도 배지, 반응)
-│   │   │   ├── MiniGrid.tsx             # NxN 미니 그리드 렌더러 (v1: pixel, v2: aspect-ratio)
+│   │   │   ├── MiniGrid.tsx             # NxN 미니 그리드 렌더러 (v1: pixel, v2: aspect-ratio). 회전형 고정 기물은 0도 렌더(정답 은닉), revealRotation prop으로 opt-out
 │   │   │   ├── LoadedMapInfo.tsx        # 로드 맵 정보/반응/난이도투표, 소유자 수정·삭제, 풀이 제안
 │   │   │   ├── RightSidePanel.tsx       # 수직 탭 패널 (다음 문제 / 풀이 제안)
 │   │   │   ├── NextMapPanel.tsx         # 미플레이 우선 랜덤 3개 추천
@@ -314,7 +314,7 @@ Header
 - **`PiecePopover`** (데스크탑) / **`SelectedPieceInfo`** (인스펙터·모바일 공용): 같은 `pieceActions`를 호출하므로 자동 동기화.
 - **`PalettePanel`**: 폴더 탭은 config(`getFolders`/`getPieceFolder`) 연동, hidden 기물 제외, 커스텀 기물 포함. 특성 덧칠 칩 3종(🔄/🔒/🎒)은 상호 배타 규칙 있음. JSON 가져오기/내보내기, 맵 등록(신규일 때만).
 - **`LibraryScreen`**: 카테고리 5종 — 추천(👍3+), 원본(author='RayOriginal'), 최근, 명예의전당(상위 20), 내 맵. 검색 시 카테고리 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
-- **`UploadModal`**: 신규 업로드 시 공유 URL 자동 클립보드 복사 + 업로드된 맵 즉시 플레이 로드. 수정 시 `version` +1. `canRotate=true` 기물은 rotation 0으로 저장.
+- **`UploadModal`**: 신규 업로드 시 공유 URL 자동 클립보드 복사 + 업로드된 맵 즉시 플레이 로드. 수정 시 `version` +1. `canRotate=true` 기물도 작성자가 맞춘 회전값(=정답)을 그대로 저장 — 은닉은 로드 시 `loadMapForPlay`/`MiniGrid`가 담당.
 - 기물 SVG를 렌더하는 컴포넌트는 `useGameStore(s => s.pieceConfigRev)` 구독으로 config 갱신 시 리렌더.
 
 ---
@@ -472,6 +472,7 @@ function invKey(type, canRotate, rotation): string {
 
 **라이브러리/URL/다음문제 맵 로드** (`loadMapForPlay(grid, mapDoc)`):
 - 단일 `set()`으로 원자적 업데이트 (중간 상태 방지). `gridSize = grid.length`, `isLaserOn: true` 자동.
+- 플레이 그리드의 `canRotate && !isInventory` 기물은 `normalizePlayCell`이 rotation 0으로 정규화(정답 회전 은닉). `editorMapDataBackup`은 원본 유지 — 맵 수정 저장이 이 원본을 DB로 보낸다.
 
 **맵 수정 모드** (`enterMapEditMode()` / `exitMapEditMode({restore?})`):
 - 진입: 풀 그리드(인벤 포함) 복원 + `mapEditOriginalBackup` 저장
@@ -484,7 +485,7 @@ function invKey(type, canRotate, rotation): string {
 - resolver는 모듈 변수 보관. `ConfirmHost`가 `confirmState`를 렌더. 네이티브 `window.confirm` 대체.
 
 **정답 보기** (`showAnswer()`):
-- 현재 플레이 상태 백업 후 `currentLoadedMapObj.mapData`(원본 정답)를 그리드에 적용.
+- 현재 플레이 상태 백업 후 `currentLoadedMapObj.mapData`(원본 정답)를 그리드에 적용. 플레이 그리드 정규화(`normalizePlayCell`)와 무관하게 원본 DTO를 읽으므로 정답 회전 복원은 무손상.
 
 ---
 

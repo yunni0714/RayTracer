@@ -35,7 +35,8 @@ npm run lint       # ESLint
 - **UI는 공용 프리미티브 사용** (`src/components/ui/`): 버튼=`Button`/`IconButton`, 다이얼로그=`Modal`, 배지=`Pill`, 탭=`Tabs`, 입력=`Field`. 인라인 hover 스타일 금지.
 - **인벤토리 키 규칙** (`invKey()`): `type_canRotate_rot`. 회전 가능 기물은 rot=0 통일, block은 항상 rot=0. 이 규칙은 저장/환수/카운트 전부가 공유 — 변경 시 전 경로 영향.
 - **canMove는 isInventory에 종속** — 유저지급 기물만 플레이 중 이동 가능 (`getPieceDefaults()`, 덧칠, 팝오버 토글 모두 이 규칙을 지킨다).
-- 맵 업로드/수정(UploadModal)은 `canRotate=true` 기물도 **작성자가 맞춘 회전값을 그대로 저장** — "정답 보기"(`showAnswer`)가 회전을 복원하려면 필요. 팔레트/인벤토리는 로드 시 `buildInventory`/`invKey`가 다시 `rotation: 0`으로 정규화하므로 영향 없음. (JSON 내보내기 `PalettePanel`·제안 `SuggestionModal`은 아직 0 정규화 — 정답 회전 보존 필요 시 동일 수정.)
+- **저장된 rotation = 정답 회전.** 맵 업로드/수정(UploadModal)·JSON 내보내기(PalettePanel)·제안(SuggestionModal)은 `canRotate=true` 기물도 작성자가 맞춘 회전값을 그대로 저장 — "정답 보기"(`showAnswer`)와 제안 풀이 미리보기가 이 값을 복원한다.
+- **플레이어에게 보이는 지점에서만 정답 회전을 은닉**: `loadMapForPlay`가 플레이 그리드의 `canRotate && !isInventory` 기물 rotation을 0으로 정규화(`normalizePlayCell`), 인벤토리 기물은 `buildInventory`/`invKey`가 rot 0 정규화, `MiniGrid` 썸네일도 `revealRotation` prop 없으면 동일 규칙으로 렌더(제안 썸네일만 opt-out). **`editorMapDataBackup`·`toggleMode`·`exitMapEditMode`는 원본 유지** — 맵 수정 저장(UploadModal)이 이 원본을 읽어 DB로 보내므로 여기에 정규화를 적용하면 저장된 정답 회전이 파괴된다 (`tests/loadMapForPlay.test.ts`가 회귀 방지).
 
 ## 테스트
 
