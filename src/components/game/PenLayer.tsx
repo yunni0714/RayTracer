@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import type { PenTool } from '../../store/gameStore';
+import type { PenPoint, PenStroke } from '../../types/game';
 
 // 테스트(플레이) 모드 전용 필기 오버레이.
 // - 그리드 밖(여백)에서 우클릭 → 마우스 중심 방사형 메뉴(3색/지우개/전체지우기/펜끄기).
@@ -8,11 +9,9 @@ import type { PenTool } from '../../store/gameStore';
 //   양보하므로 그리드 안/밖 어디서든 그리기를 시작할 수 있다. 우클릭 회전은 그대로 동작.
 // - 인벤/팔레트 기물 선택(setSelectedTool) 시엔 스토어가 penTool 을 'off' 로 되돌린다.
 //   기물 회전(rotatePiece)은 펜을 끄지 않는다 — 회전 후에도 이어서 그릴 수 있게.
-// - 획은 컴포넌트 로컬 state → 언마운트(테스트 종료)/맵 전환(key 리마운트) 시 자동 소멸.
+// - 확정된 획은 스토어(penStrokes)에 커밋 → 기물과 같은 undo 스택(Ctrl+Z)에 통합.
+//   진행 중 획만 로컬 ref. 테스트 종료/맵 전환 시 스토어 액션이 penStrokes 를 비운다.
 // - 레이저와 분리된 별도 캔버스라 지우개는 레이저에 영향 없음.
-
-type Pt = { x: number; y: number };                 // 캔버스 기준 0~1 정규화
-interface Stroke { tool: 'blue' | 'green' | 'red'; width: number; pts: Pt[]; }
 
 const RADIAL_R = 70;   // 아이템 배치 반경
 const HIT_PX = 12;     // 지우개 hit 반경
@@ -45,19 +44,24 @@ function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, b
 export function PenLayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const strokesRef = useRef<Stroke[]>([]);          // 렌더는 ref로(리렌더 없이 그림)
-  const curRef = useRef<Stroke | null>(null);
+  const strokesRef = useRef<PenStroke[]>([]);       // 작업 사본(렌더는 ref로, 리렌더 없이 그림)
+  const curRef = useRef<PenStroke | null>(null);
   const erasingRef = useRef(false);
 
   const tool = useGameStore(s => s.penTool);
   const setTool = useGameStore(s => s.setPenTool);
+  const storeStrokes = useGameStore(s => s.penStrokes); // 커밋된 획 (undo 대상)
   const toolRef = useRef<PenTool>(tool);
   useEffect(() => { toolRef.current = tool; }, [tool]);
 
   const [radial, setRadial] = useState<{ x: number; y: number } | null>(null);
 
   // 테스트 종료(언마운트) 시 펜 상태 초기화
-  useEffect(() => () => { useGameStore.getState().setPenTool('off'); }, []);
+  useEffect(() => () => {
+    const st = useGameStore.getState();
+    st.setPenTool('off');
+    st.setPenStrokes([]);
+  }, []);
 
   // ── 색 문자열 해석(토큰 → 실제 색) ──
   const resolvedColor = useCallback((t: 'blue' | 'green' | 'red') => {
@@ -66,7 +70,7 @@ export function PenLayer() {
     return getComputedStyle(el).getPropertyValue(`--pen-${t}`).trim() || COLOR_VAR[t];
   }, []);
 
-  const drawStroke = useCallback((s: Stroke) => {
+  const drawStroke = useCallback((s: PenStroke) => {
     const ctx = ctxRef.current, canvas = canvasRef.current;
     if (!ctx || !canvas) return;
     const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -92,6 +96,23 @@ export function PenLayer() {
     for (const s of strokesRef.current) drawStroke(s);
   }, [drawStroke]);
 
+  // 스토어 커밋 획 채택: undo/전체지우기 등 외부 변경을 캔버스에 반영.
+  // 자기 커밋 직후에도 한 번 돌지만 내용 동일 — 재그리기 비용만.
+  // 진행 중 획은 취소(그리는 도중 Ctrl+Z 가 눌린 경우의 안전장치).
+  useEffect(() => {
+    curRef.current = null;
+    erasingRef.current = false;
+    strokesRef.current = [...storeStrokes];
+    redraw();
+  }, [storeStrokes, redraw]);
+
+  // 획 확정(그리기 끝/지우개 끝/전체 지우기) 커밋 — 직전 상태를 undo 스냅샷으로.
+  const commitStrokes = useCallback((strokes: PenStroke[]) => {
+    const st = useGameStore.getState();
+    st.saveUndoSnapshot();
+    st.setPenStrokes(strokes);
+  }, []);
+
   // ── 캔버스 크기(dpr) 설정 + 전체 재그리기 ──
   const setup = useCallback(() => {
     const canvas = canvasRef.current;
@@ -116,7 +137,7 @@ export function PenLayer() {
   }, [setup]);
 
   // ── 좌표 변환 ──
-  const toNorm = useCallback((clientX: number, clientY: number): Pt => {
+  const toNorm = useCallback((clientX: number, clientY: number): PenPoint => {
     const r = canvasRef.current!.getBoundingClientRect();
     return { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height };
   }, []);
@@ -170,7 +191,7 @@ export function PenLayer() {
       if (!inCanvas(e.clientX, e.clientY)) return;
       section!.setPointerCapture?.(e.pointerId);
       if (t === 'erase') { erasingRef.current = true; eraseAt(e.clientX, e.clientY); return; }
-      const s: Stroke = { tool: t, width: STROKE_W, pts: [toNorm(e.clientX, e.clientY)] };
+      const s: PenStroke = { tool: t, width: STROKE_W, pts: [toNorm(e.clientX, e.clientY)] };
       strokesRef.current.push(s);
       curRef.current = s;
       drawStroke(s);
@@ -181,7 +202,16 @@ export function PenLayer() {
       curRef.current.pts.push(toNorm(e.clientX, e.clientY));
       redraw();
     }
-    function onUp() { curRef.current = null; erasingRef.current = false; }
+    function onUp() {
+      // 그리기 끝 → 새 획 커밋. 지우개 끝 → 삭제가 있었을 때만 커밋(획수 변화로 판정,
+      // 지우개는 획을 통째로만 지우므로 충분). 커밋 직전 상태가 undo 스냅샷이 된다.
+      const drew = curRef.current !== null;
+      const erased = erasingRef.current
+        && strokesRef.current.length !== useGameStore.getState().penStrokes.length;
+      curRef.current = null;
+      erasingRef.current = false;
+      if (drew || erased) commitStrokes([...strokesRef.current]);
+    }
 
     section.addEventListener('pointerdown', onDown);
     section.addEventListener('pointermove', onMove);
@@ -193,7 +223,7 @@ export function PenLayer() {
       section.removeEventListener('pointerup', onUp);
       section.removeEventListener('pointercancel', onUp);
     };
-  }, [radial, isOverGrid, inCanvas, eraseAt, toNorm, drawStroke, redraw]);
+  }, [radial, isOverGrid, inCanvas, eraseAt, toNorm, drawStroke, redraw, commitStrokes]);
 
   // ── 우클릭 → 방사형 메뉴 (그리드 밖 + 중앙 섹션 안에서만; 그리드 위는 기물 회전) ──
   useEffect(() => {
@@ -223,10 +253,11 @@ export function PenLayer() {
   }, [radial]);
 
   const pickItem = useCallback((t: PenTool | 'clear') => {
-    if (t === 'clear') { strokesRef.current = []; redraw(); }
+    // 전체 지우기도 undo 대상 — 빈 배열 커밋(채택 effect 가 캔버스를 비운다)
+    if (t === 'clear') { if (strokesRef.current.length > 0) commitStrokes([]); }
     else setTool(t);
     setRadial(null);
-  }, [redraw, setTool]);
+  }, [commitStrokes, setTool]);
 
   return (
     <>

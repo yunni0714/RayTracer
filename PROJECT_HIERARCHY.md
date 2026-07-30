@@ -138,7 +138,10 @@ RayTracer/
 │   ├── groupA.test.ts                   # 무상태 기믹 기물 6종
 │   ├── groupB.test.ts                   # 조건부/상태형 기물 5종 (고정점 루프)
 │   ├── gridSize.test.ts                 # emptyGrid/setGridSize 리사이즈
-│   └── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
+│   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
+│   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
+│   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
+│   └── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)
@@ -682,6 +685,9 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `groupB.test.ts` | transistor/cross/priority gate, target/inverting projector (고정점 루프) |
 | `gridSize.test.ts` | emptyGrid(size), setGridSize 확대/축소, 테스트 모드 리사이즈 불가 |
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
+| `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
+| `penUndo.test.ts` | GameSnapshot.penStrokes — 획 커밋/전체지우기 undo, 기물·펜 혼합 순서, 모드 전환 초기화 |
+| `mapEditSave.test.ts` | getAuthoredGrid — 테스트 상태 저장/exitMapEditMode(restore:false) 시 인벤토리 기물 보존 |
 
 ### E2E 테스트 (Playwright, `e2e/`)
 

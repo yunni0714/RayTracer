@@ -92,9 +92,19 @@ export interface SuggestionDocument {
 
 export type GameMode = 'editor' | 'test' | 'mapEdit';
 
+// 필기 오버레이(PenLayer) 획. 좌표는 캔버스 기준 0~1 정규화.
+// 커밋된 획은 불변으로 취급 — 배열은 항상 통째로 교체한다 (undo 스냅샷이 참조 공유).
+export interface PenPoint { x: number; y: number }
+export interface PenStroke {
+  tool: 'blue' | 'green' | 'red';
+  width: number;
+  pts: PenPoint[];
+}
+
 export interface GameSnapshot {
   mapData: (CellData | null)[][];
   playerInventory: Record<string, InventoryItem>;
+  penStrokes: PenStroke[];
 }
 
 export interface SelectedTool {

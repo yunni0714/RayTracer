@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, emptyGrid } from '../../store/gameStore';
+import { useGameStore, emptyGrid, getAuthoredGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
 import type { CellData, Difficulty, MapDocument, MapItemDTO } from '../../types/game';
 import { Modal, Button, Label, TextInput, TextArea, Select } from '../ui';
@@ -10,19 +10,25 @@ const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane']
 export function UploadModal() {
   const {
     currentUserUid, currentUserNickname, currentLoadedMapObj,
-    mapData, closeModal, showNotification,
+    mapData, isEditorMode, editorMapDataBackup, closeModal, showNotification,
     exitMapEditMode, patchCurrentLoadedMap, loadMapForPlay,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
     currentLoadedMapObj: s.currentLoadedMapObj,
     mapData: s.mapData,
+    isEditorMode: s.isEditorMode,
+    editorMapDataBackup: s.editorMapDataBackup,
     closeModal: s.closeModal,
     showNotification: s.showNotification,
     exitMapEditMode: s.exitMapEditMode,
     patchCurrentLoadedMap: s.patchCurrentLoadedMap,
     loadMapForPlay: s.loadMapForPlay,
   })));
+
+  // 테스트 상태에서 저장하면 mapData 는 인벤토리 기물이 빠진 플레이 그리드다.
+  // 인벤토리에 남은 기물까지 포함한 작성 원본을 저장해야 유실이 없다.
+  const sourceGrid = getAuthoredGrid({ isEditorMode, mapData, editorMapDataBackup });
 
   const isEdit = currentLoadedMapObj !== null;
   const [title, setTitle] = useState(isEdit ? currentLoadedMapObj!.title : '');
@@ -32,10 +38,10 @@ export function UploadModal() {
 
   function buildMapData(): MapItemDTO[] {
     const items: MapItemDTO[] = [];
-    const size = mapData.length;
+    const size = sourceGrid.length;
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        const cell = mapData[r][c];
+        const cell = sourceGrid[r][c];
         if (cell) {
           // 회전형 기물도 작성자가 맞춘 회전값을 그대로 저장 → "정답 보기"가 회전을 복원할 수 있다.
           // 인벤토리/팔레트는 로드 시 buildInventory/invKey 가 다시 0 으로 정규화하므로 영향 없음.
@@ -65,7 +71,7 @@ export function UploadModal() {
           description: trimmedDescription,
           difficulty,
           mapData: builtMapData,
-          gridSize: mapData.length,
+          gridSize: sourceGrid.length,
           version: nextVersion,
         };
         await updateMapInDB(currentLoadedMapObj!.id, editPatch);
@@ -80,7 +86,7 @@ export function UploadModal() {
           description: trimmedDescription,
           difficulty,
           mapData: builtMapData,
-          gridSize: mapData.length,
+          gridSize: sourceGrid.length,
           reactionOk: 0,
           reactionGod: 0,
           diffVotes: {} as MapDocument['diffVotes'],
@@ -91,7 +97,7 @@ export function UploadModal() {
         const shareUrl = `${window.location.origin}${window.location.pathname}?mapId=${newId}`;
         await navigator.clipboard.writeText(shareUrl).catch(() => {});
         const newDoc: MapDocument = { id: newId, ...newDocBody };
-        const size = mapData.length;
+        const size = sourceGrid.length;
         const grid = emptyGrid(size);
         for (const item of builtMapData) {
           if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
