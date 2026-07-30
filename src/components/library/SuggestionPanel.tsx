@@ -96,7 +96,8 @@ export function SuggestionPanel() {
             {/* 썸네일 + 분류/날짜 */}
             <div className="flex items-center gap-2">
               <div className="w-14 shrink-0">
-                <MiniGrid mapData={sug.mapData} variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
+                {/* 제안 = 풀이 미리보기 — 정답 회전 그대로 표시 */}
+                <MiniGrid mapData={sug.mapData} revealRotation variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
               </div>
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 {sug.category === 'NG' ? (

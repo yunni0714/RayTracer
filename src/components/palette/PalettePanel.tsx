@@ -77,7 +77,8 @@ export function PalettePanel() {
         if (!cell) continue;
         rows.push({
           type: cell.type, x: c, y: r,
-          rotation: cell.canRotate ? 0 : cell.rotation,
+          // 회전형 기물도 작성자 회전값 그대로 내보내기 — UploadModal 저장 규칙과 동일 (라운드트립 시 정답 회전 보존)
+          rotation: cell.rotation,
           canMove: cell.canMove, canRotate: cell.canRotate, isInventory: cell.isInventory,
         });
       }

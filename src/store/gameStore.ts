@@ -35,6 +35,12 @@ function buildInventory(grid: (CellData | null)[][]): Record<string, InventoryIt
   return inv;
 }
 
+// 플레이 그리드용 셀 정규화: 보드 고정 회전형 기물은 정답 회전을 숨긴다(rotation 0).
+// editorMapDataBackup(원본)에는 절대 적용 금지 — 맵 수정 저장이 이 원본을 DB로 보낸다.
+function normalizePlayCell(c: CellData): CellData {
+  return c.canRotate && !c.isInventory ? { ...c, rotation: 0 } : { ...c };
+}
+
 const MAX_UNDO = 50;
 
 // 초기 테마: localStorage > 'light'
@@ -332,7 +338,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // 그리드·맵 메타데이터를 하나의 set()으로 원자적으로 설정해 중간 상태 어긋남을 방지한다.
   loadMapForPlay: (grid, mapDoc) => set(() => {
     const fullGrid = grid.map(r => r.map(c => c ? { ...c } : null));
-    const newMapData = grid.map(r => r.map(c => c?.isInventory ? null : (c ? { ...c } : null)));
+    const newMapData = grid.map(r => r.map(c => c?.isInventory ? null : (c ? normalizePlayCell(c) : null)));
     const newInv = buildInventory(grid);
     return {
       isEditorMode: false,

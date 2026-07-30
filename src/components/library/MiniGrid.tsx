@@ -5,13 +5,18 @@ import type { MapItemDTO } from '../../types/game';
 interface Props {
   mapData: MapItemDTO[];
   hideInventory?: boolean;
+  revealRotation?: boolean; // true면 회전형 고정 기물도 저장된(정답) 회전 그대로 렌더 — 제안 풀이 미리보기 전용
   variant?: 'v2' | 'v1';
   size?: number; // v1 전용
   gridSize?: number; // NxN. 없으면 5 (하위호환)
 }
 
-export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size = 120, gridSize = 5 }: Props) {
+export function MiniGrid({ mapData, hideInventory = false, revealRotation = false, variant = 'v2', size = 120, gridSize = 5 }: Props) {
   useGameStore(s => s.pieceConfigRev); // config 오버레이 갱신 시 리렌더
+
+  // 맵 썸네일은 정답 회전을 숨긴다(loadMapForPlay 정규화와 동일 규칙)
+  const itemDeg = (item: MapItemDTO) =>
+    !revealRotation && item.canRotate && !item.isInventory ? 0 : item.rotation;
 
   const grid: (MapItemDTO | null)[][] = Array.from({ length: gridSize }, () =>
     Array(gridSize).fill(null)
@@ -48,7 +53,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
                 {item && (
                   <div
                     style={{
-                      transform: `rotate(${item.rotation}deg)`,
+                      transform: `rotate(${itemDeg(item)}deg)`,
                       width: cellSize - 4,
                       height: cellSize - 4,
                     }}
@@ -80,7 +85,7 @@ export function MiniGrid({ mapData, hideInventory = false, variant = 'v2', size 
               {item && (
                 <div
                   style={{
-                    transform: `rotate(${item.rotation}deg)`,
+                    transform: `rotate(${itemDeg(item)}deg)`,
                     width: '75%',
                     height: '75%',
                     display: 'flex',
