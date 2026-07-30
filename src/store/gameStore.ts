@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type {
-  CellData, InventoryItem, MapDocument, SuggestionDocument, GameSnapshot, SelectedTool,
+  CellData, InventoryItem, MapDocument, SuggestionDocument, GameSnapshot, PenStroke, SelectedTool,
 } from '../types/game';
 export const DEFAULT_GRID_SIZE = 5;
 
@@ -39,6 +39,17 @@ function buildInventory(grid: (CellData | null)[][]): Record<string, InventoryIt
 // editorMapDataBackup(원본)에는 절대 적용 금지 — 맵 수정 저장이 이 원본을 DB로 보낸다.
 function normalizePlayCell(c: CellData): CellData {
   return c.canRotate && !c.isInventory ? { ...c, rotation: 0 } : { ...c };
+}
+
+// 저장/업로드용 "작성 원본" 그리드.
+// 에디터 상태면 현재 mapData, 테스트 상태면 mapData 는 인벤토리 기물이 빠진 플레이
+// 그리드라 전환 시 백업해 둔 전체 그리드(editorMapDataBackup, 인벤토리 기물 포함)를 쓴다.
+// UploadModal(맵 수정 저장)과 exitMapEditMode(restore:false)가 공유 — 테스트 상태에서
+// 저장해도 인벤토리에 남은 기물이 유실되지 않게 하는 단일 소스.
+export function getAuthoredGrid(
+  s: Pick<GameStore, 'isEditorMode' | 'mapData' | 'editorMapDataBackup'>,
+): (CellData | null)[][] {
+  return s.isEditorMode ? s.mapData : (s.editorMapDataBackup ?? s.mapData);
 }
 
 const MAX_UNDO = 50;
@@ -99,6 +110,7 @@ interface GameStore {
 
   // ── 필기 오버레이 (테스트 모드) ──────────────
   penTool: PenTool;
+  penStrokes: PenStroke[]; // 커밋된 획 (배열 통째 교체만 — undo 스냅샷이 참조 공유)
 
   // ── 라이브러리 ───────────────────────────────
   isLibraryMode: boolean;
@@ -160,6 +172,7 @@ interface GameStore {
 
   // ── 액션: 필기 ───────────────────────────────
   setPenTool: (t: PenTool) => void;
+  setPenStrokes: (strokes: PenStroke[]) => void;
 
   // ── 액션: 라이브러리 ─────────────────────────
   setLibraryMode: (on: boolean) => void;
@@ -208,6 +221,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isModInvActive: false,
   isLaserOn: false,
   penTool: 'off',
+  penStrokes: [],
   isLibraryMode: false,
   allLibraryMaps: [],
   currentLoadedMapObj: null,
@@ -279,6 +293,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const snapshot: GameSnapshot = {
       mapData: s.mapData.map(r => r.map(c => c ? { ...c } : null)),
       playerInventory: JSON.parse(JSON.stringify(s.playerInventory)),
+      penStrokes: s.penStrokes, // 커밋된 획은 불변 취급 — 참조 공유로 충분
     };
     const stack = [...s.undoStack, snapshot].slice(-MAX_UNDO);
     return { undoStack: stack };
@@ -288,7 +303,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.undoStack.length === 0) return {};
     const stack = [...s.undoStack];
     const prev = stack.pop()!;
-    return { undoStack: stack, mapData: prev.mapData, playerInventory: prev.playerInventory };
+    return {
+      undoStack: stack,
+      mapData: prev.mapData,
+      playerInventory: prev.playerInventory,
+      penStrokes: prev.penStrokes ?? s.penStrokes,
+    };
   }),
 
   clearUndoStack: () => set({ undoStack: [] }),
@@ -315,6 +335,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         mapData: newMapData,
         playerInventory: newInv,
         undoStack: [],
+        penStrokes: [],
         selectedTool: null,
         selectedCell: null,
       };
@@ -327,6 +348,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         editorMapDataBackup: null,
         editorInventoryBackup: null,
         undoStack: [],
+        penStrokes: [],
         isLaserOn: false,
         selectedTool: null,
         selectedCell: null,
@@ -350,6 +372,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       mapEditOriginalBackup: null,
       isMapEditMode: false,
       undoStack: [],
+      penStrokes: [],
       isLaserOn: true,
       isAnswerShown: false,
       answerMapBackup: null,
@@ -375,6 +398,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       mapData: fullGrid,
       playerInventory: {},
       mapEditOriginalBackup: fullGrid.map(r => r.map(c => c ? { ...c } : null)),
+      // 에디터 상태에선 백업이 stale — 저장 경로(getAuthoredGrid)가 mapData 를 읽도록 비운다
+      editorMapDataBackup: null,
+      editorInventoryBackup: null,
       selectedTool: null,
       selectedCell: null,
       isLaserOn: false,
@@ -382,13 +408,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       answerMapBackup: null,
       answerInventoryBackup: null,
       undoStack: [],
+      penStrokes: [],
     };
   }),
 
   exitMapEditMode: (opts?: { restore?: boolean }) => set((s) => {
+    // 테스트 상태에서 저장(restore:false)해도 인벤토리에 남은 기물이 유실되지 않게
+    // mapData 가 아닌 작성 원본(getAuthoredGrid)을 확정 그리드로 쓴다.
     const finalGrid = opts?.restore && s.mapEditOriginalBackup
       ? s.mapEditOriginalBackup
-      : s.mapData;
+      : getAuthoredGrid(s);
     const playGrid = finalGrid.map(r => r.map(c => c?.isInventory ? null : (c ? { ...c } : null)));
     const playerInv = buildInventory(finalGrid);
     return {
@@ -401,6 +430,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedTool: null,
       selectedCell: null,
       undoStack: [],
+      penStrokes: [],
       isLaserOn: true,
       isAnswerShown: false,
       answerMapBackup: null,
@@ -416,6 +446,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     mapData: emptyGrid(s.gridSize),
     playerInventory: {},
     undoStack: [],
+    penStrokes: [],
     isEditorMode: true,
     isMapEditMode: false,
     editorMapDataBackup: null,
@@ -445,6 +476,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // ── 필기 ─────────────────────────────────────
   setPenTool: (t) => set({ penTool: t }),
+  setPenStrokes: (strokes) => set({ penStrokes: strokes }),
 
   // ── 라이브러리 ───────────────────────────────
   setLibraryMode: (on) => set({ isLibraryMode: on }),

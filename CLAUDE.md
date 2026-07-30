@@ -37,6 +37,8 @@ npm run lint       # ESLint
 - **canMove는 isInventory에 종속** — 유저지급 기물만 플레이 중 이동 가능 (`getPieceDefaults()`, 덧칠, 팝오버 토글 모두 이 규칙을 지킨다).
 - **저장된 rotation = 정답 회전.** 맵 업로드/수정(UploadModal)·JSON 내보내기(PalettePanel)·제안(SuggestionModal)은 `canRotate=true` 기물도 작성자가 맞춘 회전값을 그대로 저장 — "정답 보기"(`showAnswer`)와 제안 풀이 미리보기가 이 값을 복원한다.
 - **플레이어에게 보이는 지점에서만 정답 회전을 은닉**: `loadMapForPlay`가 플레이 그리드의 `canRotate && !isInventory` 기물 rotation을 0으로 정규화(`normalizePlayCell`), 인벤토리 기물은 `buildInventory`/`invKey`가 rot 0 정규화, `MiniGrid` 썸네일도 `revealRotation` prop 없으면 동일 규칙으로 렌더(제안 썸네일만 opt-out). **`editorMapDataBackup`·`toggleMode`·`exitMapEditMode`는 원본 유지** — 맵 수정 저장(UploadModal)이 이 원본을 읽어 DB로 보내므로 여기에 정규화를 적용하면 저장된 정답 회전이 파괴된다 (`tests/loadMapForPlay.test.ts`가 회귀 방지).
+- **저장/확정 그리드는 `getAuthoredGrid()`** (스토어) — 에디터 상태면 `mapData`, 테스트 상태면 `editorMapDataBackup`(인벤토리 기물 포함 전체 원본). UploadModal 저장과 `exitMapEditMode(restore:false)`가 공유 — 테스트 상태에서 저장해도 인벤토리에 남은 기물이 유실되지 않는다 (`tests/mapEditSave.test.ts`가 회귀 방지). 새 저장/내보내기 경로를 추가하면 `mapData` 직접 읽기 금지, 이 헬퍼를 쓸 것.
+- **Ctrl+Z undo 스냅샷은 기물+인벤토리+필기 전부**: `GameSnapshot`에 `penStrokes` 포함. 확정 획은 스토어 `penStrokes`에만 존재(배열 통째 교체, 획 객체는 불변 취급 — 스냅샷이 참조 공유), PenLayer의 ref는 작업 사본. 획을 변경하는 새 경로는 커밋 직전 `saveUndoSnapshot()` 선행 (`tests/penUndo.test.ts`가 회귀 방지).
 
 ## 테스트
 
