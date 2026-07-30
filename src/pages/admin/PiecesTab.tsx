@@ -1,28 +1,26 @@
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore } from '../store/gameStore';
-import { isAdminUid } from '../lib/admin';
-import { getSvgArt } from '../lib/svgArt';
-import { getPieceLabel } from '../lib/pieceActions';
+import { useGameStore } from '../../store/gameStore';
+import { getSvgArt } from '../../lib/svgArt';
+import { getPieceLabel } from '../../lib/pieceActions';
 import {
   getBehaviorDef, calculateReflection,
   type PieceBehaviorDef, type FaceSpec, type FaceEffect, type FaceEffectKind,
-} from '../lib/laserEngine';
+} from '../../lib/laserEngine';
 import {
   PALETTE_ORDER, getPieceFolder, getPieceDefaults, getAllConfigEntries, applyPieceConfig,
   getFolders, getCustomTypes, DEFAULT_FOLDERS, isPieceHidden, isValidCustomTypeId,
   encodeBehaviorForStore,
   type PieceConfigEntry, type PieceFolder,
-} from '../lib/pieceConfig';
-import { savePieceConfigEntry, deletePieceConfigEntry, savePieceConfigPatch } from '../lib/firebaseService';
-import { Notification } from '../components/layout/Notification';
-import { Button, IconButton, Label, TextInput, TextArea, Select, Pill, ConfirmHost, cx } from '../components/ui';
+} from '../../lib/pieceConfig';
+import { savePieceConfigEntry, deletePieceConfigEntry, savePieceConfigPatch } from '../../lib/firebaseService';
+import { Button, IconButton, Label, TextInput, TextArea, Select, Pill, cx } from '../../components/ui';
 
 /* ════════════════════════════════════════════════════════
-   어드민 — 면별(per-face) 기물 behavior 에디터 (docs/ADMIN_PANEL.md)
+   어드민 [기물] 탭 — 면별(per-face) 기물 behavior 에디터 (docs/ADMIN_PANEL.md)
    저장 = Firestore config/pieces 머지 → 즉시 로컬 오버레이 재적용.
-   쓰기 권한 강제는 firestore.rules (이 페이지 게이트는 UI 숨김일 뿐).
+   쓰기 권한 강제는 firestore.rules (관리자 게이트는 AdminLayout, UI 숨김일 뿐).
+   상단바/탭/Notification/ConfirmHost 는 AdminLayout 이 제공한다.
    ════════════════════════════════════════════════════════ */
 
 // UI 효과 4종 (엔진 kind 와의 매핑은 아래 toUiKind / setUiKind).
@@ -278,12 +276,11 @@ function FaceSpecEditor({
   );
 }
 
-/* ── 메인 페이지 ────────────────────────────────────────── */
+/* ── 탭 본문 ────────────────────────────────────────────── */
 
-export function AdminPage() {
-  const { currentUserUid, showNotification, requestConfirm, bumpPieceConfigRev } =
+export function PiecesTab() {
+  const { showNotification, requestConfirm, bumpPieceConfigRev } =
     useGameStore(useShallow(s => ({
-      currentUserUid: s.currentUserUid,
       showNotification: s.showNotification,
       requestConfirm: s.requestConfirm,
       bumpPieceConfigRev: s.bumpPieceConfigRev,
@@ -298,10 +295,6 @@ export function AdminPage() {
   const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
   const [dropFolder, setDropFolder] = useState<string | null>(null);
   const [creating, setCreating] = useState<{ id: string; name: string; folderId: string } | null>(null);
-
-  if (!isAdminUid(currentUserUid)) {
-    return <Navigate to="/" replace />;
-  }
 
   function patchDraft(patch: Partial<Draft>) {
     setDraft(d => ({ ...d, ...patch }));
@@ -550,10 +543,12 @@ export function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-canvas text-ink">
-      {/* 상단바 */}
-      <header className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-line shadow-card">
-        <h1 className="text-lg font-extrabold tracking-tight mr-auto">🛠 기물 어드민</h1>
+    <div className="flex flex-col h-full min-h-0">
+      {/* 액션 바 — 선택된 기물에 대한 저장/숨김/삭제 (dirty·saving 상태에 종속) */}
+      <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-line">
+        <h2 className="text-sm font-extrabold tracking-tight mr-auto">
+          기물 정의 <span className="font-normal text-ink-muted">— {getPieceLabel(selectedType)}</span>
+        </h2>
         {dirty && <Pill tone="danger">저장 안 됨</Pill>}
         {!BUILTIN_SET.has(selectedType) && <Pill tone="info">커스텀</Pill>}
         {isPieceHidden(selectedType) && <Pill tone="neutral">숨김</Pill>}
@@ -568,12 +563,9 @@ export function AdminPage() {
         <Button variant="success" onClick={handleSave} disabled={saving || !dirty}>
           {saving ? '저장 중…' : '💾 저장 (전 플레이어 반영)'}
         </Button>
-        <Link to="/">
-          <Button variant="secondary">← 에디터로</Button>
-        </Link>
-      </header>
+      </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* 좌: 기물 목록 — 폴더별 섹션 (접이식 + 드래그 할당) */}
         <aside className="w-60 shrink-0 bg-surface border-r border-line p-2 overflow-y-auto flex flex-col gap-1">
           {getFolders().map(folder => {
@@ -921,9 +913,6 @@ export function AdminPage() {
           </div>
         </section>
       </div>
-
-      <Notification />
-      <ConfirmHost />
     </div>
   );
 }

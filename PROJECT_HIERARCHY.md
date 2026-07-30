@@ -32,7 +32,7 @@
 | 번들러 | Vite 6 (base: `/RayTracer/`) |
 | 스타일 | Tailwind CSS 3.4 + CSS 변수 토큰 (다크모드 `darkMode: 'class'`) |
 | 상태관리 | Zustand 5 |
-| 라우팅 | React Router DOM 6 (`/` 에디터, `/admin` 기물 어드민) |
+| 라우팅 | React Router DOM 6 (`/` 에디터, `/admin/:tab` 어드민 셸) |
 | 백엔드 | Firebase 10 (Firestore + Google Auth) |
 | 테스트 | Vitest 4 (단위) + Playwright 1.49 (E2E) |
 | 배포 | GitHub Pages (`.github/workflows/deploy.yml`) |
@@ -84,7 +84,13 @@ RayTracer/
 │   │
 │   ├── pages/
 │   │   ├── EditorPage.tsx               # 메인 L1 셸 (Header + 3-존 + StatusBar + 모달 호스트)
-│   │   └── AdminPage.tsx                # 기물 어드민 (면별 behavior 에디터, 폴더/커스텀 기물 CRUD)
+│   │   └── admin/                       # 어드민 (관리자 전용)
+│   │       ├── AdminLayout.tsx          # 어드민 셸 — 관리자 게이트 + 상단바 + 탭 라우팅(/admin/:tab)
+│   │       ├── PiecesTab.tsx            # [기물] 면별 behavior 에디터, 폴더/커스텀 기물 CRUD
+│   │       ├── MapsTab.tsx              # [맵 관리] 자리표시자 (미구현)
+│   │       ├── SuggestionsTab.tsx       # [제안 관리] 자리표시자 (미구현)
+│   │       ├── StatsTab.tsx             # [통계] 자리표시자 (미구현)
+│   │       └── TabPlaceholder.tsx       # 빈 탭 공용 패널
 │   │
 │   ├── components/
 │   │   ├── ui/                          # 공용 프리미티브 (토큰 기반, 다크 자동 대응)
@@ -193,7 +199,7 @@ RayTracer/
 - 부팅 훅 4종: `useTheme()`, `useAuth()`, `useUrlMapLoader()`, `usePieceConfigLoader()`
 - `useUrlMapLoader`: URL `?mapId=X` → `fetchFromDB()` → `loadMapForPlay()` 자동 로드 (gridSize 반영)
 - `usePieceConfigLoader`: 부팅 시 1회 `loadPieceConfig()` → 성공 시 `bumpPieceConfigRev()`
-- 라우트: `/` → `EditorPage`, `/admin` → `AdminPage`, `*` → `EditorPage`
+- 라우트: `/` → `EditorPage`, `/admin` · `/admin/:tab` → `AdminLayout`, `*` → `EditorPage`
 
 ---
 
@@ -302,11 +308,20 @@ Header
 
 - 모바일에서 기물 선택 시 자동으로 '정보' 탭 전환
 
-#### `src/pages/AdminPage.tsx` — 기물 어드민 (관리자 전용, 비관리자는 `/`로 리다이렉트)
+#### `src/pages/admin/AdminLayout.tsx` — 어드민 셸 (관리자 전용, 비관리자는 `/`로 리다이렉트)
+- 관리자 게이트(`isAdminUid`) + 상단바(`← 에디터로`) + 탭 바(`Tabs variant="folder"`) + `Notification`/`ConfirmHost` 를 여기 한 번만 마운트
+- 탭 상태는 URL 이 단일 진실: `/admin/:tab` (`pieces` · `maps` · `suggestions` · `stats`). `/admin` 및 알 수 없는 슬러그 → `/admin/pieces` 로 `replace` 리다이렉트
+- 새 어드민 기능은 `admin/` 하위에 탭 컴포넌트로 추가하고 `AdminLayout` 의 `TABS` 배열에 등록 (상단바/토스트/확인창을 다시 만들지 말 것)
+- ⚠️ 게이트는 UI 숨김일 뿐 — 실제 쓰기 권한 강제는 `firestore.rules`
+
+#### `src/pages/admin/PiecesTab.tsx` — [기물] 탭 (면별 behavior 에디터)
 - 좌: 폴더별 기물 목록 — 폴더 CRUD(추가/이름변경/순서/삭제), 기물 드래그로 폴더 할당, 새 커스텀 기물 생성
 - 우: 선택 기물 편집 — 라벨/폴더/SVG(미리보기)/배치 기본 특성/면별 효과 그리드(3×3, UI 4종: 통과·정지·반사·분기 + 🎯충족 + 8방향 반사 화살표)/fallback/회전 단위/조건부(트리거 그룹, init, negate)/사출(emit)
 - 저장 = Firestore `config/pieces` 머지 → `applyPieceConfig()` 로컬 즉시 재적용
 - 삭제: 빌트인 = `hidden` 토글(팔레트 숨김, 복구 가능), 커스텀 = config 엔트리 완전 제거
+
+#### `src/pages/admin/{MapsTab,SuggestionsTab,StatsTab}.tsx` — 자리표시자 (미구현)
+- `TabPlaceholder` 만 렌더 — Firestore 접근·상태 없음. 세부 기능 확정 시 내용을 채운다.
 
 ---
 
@@ -327,7 +342,7 @@ Header
 | 태스크 | 주 파일 | 보조 파일 |
 |--------|--------|----------|
 | **새 빌트인 기물 추가** | `types/game.ts` (PieceType), `lib/laserEngine.ts` (DEFAULT_DEFS) | `lib/svgArt.ts` (SVG_ART), `lib/pieceActions.ts` (PIECE_LABELS), `lib/pieceConfig.ts` (BASIC/INTERMEDIATE/ADVANCED 배열), `tests/` |
-| **커스텀 기물 / 기물 동작 런타임 수정** | (코드 수정 불필요) `/admin` 어드민 페이지 | `lib/pieceConfig.ts`, `pages/AdminPage.tsx` |
+| **커스텀 기물 / 기물 동작 런타임 수정** | (코드 수정 불필요) `/admin` 어드민 페이지 | `lib/pieceConfig.ts`, `pages/admin/PiecesTab.tsx` |
 | **레이저 반사/기물 동작 로직 수정** | `lib/laserEngine.ts` (PieceBehaviorDef, applyEffect, trace) | `tests/laserEngine.test.ts`, `tests/groupA/B.test.ts` |
 | **펜/필기 오버레이** | `components/game/PenLayer.tsx` (별도 캔버스, 방사형 메뉴, 획 로컬 state) | `components/game/GameBoard.tsx` (테스트 모드 마운트·key), `styles/global.css` (`--pen-*`, pen-radial-pop) |
 | **레이저 렌더 스타일 변경** | `lib/laserEngine.ts` (drawSegments) | `styles/global.css` (`--laser` 토큰), `lib/artClip.ts` (빔 끝점 아트 클리핑) |
@@ -340,9 +355,9 @@ Header
 | **정답 보기** | `store/gameStore.ts` (showAnswer, hideAnswer) | `pages/EditorPage.tsx` (버튼) |
 | **특성 덧칠(canMove/canRotate/isInventory)** | `hooks/useGridDragDrop.ts` (paintTargetRef, onPointerUp) | `store/gameStore.ts` (setModRotatable/Lock/Inv), `components/palette/PalettePanel.tsx` (ModChip) |
 | **그리드 크기(5~9) 동작** | `store/gameStore.ts` (setGridSize) | `components/layout/InspectorPanel.tsx`, `tests/gridSize.test.ts` |
-| **기물 어드민 UI** | `pages/AdminPage.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
+| **기물 어드민 UI** | `pages/admin/PiecesTab.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
 | **기물 config 검증/머지/폴백** | `lib/pieceConfig.ts` | `tests/pieceConfig.test.ts`, `lib/laserEngine.ts`/`svgArt.ts`/`pieceActions.ts` (set*Overrides) |
-| **관리자 권한** | `lib/admin.ts` (ADMIN_UIDS) + `firestore.rules` (isAdmin) — **동시 수정** | `components/layout/Header.tsx`, `pages/AdminPage.tsx` |
+| **관리자 권한** | `lib/admin.ts` (ADMIN_UIDS) + `firestore.rules` (isAdmin) — **동시 수정** | `components/layout/Header.tsx`, `pages/admin/AdminLayout.tsx` |
 | **Firebase 데이터 구조 변경** | `lib/firebaseService.ts` | `types/game.ts`, `store/gameStore.ts`, `firestore.rules` |
 | **Firestore 보안 규칙** | `firestore.rules` (실배포 별도 필요) | `lib/admin.ts` |
 | **Google 로그인** | `lib/firebaseService.ts` (signInWithGoogle — 팝업 실패 시 리다이렉트 폴백) | `hooks/useAuth.ts` |
@@ -604,7 +619,7 @@ keydown Ctrl/Cmd+Z → undo() (입력 필드 포커스 시 무시)
 
 ## 9. 기물 config 오버레이 (어드민)
 
-`src/lib/pieceConfig.ts` + `pages/AdminPage.tsx` + Firestore `config/pieces` 문서.
+`src/lib/pieceConfig.ts` + `pages/admin/PiecesTab.tsx` + Firestore `config/pieces` 문서.
 
 ```
 Firestore config/pieces ──fetchPieceConfig()──▶ applyPieceConfig(raw)  [순수, 검증]
