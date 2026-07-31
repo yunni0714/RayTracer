@@ -24,8 +24,20 @@ const DEFAULT_TAB = TABS[0].id;
 
 export function AdminLayout() {
   const currentUserUid = useGameStore(s => s.currentUserUid);
+  const showNotification = useGameStore(s => s.showNotification);
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
+
+  async function copyUid() {
+    const uid = useGameStore.getState().currentUserUid;
+    if (!uid) return;
+    try {
+      await navigator.clipboard.writeText(uid);
+      showNotification('UID 를 복사했습니다 — ADMIN_UIDS / firestore.rules 에 등록하세요.');
+    } catch {
+      showNotification(`복사 실패 — UID: ${uid}`, '#e74c3c');
+    }
+  }
 
   if (!isAdminUid(currentUserUid)) {
     return <Navigate to="/" replace />;
@@ -43,6 +55,10 @@ export function AdminLayout() {
     <div className="flex flex-col h-screen bg-canvas text-ink">
       <header className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-line shadow-card">
         <h1 className="text-lg font-extrabold tracking-tight mr-auto">🛠 어드민</h1>
+        {/* ADMIN_UIDS / firestore.rules 에 UID 를 등록할 때 쓴다 (ADMIN.html copyUid 이식) */}
+        <Button variant="secondary" onClick={copyUid} title={currentUserUid ?? ''}>
+          🆔 내 UID 복사
+        </Button>
         <Link to="/">
           <Button variant="secondary">← 에디터로</Button>
         </Link>

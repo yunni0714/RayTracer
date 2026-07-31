@@ -72,6 +72,7 @@ RayTracer/
 │   │   ├── artClip.ts                   # 빔-아트 클리핑 (SVG 래스터 알파 샘플링, 렌더 보조)
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
 │   │   ├── catalogConfig.ts             # 라이브러리 카탈로그 오버레이 (Firestore config/catalog 머지)
+│   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전 순수 로직
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
 │   │   └── admin.ts                     # 관리자 UID 화이트리스트 (UI 게이트)
@@ -88,12 +89,14 @@ RayTracer/
 │   │   └── admin/                       # 어드민 (관리자 전용)
 │   │       ├── AdminLayout.tsx          # 어드민 셸 — 관리자 게이트 + 상단바 + 탭 라우팅(/admin/:tab)
 │   │       ├── PiecesTab.tsx            # [기물] 면별 behavior 에디터, 폴더/커스텀 기물 CRUD
-│   │       ├── MapMasterTab.tsx         # [맵 마스터] 서브탭 셸 (/admin/mapmaster/:sub)
-│   │       ├── MapsTab.tsx              # └ [맵 관리] 자리표시자 (미구현)
-│   │       ├── SuggestionsTab.tsx       # └ [제안 관리] 자리표시자 (미구현)
-│   │       ├── StatsTab.tsx             # └ [통계] 자리표시자 (미구현)
-│   │       ├── CatalogTab.tsx           # [카탈로그] 카탈로그 목록/현재 규칙 표시 (편집 폼 미구현)
-│   │       └── TabPlaceholder.tsx       # 빈 탭 공용 패널
+│   │       ├── MapMasterTab.tsx         # [맵 마스터] 서브탭 셸 (/admin/mapmaster/:sub) + 맵 목록 로드
+│   │       ├── useAdminMaps.ts          # └ 맵 목록 상태 훅 (조회/재조회/로컬 patch·remove)
+│   │       ├── MapsTab.tsx              # └ [맵 관리] 목록·검색·정렬
+│   │       ├── AdminMapRow.tsx          # └   맵 행 — 메타 편집/회전 편집/소유권 이전/영구 삭제
+│   │       ├── MapRotationEditor.tsx    # └   기물 각도 편집 (NxN 그리드 클릭 선택)
+│   │       ├── SuggestionsTab.tsx       # └ [제안 관리] 맵별 제안 조회/삭제
+│   │       ├── StatsTab.tsx             # └ [통계] 반응 합계·난이도 분포·Top 5
+│   │       └── CatalogTab.tsx           # [카탈로그] 카탈로그 목록/현재 규칙 표시 (편집 폼 미구현)
 │   │
 │   ├── components/
 │   │   ├── ui/                          # 공용 프리미티브 (토큰 기반, 다크 자동 대응)
@@ -149,6 +152,7 @@ RayTracer/
 │   ├── gridSize.test.ts                 # emptyGrid/setGridSize 리사이즈
 │   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
 │   ├── catalogConfig.test.ts            # 카탈로그 기본값/머지/커스텀/hidden/손상 방어
+│   ├── adminMaps.test.ts                # 어드민 검색/정렬/통계 집계/회전 델타
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
 │   └── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
@@ -176,7 +180,7 @@ RayTracer/
 │
 ├── .github/workflows/deploy.yml         # main 푸시 → 빌드(VITE_FIREBASE_* 시크릿) → Pages 배포
 ├── firestore.rules                      # Firestore 보안 규칙 (admin.ts와 UID 동기화 필수)
-├── ADMIN.html                           # 독립 정적 관리자 툴 (맵/제안 관리, 빌드 무관)
+├── ADMIN.html                           # 독립 정적 관리자 툴 (레거시/백업 — /admin/mapmaster 로 이식됨)
 ├── PIECE_EDITOR.html                    # 독립 정적 기물 SVG 에디터 (100×100 그리드 드로잉 → svgArt.ts/config 용 SVG 문자열, 빌드 무관)
 ├── index.html                           # SPA 리다이렉트 복원 + 첫 페인트 전 다크 테마 적용
 ├── vite.config.ts                       # base: '/RayTracer/', React 플러그인
@@ -338,9 +342,21 @@ Header
 - 서브탭도 URL 이 단일 진실: `/admin/mapmaster/:sub` (`maps` · `suggestions` · `stats`). 누락·미지 슬러그 → `maps` 로 `replace`
 - 본문은 `MapsTab`/`SuggestionsTab`/`StatsTab` 을 그대로 렌더
 
-#### `src/pages/admin/{MapsTab,SuggestionsTab,StatsTab}.tsx` — 자리표시자 (미구현)
-- `TabPlaceholder` 만 렌더 — Firestore 접근·상태 없음. 세부 기능 확정 시 내용을 채운다.
-- 맵 목록·메타 편집·회전 편집·소유권 이전·삭제·제안 관리·통계는 `ADMIN.html` 에 구현되어 있다 — 이식 시 그 로직을 참고할 것.
+#### `src/pages/admin/{MapsTab,AdminMapRow,MapRotationEditor}.tsx` — [맵 관리] 서브탭
+- `MapsTab`: 새로고침 / 제목·작성자 검색 / 정렬(최신·🌟·👍) + 로딩·빈·에러 상태
+- `AdminMapRow`: 썸네일(`MiniGrid revealRotation`, gridSize 반영) · 제목/id/작성자/authorUid/난이도/생성일/기물 수/반응, 액션 4종
+  - 메타 편집(제목≤50·난이도·작성자≤30·설명) → `updateMapInDB()`
+  - 소유권 이전 → `Modal` + UID 입력(`내 UID 넣기` 버튼) → `updateMapInDB({authorUid})`
+  - 영구 삭제 → `requestConfirm(danger)` → `deleteMapWithSuggestions()` (제안 서브컬렉션 먼저 삭제)
+- `MapRotationEditor`: NxN 그리드 클릭으로 기물 선택 → ±45/±90 · 절대 각도 지정 → `updateMapInDB({mapData})`.
+  **저장된 rotation = 정답 회전이므로 정규화 없이 그대로 저장**, 회전 외 필드는 건드리지 않는다.
+- 서버 쓰기 성공 후 `useAdminMaps` 의 `patchMap`/`removeMap` 으로 목록만 갱신 (전체 재조회 없음)
+
+#### `src/pages/admin/SuggestionsTab.tsx` — [제안 관리] 서브탭
+- 맵 `Select`(공유 목록) → `fetchSuggestionsFromDB()` → 풀이 썸네일(`revealRotation`)·카테고리 배지·닉네임·코멘트·날짜 + 삭제
+
+#### `src/pages/admin/StatsTab.tsx` — [통계] 서브탭
+- `computeMapStats()` 결과 렌더 — 전체/👍/🌟 카드, 난이도 분포, God·Ok Top 5 표. 별도 조회 없음(공유 목록 사용)
 
 #### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭 (편집 백본)
 - 마운트 시 `loadCatalogConfig()` 1회 (앱 부팅 로더에는 없다 — 플레이어 쪽 네트워크 추가 방지)
@@ -379,6 +395,7 @@ Header
 | **정답 보기** | `store/gameStore.ts` (showAnswer, hideAnswer) | `pages/EditorPage.tsx` (버튼) |
 | **특성 덧칠(canMove/canRotate/isInventory)** | `hooks/useGridDragDrop.ts` (paintTargetRef, onPointerUp) | `store/gameStore.ts` (setModRotatable/Lock/Inv), `components/palette/PalettePanel.tsx` (ModChip) |
 | **그리드 크기(5~9) 동작** | `store/gameStore.ts` (setGridSize) | `components/layout/InspectorPanel.tsx`, `tests/gridSize.test.ts` |
+| **맵/제안/통계 어드민 UI** | `pages/admin/MapsTab.tsx`·`AdminMapRow.tsx`·`MapRotationEditor.tsx`·`SuggestionsTab.tsx`·`StatsTab.tsx` | `lib/adminMaps.ts` (순수 로직), `pages/admin/useAdminMaps.ts`, `lib/firebaseService.ts` |
 | **기물 어드민 UI** | `pages/admin/PiecesTab.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
 | **기물 config 검증/머지/폴백** | `lib/pieceConfig.ts` | `tests/pieceConfig.test.ts`, `lib/laserEngine.ts`/`svgArt.ts`/`pieceActions.ts` (set*Overrides) |
 | **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·오버레이), `pages/admin/CatalogTab.tsx` (어드민 UI) | `components/library/LibraryScreen.tsx` (현재는 자체 상수·switch), `tests/catalogConfig.test.ts` |
@@ -403,7 +420,7 @@ Header
 | **단위 테스트 추가** | `tests/*.test.ts` | `vitest.config.ts` |
 | **E2E 테스트 추가** | `e2e/helpers.ts` | `e2e/*.spec.ts`, `playwright.config.ts` |
 | **배포 설정** | `.github/workflows/deploy.yml` | `vite.config.ts` (base) |
-| **레거시 맵/제안 일괄 관리** | `ADMIN.html` (독립 툴) | `firestore.rules` (isAdmin 업데이트 경로) |
+| **맵/제안 일괄 관리** | `/admin/mapmaster` (React 어드민) | `ADMIN.html` 은 레거시 백업 — 새 기능은 React 쪽에만 |
 | **기물 SVG 아이콘 제작/수정** | `PIECE_EDITOR.html` (독립 툴) | `src/lib/svgArt.ts` (SVG_ART), 어드민 기물 config |
 
 ---
@@ -709,6 +726,8 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `uploadSuggestionToDB()` / `fetchSuggestionsFromDB()` / `deleteSuggestionFromDB()` | 풀이 제안 |
 | `fetchPieceConfig()` | `config/pieces` 문서 조회 |
 | `fetchCatalogConfig()` | `config/catalog` 문서 조회 (쓰기 함수는 아직 없음) |
+| `fetchAllMapsForAdmin()` | 어드민 맵 목록 (createdAt desc, limit 없음) |
+| `deleteMapWithSuggestions(id)` | 제안 서브컬렉션 삭제 후 맵 삭제 (어드민 영구 삭제) |
 | `savePieceConfigEntry(type, entry)` | 기물 1개 엔트리 머지 저장 |
 | `deletePieceConfigEntry(type)` | 기물 엔트리 삭제 (기본값 복원) |
 | `savePieceConfigPatch(patch)` | 임의 부분 패치 (폴더 교체, 일괄 folderId 등) |
@@ -729,6 +748,7 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `gridSize.test.ts` | emptyGrid(size), setGridSize 확대/축소, 테스트 모드 리사이즈 불가 |
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
 | `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 규칙·큐레이션 sanitize, 손상 config 폴백 |
+| `adminMaps.test.ts` | filterMaps/sortMaps(3키·누락 필드), computeMapStats(합계·분포·Top5), rotateMapItem/setMapItemRotation(랩어라운드·불변) |
 | `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
 | `penUndo.test.ts` | GameSnapshot.penStrokes — 획 커밋/전체지우기 undo, 기물·펜 혼합 순서, 모드 전환 초기화 |
 | `mapEditSave.test.ts` | getAuthoredGrid — 테스트 상태 저장/exitMapEditMode(restore:false) 시 인벤토리 기물 보존 |

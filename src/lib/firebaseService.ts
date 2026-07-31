@@ -97,6 +97,23 @@ export async function deleteMapFromDB(id: string): Promise<void> {
   await deleteDoc(doc(db, 'maps', id));
 }
 
+// 어드민 목록 — fetchLibraryList() 는 limit(50) 이라 관리 화면엔 부족하다.
+export async function fetchAllMapsForAdmin(): Promise<MapDocument[]> {
+  const q = query(collection(db, 'maps'), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as MapDocument);
+}
+
+// 맵 + 하위 제안 전부 삭제. 서브컬렉션은 문서 삭제로 자동 정리되지 않으므로 먼저 지운다.
+// 중간 실패 시 일부만 지워질 수 있다 — 호출부에서 목록 새로고침을 안내할 것.
+export async function deleteMapWithSuggestions(mapId: string): Promise<void> {
+  const snap = await getDocs(collection(db, 'maps', mapId, 'suggestions'));
+  for (const s of snap.docs) {
+    await deleteDoc(doc(db, 'maps', mapId, 'suggestions', s.id));
+  }
+  await deleteDoc(doc(db, 'maps', mapId));
+}
+
 // ── Suggestions ─────────────────────────────────────────
 
 export async function uploadSuggestionToDB(
