@@ -3,7 +3,8 @@ import type { Difficulty } from '../../types/game';
 
 export type PillTone =
   | 'tutor' | 'easy' | 'normal' | 'hard' | 'insane' | 'none'
-  | 'neutral' | 'success' | 'danger' | 'info';
+  | 'neutral' | 'success' | 'danger' | 'info'
+  | 'catBasic' | 'catLogic' | 'catAdvanced' | 'catAdvancedLogic';
 
 const TONES: Record<PillTone, string> = {
   tutor:   'bg-[var(--diff-tutor)] text-white',
@@ -16,17 +17,24 @@ const TONES: Record<PillTone, string> = {
   success: 'bg-success text-white',
   danger:  'bg-danger text-white',
   info:    'bg-primary text-primary-ink',
+  // 맵 카테고리 (기물 등급 파생 — lib/mapCategory.ts)
+  catBasic:        'bg-[var(--cat-basic)] text-white',
+  catLogic:        'bg-[var(--cat-logic)] text-white',
+  catAdvanced:     'bg-[var(--cat-advanced)] text-white',
+  catAdvancedLogic:'bg-[var(--cat-advanced-logic)] text-white',
 };
 
 interface PillProps {
   tone?: PillTone;
   children: React.ReactNode;
   className?: string;
+  title?: string;
 }
 
-export function Pill({ tone = 'neutral', children, className }: PillProps) {
+export function Pill({ tone = 'neutral', children, className, title }: PillProps) {
   return (
     <span
+      title={title}
       className={cx(
         'inline-block text-[11px] font-extrabold px-2 py-0.5 rounded-md text-center',
         'whitespace-nowrap overflow-hidden text-ellipsis',

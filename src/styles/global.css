@@ -47,6 +47,11 @@
   --diff-insane: #ef4444;
   --diff-none:   #cbd5e1;
   --diff-none-ink: #475569;
+  /* 맵 카테고리 (기물 등급 파생 — lib/mapCategory.ts) */
+  --cat-basic:          #10b981;
+  --cat-logic:          #3b82f6;
+  --cat-advanced:       #8b5cf6;
+  --cat-advanced-logic: #ec4899;
   /* 그림자 / 스크롤바 */
   --shadow-sm:   0 2px 10px rgba(15, 23, 42, .06);
   --shadow-md:   0 10px 24px rgba(15, 23, 42, .10);
@@ -87,6 +92,10 @@
   --diff-insane: #f8717a;
   --diff-none:   #3a465f;
   --diff-none-ink: #b8c4d8;
+  --cat-basic:          #34d399;
+  --cat-logic:          #60a5fa;
+  --cat-advanced:       #a78bfa;
+  --cat-advanced-logic: #f472b6;
   --shadow-sm:   0 2px 12px rgba(0, 0, 0, .40);
   --shadow-md:   0 12px 28px rgba(0, 0, 0, .55);
   --scroll-thumb:#324264;
@@ -142,6 +151,22 @@ html { transition: background-color .2s ease, color .2s ease; }
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
   border-color: var(--line-strong);
+}
+
+/* ── 맵 카테고리 호버 글로우 ─────────────────────────────
+   카드에 data-category 만 붙이면 색은 여기서 고른다 (lib/mapCategory.ts).
+   color-mix 미지원 브라우저는 앞의 1px 링 레이어가 폴백. */
+[data-category="basic"]          { --cat-color: var(--cat-basic); }
+[data-category="logic"]          { --cat-color: var(--cat-logic); }
+[data-category="advanced"]       { --cat-color: var(--cat-advanced); }
+[data-category="advanced_logic"] { --cat-color: var(--cat-advanced-logic); }
+
+.map-card-v2[data-category]:hover,
+.next-map-card[data-category]:hover {
+  border-color: var(--cat-color);
+  box-shadow:
+    0 0 0 1px var(--cat-color),
+    0 0 18px 3px color-mix(in srgb, var(--cat-color) 55%, transparent);
 }
 
 /* ── 펜 방사형 메뉴 촤르륵 팝 ─────────────────────────── */

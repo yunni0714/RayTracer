@@ -2,6 +2,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { useMapReactions } from '../../hooks/useMapReactions';
 import { deleteMapFromDB } from '../../lib/firebaseService';
+import { MapCategoryBadge } from './MapCategoryBadge';
 import { Button, Pill, cx, type PillTone } from '../ui';
 import type { Difficulty } from '../../types/game';
 
@@ -71,8 +72,9 @@ export function LoadedMapInfo() {
       <p className="font-bold text-ink truncate text-xs" title={title}>{title}</p>
       <p className="text-xs text-ink-muted">{map.author}</p>
 
-      {/* 난이도 배지 */}
+      {/* 카테고리 + 난이도 배지 */}
       <div className="flex gap-1.5 flex-wrap">
+        <MapCategoryBadge mapData={map.mapData} />
         <Pill tone={DIFF_TONE[map.difficulty]}>{map.difficulty}</Pill>
         <Pill tone={userDiff ? DIFF_TONE[userDiff] : 'none'}>{userDiff ?? '평가 부족'}</Pill>
       </div>

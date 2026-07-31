@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { MiniGrid } from './MiniGrid';
+import { MapCategoryBadge } from './MapCategoryBadge';
+import { computeMapCategory } from '../../lib/mapCategory';
 import type { MapDocument, Difficulty } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
 
@@ -55,6 +57,7 @@ export function NextMapPanel() {
     currentLoadedMapObj: s.currentLoadedMapObj,
     setLibraryMode: s.setLibraryMode,
   })));
+  useGameStore(s => s.pieceConfigRev); // 폴더 오버레이 갱신 시 카테고리 재계산
 
   const nextMaps = useMemo(
     () => currentLoadedMapObj ? pickNextMaps(allLibraryMaps, currentLoadedMapObj.id) : [],
@@ -101,7 +104,12 @@ export function NextMapPanel() {
         const evalLabel = userDiff ?? 'None';
 
         return (
-          <div key={map.id} className="next-map-card" onClick={() => playMap(map)}>
+          <div
+            key={map.id}
+            className="next-map-card"
+            data-category={computeMapCategory(map.mapData)}
+            onClick={() => playMap(map)}
+          >
             {/* 썸네일 + 제목/작성자 */}
             <div className="flex items-center gap-2">
               <div className="w-14 shrink-0">
@@ -119,6 +127,7 @@ export function NextMapPanel() {
 
             {/* 배지 + 반응 */}
             <div className="flex items-center gap-1 flex-wrap">
+              <MapCategoryBadge mapData={map.mapData} className="!text-[10px] !px-1.5" />
               <span className={`diff-pill diff-${map.difficulty}`}>공식: {map.difficulty}</span>
               <span className={`diff-pill diff-${evalLabel}`}>평가: {evalLabel}</span>
               <span className="ml-auto flex gap-2 text-xs font-bold">

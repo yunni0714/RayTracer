@@ -73,6 +73,7 @@ RayTracer/
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
 │   │   ├── catalogConfig.ts             # 라이브러리 카탈로그 오버레이 (Firestore config/catalog 머지)
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전 순수 로직
+│   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
 │   │   └── admin.ts                     # 관리자 UID 화이트리스트 (UI 게이트)
@@ -130,7 +131,8 @@ RayTracer/
 │   │   │
 │   │   ├── library/
 │   │   │   ├── LibraryScreen.tsx        # 라이브러리 (카탈로그 5종, 검색/정렬, 미리보기 패널)
-│   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 제목, 난이도 배지, 반응)
+│   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 제목, 카테고리/난이도 배지, 반응, 호버 글로우)
+│   │   │   ├── MapCategoryBadge.tsx     # 맵 카테고리 배지 (mapData 에서 계산, pieceConfigRev 구독)
 │   │   │   ├── MiniGrid.tsx             # NxN 미니 그리드 렌더러 (v1: pixel, v2: aspect-ratio). 회전형 고정 기물은 0도 렌더(정답 은닉), revealRotation prop으로 opt-out
 │   │   │   ├── LoadedMapInfo.tsx        # 로드 맵 정보/반응/난이도투표, 소유자 수정·삭제, 풀이 제안
 │   │   │   ├── RightSidePanel.tsx       # 수직 탭 패널 (다음 문제 / 풀이 제안)
@@ -153,6 +155,7 @@ RayTracer/
 │   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
 │   ├── catalogConfig.test.ts            # 카탈로그 기본값/머지/커스텀/hidden/손상 방어
 │   ├── adminMaps.test.ts                # 어드민 검색/정렬/통계 집계/회전 델타
+│   ├── mapCategory.test.ts              # 맵 카테고리 판정 + 폴더 오버라이드 반영
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
 │   └── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
@@ -268,6 +271,14 @@ Firestore `config/catalog` 문서를 코드 기본값 위에 머지. `pieceConfi
 - 현재 `LibraryScreen` 은 아직 이 레이어를 쓰지 않는다 (자체 상수 + switch). 연결은 편집 기능 구현 시.
 
 **exports**: `getCatalogs()`, `getCatalog()`, `applyCatalogConfig()`, `loadCatalogConfig()`, `resetCatalogConfig()`, `getCatalogOverrides()`, `isBuiltinCatalogId()`, `isValidCatalogId()`, `DEFAULT_CATALOGS`
+
+### `src/lib/mapCategory.ts` — 맵 카테고리 (기물 등급 파생)
+맵에 쓰인 기물 등급에서 자동 판정하는 값. 작성자가 고르지 않고 `mapData` 에서 계산하므로 DB 필드가 없다.
+- 초급만 `basic` / 중급 포함 `logic` / 상급 포함 `advanced` / 중급+상급 `advanced_logic`
+- 등급 출처 = `getPieceFolder()` — 어드민이 폴더를 옮기면 카테고리도 바뀐다. 기본 3폴더 밖(커스텀 폴더·커스텀 기물)은 중급 취급
+- 인벤토리(유저 지급) 기물도 포함. 빈 맵은 `basic`
+- **exports**: `computeMapCategory()`, `getPieceTier()`, `CATEGORY_LABELS`, 타입 `MapCategory`/`PieceTier`
+- 색은 `--cat-*` 토큰 + `Pill` 톤 4종(`catBasic`/`catLogic`/`catAdvanced`/`catAdvancedLogic`), 카드 호버 글로우는 `[data-category]` CSS 규칙
 
 ### `src/lib/pieceActions.ts` — 기물 조작 + 라벨
 PiecePopover / SelectedPieceInfo / useGridDragDrop이 공유하는 조작 함수 모음.
@@ -405,6 +416,7 @@ Header
 | **Google 로그인** | `lib/firebaseService.ts` (signInWithGoogle — 팝업 실패 시 리다이렉트 폴백) | `hooks/useAuth.ts` |
 | **닉네임 로직** | `lib/firebaseService.ts` (create/updateUserNickname) | `components/modals/NicknameModal.tsx`, `hooks/useAuth.ts` |
 | **맵 반응(✅/👍)·난이도 투표** | `hooks/useMapReactions.ts` | `lib/firebaseService.ts`, `components/library/LoadedMapInfo.tsx` |
+| **맵 카테고리(Basic/Logic/Advanced)** | `lib/mapCategory.ts` | `components/library/MapCategoryBadge.tsx`, `styles/global.css` (`--cat-*`, `[data-category]` 글로우), `components/ui/Pill.tsx`, `tests/mapCategory.test.ts` |
 | **라이브러리 UI/카탈로그 표시** | `components/library/LibraryScreen.tsx` | `MapCard.tsx`, `MiniGrid.tsx` |
 | **다음 문제 추천** | `components/library/NextMapPanel.tsx` | `components/library/RightSidePanel.tsx` |
 | **풀이 제안** | `components/library/SuggestionPanel.tsx`, `components/modals/SuggestionModal.tsx` | `lib/firebaseService.ts` (suggestions) |
@@ -749,6 +761,7 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
 | `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 규칙·큐레이션 sanitize, 손상 config 폴백 |
 | `adminMaps.test.ts` | filterMaps/sortMaps(3키·누락 필드), computeMapStats(합계·분포·Top5), rotateMapItem/setMapItemRotation(랩어라운드·불변) |
+| `mapCategory.test.ts` | 4종 판정 규칙, 빈 맵, 인벤토리 포함, 미지 기물, 어드민 폴더 이동 반영 |
 | `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
 | `penUndo.test.ts` | GameSnapshot.penStrokes — 획 커밋/전체지우기 undo, 기물·펜 혼합 순서, 모드 전환 초기화 |
 | `mapEditSave.test.ts` | getAuthoredGrid — 테스트 상태 저장/exitMapEditMode(restore:false) 시 인벤토리 기물 보존 |

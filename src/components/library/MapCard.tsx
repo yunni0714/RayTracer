@@ -1,4 +1,7 @@
 import { MiniGrid } from './MiniGrid';
+import { MapCategoryBadge } from './MapCategoryBadge';
+import { useGameStore } from '../../store/gameStore';
+import { computeMapCategory } from '../../lib/mapCategory';
 import { Pill, type PillTone } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
 
@@ -29,12 +32,14 @@ function formatDate(iso: string): string {
 }
 
 export function MapCard({ map, onClick, selected = false }: Props) {
+  useGameStore(s => s.pieceConfigRev); // 폴더 오버레이 갱신 시 카테고리 재계산
   const userDiff = calculateUserDifficulty(map.diffVotes);
   const dateStr = formatDate(map.createdAt);
 
   return (
     <div
       className={`map-card-v2 ${selected ? '!border-accent ring-1 ring-accent' : ''}`}
+      data-category={computeMapCategory(map.mapData)}
       onClick={() => onClick(map)}
     >
       {/* 상단: 미니 그리드 */}
@@ -54,6 +59,7 @@ export function MapCard({ map, onClick, selected = false }: Props) {
 
       {/* 하단: 배지 + 통계 */}
       <div className="px-5 pt-1.5 pb-3.5 flex flex-col gap-2.5 mt-auto">
+        <MapCategoryBadge mapData={map.mapData} className="self-start" />
         <div className="flex gap-1.5 min-w-0">
           <Pill tone={DIFF_TONE[map.difficulty]} className="flex-1">
             공식: {map.difficulty}
