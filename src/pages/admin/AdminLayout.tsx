@@ -4,9 +4,8 @@ import { isAdminUid } from '../../lib/admin';
 import { Notification } from '../../components/layout/Notification';
 import { Button, Tabs, ConfirmHost } from '../../components/ui';
 import { PiecesTab } from './PiecesTab';
-import { MapsTab } from './MapsTab';
-import { SuggestionsTab } from './SuggestionsTab';
-import { StatsTab } from './StatsTab';
+import { MapMasterTab } from './MapMasterTab';
+import { CatalogTab } from './CatalogTab';
 
 /* ════════════════════════════════════════════════════════
    어드민 셸 — 관리자 게이트 + 상단바 + 탭 라우팅.
@@ -17,9 +16,8 @@ import { StatsTab } from './StatsTab';
 
 const TABS = [
   { id: 'pieces', label: '🧩 기물', Body: PiecesTab },
-  { id: 'maps', label: '🗺 맵 관리', Body: MapsTab },
-  { id: 'suggestions', label: '💬 제안 관리', Body: SuggestionsTab },
-  { id: 'stats', label: '📊 통계', Body: StatsTab },
+  { id: 'mapmaster', label: '🗂 맵 마스터', Body: MapMasterTab },
+  { id: 'catalog', label: '📚 카탈로그', Body: CatalogTab },
 ] as const;
 
 const DEFAULT_TAB = TABS[0].id;

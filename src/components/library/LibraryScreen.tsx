@@ -172,7 +172,7 @@ export function LibraryScreen() {
 
       {/* ① 좌 존 (데스크탑): 카테고리 내비 */}
       <aside className="hidden lg:flex w-56 shrink-0 bg-surface border-r border-line p-3 flex-col gap-1">
-        <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted mb-1">카테고리</h5>
+        <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted mb-1">카탈로그</h5>
         {CATEGORIES.map(c => (
           <Button
             key={c.id}

@@ -123,6 +123,12 @@ export async function fetchPieceConfig(): Promise<Record<string, unknown> | null
   return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
 }
 
+// 라이브러리 카탈로그 config (어드민 오버레이). 쓰기 경로는 편집 UI 와 함께 추가한다.
+export async function fetchCatalogConfig(): Promise<Record<string, unknown> | null> {
+  const snap = await getDoc(doc(db, 'config', 'catalog'));
+  return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
+}
+
 export async function savePieceConfigEntry(
   pieceType: string, entry: Record<string, unknown>,
 ): Promise<void> {

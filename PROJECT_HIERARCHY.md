@@ -71,6 +71,7 @@ RayTracer/
 │   │   ├── laserEngine.ts               # 면별 behavior 스키마 + 순수 계산 + 캔버스 렌더
 │   │   ├── artClip.ts                   # 빔-아트 클리핑 (SVG 래스터 알파 샘플링, 렌더 보조)
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
+│   │   ├── catalogConfig.ts             # 라이브러리 카탈로그 오버레이 (Firestore config/catalog 머지)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
 │   │   └── admin.ts                     # 관리자 UID 화이트리스트 (UI 게이트)
@@ -87,9 +88,11 @@ RayTracer/
 │   │   └── admin/                       # 어드민 (관리자 전용)
 │   │       ├── AdminLayout.tsx          # 어드민 셸 — 관리자 게이트 + 상단바 + 탭 라우팅(/admin/:tab)
 │   │       ├── PiecesTab.tsx            # [기물] 면별 behavior 에디터, 폴더/커스텀 기물 CRUD
-│   │       ├── MapsTab.tsx              # [맵 관리] 자리표시자 (미구현)
-│   │       ├── SuggestionsTab.tsx       # [제안 관리] 자리표시자 (미구현)
-│   │       ├── StatsTab.tsx             # [통계] 자리표시자 (미구현)
+│   │       ├── MapMasterTab.tsx         # [맵 마스터] 서브탭 셸 (/admin/mapmaster/:sub)
+│   │       ├── MapsTab.tsx              # └ [맵 관리] 자리표시자 (미구현)
+│   │       ├── SuggestionsTab.tsx       # └ [제안 관리] 자리표시자 (미구현)
+│   │       ├── StatsTab.tsx             # └ [통계] 자리표시자 (미구현)
+│   │       ├── CatalogTab.tsx           # [카탈로그] 카탈로그 목록/현재 규칙 표시 (편집 폼 미구현)
 │   │       └── TabPlaceholder.tsx       # 빈 탭 공용 패널
 │   │
 │   ├── components/
@@ -123,7 +126,7 @@ RayTracer/
 │   │   │   └── ToolItem.tsx             # 툴 타일 (아이콘 + 카운트/🔒 배지)
 │   │   │
 │   │   ├── library/
-│   │   │   ├── LibraryScreen.tsx        # 라이브러리 (카테고리 5종, 검색/정렬, 미리보기 패널)
+│   │   │   ├── LibraryScreen.tsx        # 라이브러리 (카탈로그 5종, 검색/정렬, 미리보기 패널)
 │   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 제목, 난이도 배지, 반응)
 │   │   │   ├── MiniGrid.tsx             # NxN 미니 그리드 렌더러 (v1: pixel, v2: aspect-ratio). 회전형 고정 기물은 0도 렌더(정답 은닉), revealRotation prop으로 opt-out
 │   │   │   ├── LoadedMapInfo.tsx        # 로드 맵 정보/반응/난이도투표, 소유자 수정·삭제, 풀이 제안
@@ -145,6 +148,7 @@ RayTracer/
 │   ├── groupB.test.ts                   # 조건부/상태형 기물 5종 (고정점 루프)
 │   ├── gridSize.test.ts                 # emptyGrid/setGridSize 리사이즈
 │   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
+│   ├── catalogConfig.test.ts            # 카탈로그 기본값/머지/커스텀/hidden/손상 방어
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
 │   └── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
@@ -199,7 +203,7 @@ RayTracer/
 - 부팅 훅 4종: `useTheme()`, `useAuth()`, `useUrlMapLoader()`, `usePieceConfigLoader()`
 - `useUrlMapLoader`: URL `?mapId=X` → `fetchFromDB()` → `loadMapForPlay()` 자동 로드 (gridSize 반영)
 - `usePieceConfigLoader`: 부팅 시 1회 `loadPieceConfig()` → 성공 시 `bumpPieceConfigRev()`
-- 라우트: `/` → `EditorPage`, `/admin` · `/admin/:tab` → `AdminLayout`, `*` → `EditorPage`
+- 라우트: `/` → `EditorPage`, `/admin` · `/admin/:tab` · `/admin/:tab/:sub` → `AdminLayout`, `*` → `EditorPage`
 
 ---
 
@@ -251,6 +255,15 @@ Auth / 사용자 / 맵 / 풀이 제안 / **기물 config** 전체 Firestore 연�
 Firestore `config/pieces` 문서를 코드 기본값 위에 머지하는 레이어. 상세는 [§9](#9-기물-config-오버레이-어드민).
 
 **exports**: `loadPieceConfig()`, `applyPieceConfig()`, `resetPieceConfig()`, `getFolders()`, `getPieceFolder()`, `getPieceDefaults()`, `getCustomTypes()`, `isPieceHidden()`, `sanitizeSvg()`, `PALETTE_ORDER`, `DEFAULT_FOLDERS`, `isValidCustomTypeId()` 등
+
+### `src/lib/catalogConfig.ts` — 라이브러리 카탈로그 오버레이
+Firestore `config/catalog` 문서를 코드 기본값 위에 머지. `pieceConfig.ts` 와 같은 모델 (미존재/손상 시 silent fallback, `loadCatalogConfig()` 는 throw 하지 않는다).
+- `CatalogDef`: `id/label/emoji/order/hidden` + `rule`(자동 선별 규칙) + `pinnedMapIds`/`excludedMapIds`(수동 큐레이션)
+- `DEFAULT_CATALOGS`: 라이브러리 빌트인 5종(추천·원본·최근·명예의전당·내 맵). **직접 읽지 말고 `getCatalogs()`/`getCatalog()` 접근자 사용**
+- `rule` 은 빌트인 5종을 표현하는 최소 스키마(`all`/`author`/`mine`/`reaction`) — 세부 문법은 편집 UI 와 함께 확장
+- 현재 `LibraryScreen` 은 아직 이 레이어를 쓰지 않는다 (자체 상수 + switch). 연결은 편집 기능 구현 시.
+
+**exports**: `getCatalogs()`, `getCatalog()`, `applyCatalogConfig()`, `loadCatalogConfig()`, `resetCatalogConfig()`, `getCatalogOverrides()`, `isBuiltinCatalogId()`, `isValidCatalogId()`, `DEFAULT_CATALOGS`
 
 ### `src/lib/pieceActions.ts` — 기물 조작 + 라벨
 PiecePopover / SelectedPieceInfo / useGridDragDrop이 공유하는 조작 함수 모음.
@@ -310,7 +323,7 @@ Header
 
 #### `src/pages/admin/AdminLayout.tsx` — 어드민 셸 (관리자 전용, 비관리자는 `/`로 리다이렉트)
 - 관리자 게이트(`isAdminUid`) + 상단바(`← 에디터로`) + 탭 바(`Tabs variant="folder"`) + `Notification`/`ConfirmHost` 를 여기 한 번만 마운트
-- 탭 상태는 URL 이 단일 진실: `/admin/:tab` (`pieces` · `maps` · `suggestions` · `stats`). `/admin` 및 알 수 없는 슬러그 → `/admin/pieces` 로 `replace` 리다이렉트
+- 탭 상태는 URL 이 단일 진실: `/admin/:tab` (`pieces` · `mapmaster` · `catalog`). `/admin` 및 알 수 없는 슬러그 → `/admin/pieces` 로 `replace` 리다이렉트
 - 새 어드민 기능은 `admin/` 하위에 탭 컴포넌트로 추가하고 `AdminLayout` 의 `TABS` 배열에 등록 (상단바/토스트/확인창을 다시 만들지 말 것)
 - ⚠️ 게이트는 UI 숨김일 뿐 — 실제 쓰기 권한 강제는 `firestore.rules`
 
@@ -320,8 +333,19 @@ Header
 - 저장 = Firestore `config/pieces` 머지 → `applyPieceConfig()` 로컬 즉시 재적용
 - 삭제: 빌트인 = `hidden` 토글(팔레트 숨김, 복구 가능), 커스텀 = config 엔트리 완전 제거
 
+#### `src/pages/admin/MapMasterTab.tsx` — [맵 마스터] 탭 (서브탭 셸)
+- 맵 관련 관리 기능 묶음. 서브탭 바는 `Tabs variant="segment"` (바깥 폴더탭과 구분)
+- 서브탭도 URL 이 단일 진실: `/admin/mapmaster/:sub` (`maps` · `suggestions` · `stats`). 누락·미지 슬러그 → `maps` 로 `replace`
+- 본문은 `MapsTab`/`SuggestionsTab`/`StatsTab` 을 그대로 렌더
+
 #### `src/pages/admin/{MapsTab,SuggestionsTab,StatsTab}.tsx` — 자리표시자 (미구현)
 - `TabPlaceholder` 만 렌더 — Firestore 접근·상태 없음. 세부 기능 확정 시 내용을 채운다.
+- 맵 목록·메타 편집·회전 편집·소유권 이전·삭제·제안 관리·통계는 `ADMIN.html` 에 구현되어 있다 — 이식 시 그 로직을 참고할 것.
+
+#### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭 (편집 백본)
+- 마운트 시 `loadCatalogConfig()` 1회 (앱 부팅 로더에는 없다 — 플레이어 쪽 네트워크 추가 방지)
+- 좌: `getCatalogs({ includeHidden: true })` 목록. 우: 선택 카탈로그의 현재 규칙 요약 + `메타`/`규칙`/`수동 큐레이션` 섹션 골격
+- **쓰기 경로 없음** — 읽기 전용. 편집 폼과 `savePieceConfig*` 대응 저장 함수는 세부 확정 후 추가
 
 ---
 
@@ -331,7 +355,7 @@ Header
 - **`GridCell`**: `data-row`/`data-col`로 DnD 식별. 특성 배지 — 🎒 유저지급, 🔒 유저지급+회전불가, 🔄 고정+회전가능.
 - **`PiecePopover`** (데스크탑) / **`SelectedPieceInfo`** (인스펙터·모바일 공용): 같은 `pieceActions`를 호출하므로 자동 동기화.
 - **`PalettePanel`**: 폴더 탭은 config(`getFolders`/`getPieceFolder`) 연동, hidden 기물 제외, 커스텀 기물 포함. 특성 덧칠 칩 3종(🔄/🔒/🎒)은 상호 배타 규칙 있음. JSON 가져오기/내보내기, 맵 등록(신규일 때만).
-- **`LibraryScreen`**: 카테고리 5종 — 추천(👍3+), 원본(author='RayOriginal'), 최근, 명예의전당(상위 20), 내 맵. 검색 시 카테고리 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
+- **`LibraryScreen`**: 카탈로그(구 카테고리) 5종 — 추천(🌟3+), 원본(author='RayOriginal'), 최근, 명예의전당(상위 20), 내 맵. 정의는 아직 이 파일의 상수+switch (어드민 오버레이는 `lib/catalogConfig.ts` 에 준비됨). 검색 시 카탈로그 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
 - **`UploadModal`**: 신규 업로드 시 공유 URL 자동 클립보드 복사 + 업로드된 맵 즉시 플레이 로드. 수정 시 `version` +1. `canRotate=true` 기물도 작성자가 맞춘 회전값(=정답)을 그대로 저장 — 은닉은 로드 시 `loadMapForPlay`/`MiniGrid`가 담당.
 - 기물 SVG를 렌더하는 컴포넌트는 `useGameStore(s => s.pieceConfigRev)` 구독으로 config 갱신 시 리렌더.
 
@@ -357,13 +381,14 @@ Header
 | **그리드 크기(5~9) 동작** | `store/gameStore.ts` (setGridSize) | `components/layout/InspectorPanel.tsx`, `tests/gridSize.test.ts` |
 | **기물 어드민 UI** | `pages/admin/PiecesTab.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
 | **기물 config 검증/머지/폴백** | `lib/pieceConfig.ts` | `tests/pieceConfig.test.ts`, `lib/laserEngine.ts`/`svgArt.ts`/`pieceActions.ts` (set*Overrides) |
+| **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·오버레이), `pages/admin/CatalogTab.tsx` (어드민 UI) | `components/library/LibraryScreen.tsx` (현재는 자체 상수·switch), `tests/catalogConfig.test.ts` |
 | **관리자 권한** | `lib/admin.ts` (ADMIN_UIDS) + `firestore.rules` (isAdmin) — **동시 수정** | `components/layout/Header.tsx`, `pages/admin/AdminLayout.tsx` |
 | **Firebase 데이터 구조 변경** | `lib/firebaseService.ts` | `types/game.ts`, `store/gameStore.ts`, `firestore.rules` |
 | **Firestore 보안 규칙** | `firestore.rules` (실배포 별도 필요) | `lib/admin.ts` |
 | **Google 로그인** | `lib/firebaseService.ts` (signInWithGoogle — 팝업 실패 시 리다이렉트 폴백) | `hooks/useAuth.ts` |
 | **닉네임 로직** | `lib/firebaseService.ts` (create/updateUserNickname) | `components/modals/NicknameModal.tsx`, `hooks/useAuth.ts` |
 | **맵 반응(✅/👍)·난이도 투표** | `hooks/useMapReactions.ts` | `lib/firebaseService.ts`, `components/library/LoadedMapInfo.tsx` |
-| **라이브러리 UI/카테고리** | `components/library/LibraryScreen.tsx` | `MapCard.tsx`, `MiniGrid.tsx` |
+| **라이브러리 UI/카탈로그 표시** | `components/library/LibraryScreen.tsx` | `MapCard.tsx`, `MiniGrid.tsx` |
 | **다음 문제 추천** | `components/library/NextMapPanel.tsx` | `components/library/RightSidePanel.tsx` |
 | **풀이 제안** | `components/library/SuggestionPanel.tsx`, `components/modals/SuggestionModal.tsx` | `lib/firebaseService.ts` (suggestions) |
 | **맵 업로드/수정** | `components/modals/UploadModal.tsx` | `store/gameStore.ts` (patchCurrentLoadedMap, exitMapEditMode) |
@@ -650,6 +675,8 @@ Firestore config/pieces ──fetchPieceConfig()──▶ applyPieceConfig(raw) 
 config/
   pieces                  # 기물 config 오버레이 (version, folders[], pieces{})
                           # 읽기: 전체 공개 / 쓰기: 관리자만 (firestore.rules)
+  catalog                 # 라이브러리 카탈로그 오버레이 (version, catalogs{})
+                          # 같은 규칙 적용 — config/{docId} 매칭. 현재 읽기 전용 사용
 
 users/{uid}               # nickname, createdAt
 
@@ -681,6 +708,7 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `updateMapInDB(id, data)` / `deleteMapFromDB(id)` | 맵 수정/삭제 |
 | `uploadSuggestionToDB()` / `fetchSuggestionsFromDB()` / `deleteSuggestionFromDB()` | 풀이 제안 |
 | `fetchPieceConfig()` | `config/pieces` 문서 조회 |
+| `fetchCatalogConfig()` | `config/catalog` 문서 조회 (쓰기 함수는 아직 없음) |
 | `savePieceConfigEntry(type, entry)` | 기물 1개 엔트리 머지 저장 |
 | `deletePieceConfigEntry(type)` | 기물 엔트리 삭제 (기본값 복원) |
 | `savePieceConfigPatch(patch)` | 임의 부분 패치 (폴더 교체, 일괄 folderId 등) |
@@ -700,6 +728,7 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `groupB.test.ts` | transistor/cross/priority gate, target/inverting projector (고정점 루프) |
 | `gridSize.test.ts` | emptyGrid(size), setGridSize 확대/축소, 테스트 모드 리사이즈 불가 |
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
+| `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 규칙·큐레이션 sanitize, 손상 config 폴백 |
 | `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
 | `penUndo.test.ts` | GameSnapshot.penStrokes — 획 커밋/전체지우기 undo, 기물·펜 혼합 순서, 모드 전환 초기화 |
 | `mapEditSave.test.ts` | getAuthoredGrid — 테스트 상태 저장/exitMapEditMode(restore:false) 시 인벤토리 기물 보존 |
