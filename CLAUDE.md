@@ -50,7 +50,7 @@ npm run lint       # ESLint
 - `.github/workflows/deploy.yml`: main 푸시 → 빌드(GitHub Secrets의 `VITE_FIREBASE_*` 주입) → GitHub Pages 배포.
 - SPA 라우팅 폴백: `public/404.html` → sessionStorage 리다이렉트 → `index.html` 인라인 스크립트가 복원.
 - `index.html` 인라인 스크립트가 첫 페인트 전 다크 테마 적용 (깜빡임 방지) — 제거 금지.
-- `ADMIN.html`: 레포 루트의 독립 정적 관리자 툴(맵/제안 관리, 빌드 무관). React 어드민(`/admin`, 기물 config 에디터)과는 별개.
+- `ADMIN.html`: 레포 루트의 독립 정적 관리자 툴 (레거시/백업). 맵·제안·통계 관리는 React 어드민 `/admin/mapmaster` 로 이식 완료 — 새 기능은 React 쪽에만 추가한다.
 
 ## 문서
 

@@ -1,43 +1,53 @@
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import { Tabs } from '../../components/ui';
+import { useAdminMaps } from './useAdminMaps';
 import { MapsTab } from './MapsTab';
 import { SuggestionsTab } from './SuggestionsTab';
 import { StatsTab } from './StatsTab';
 
 /* 맵 마스터 — 맵 관련 관리 기능 묶음.
+   맵 목록은 여기서 한 번 로드해 세 서브탭이 공유한다 (탭 전환 시 재조회 없음).
    서브탭 상태도 URL 이 단일 진실: /admin/mapmaster/:sub (AdminLayout 과 같은 폴백 규칙). */
 
-const SUBS = [
-  { id: 'maps', label: '🗺 맵 관리', Body: MapsTab },
-  { id: 'suggestions', label: '💬 제안 관리', Body: SuggestionsTab },
-  { id: 'stats', label: '📊 통계', Body: StatsTab },
-] as const;
+const SUB_IDS = ['maps', 'suggestions', 'stats'] as const;
+type SubId = typeof SUB_IDS[number];
 
-const DEFAULT_SUB = SUBS[0].id;
+const SUB_LABELS: Record<SubId, string> = {
+  maps: '🗺 맵 관리',
+  suggestions: '💬 제안 관리',
+  stats: '📊 통계',
+};
+
+const DEFAULT_SUB: SubId = 'maps';
 
 export function MapMasterTab() {
   const { sub } = useParams<{ sub?: string }>();
   const navigate = useNavigate();
+  const admin = useAdminMaps();
 
-  const active = SUBS.find(s => s.id === sub);
+  const active = SUB_IDS.find(s => s === sub);
   if (!active) {
     return <Navigate to={`/admin/mapmaster/${DEFAULT_SUB}`} replace />;
   }
 
-  const Body = active.Body;
-
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-4 py-2 bg-surface border-b border-line">
+      <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-surface border-b border-line">
         <Tabs
           variant="segment"
-          items={SUBS.map(s => ({ id: s.id, label: s.label }))}
-          value={active.id}
+          items={SUB_IDS.map(id => ({ id, label: SUB_LABELS[id] }))}
+          value={active}
           onChange={id => navigate(`/admin/mapmaster/${id}`)}
         />
+        <span className="ml-auto text-[11px] text-ink-muted">
+          {admin.loading ? '맵 불러오는 중…' : `맵 ${admin.maps.length}개`}
+        </span>
       </div>
+
       <div className="flex-1 min-h-0 overflow-hidden">
-        <Body />
+        {active === 'maps' && <MapsTab admin={admin} />}
+        {active === 'suggestions' && <SuggestionsTab admin={admin} />}
+        {active === 'stats' && <StatsTab admin={admin} />}
       </div>
     </div>
   );
