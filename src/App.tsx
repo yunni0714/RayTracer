@@ -67,6 +67,8 @@ export function App() {
       {/* 어드민 셸 — /admin 은 기본 탭으로 리다이렉트, 탭 상태는 URL 이 보관 */}
       <Route path="/admin" element={<AdminLayout />} />
       <Route path="/admin/:tab" element={<AdminLayout />} />
+      {/* 탭 내부 서브탭 (맵 마스터) */}
+      <Route path="/admin/:tab/:sub" element={<AdminLayout />} />
       <Route path="*" element={<EditorPage />} />
     </Routes>
   );
