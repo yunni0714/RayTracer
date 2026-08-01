@@ -3,6 +3,9 @@ import { useShallow } from 'zustand/react/shallow';
 import { useSearchParams } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { fetchLibraryList } from '../../lib/firebaseService';
+import { getCatalogs, type CatalogDef } from '../../lib/catalogConfig';
+import { selectCatalogMaps, needsLogin } from '../../lib/catalogRules';
+import { getAllMapStates } from '../../hooks/useMapReactions';
 import { MapCard } from './MapCard';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
@@ -41,17 +44,11 @@ function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>)
   return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
 }
 
-type Category = 'featured' | 'original' | 'recent' | 'hall' | 'mine';
+const DEFAULT_CATALOG_ID = 'recent';
 
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'featured', label: '🔥 추천' },
-  { id: 'original', label: '🏛 원본' },
-  { id: 'recent', label: '🕗 최근' },
-  { id: 'hall', label: '🏆 명예의전당' },
-  { id: 'mine', label: '👤 내 맵' },
-];
-
-const HALL_LIMIT = 20;
+function catalogLabel(c: CatalogDef): string {
+  return c.emoji ? `${c.emoji} ${c.label}` : c.label;
+}
 
 // 선택 맵 미리보기 (우 존 / 모바일 하단 시트 공용)
 function MapPreview({ map, onPlay }: { map: MapDocument; onPlay: (m: MapDocument) => void }) {
@@ -97,19 +94,29 @@ export function LibraryScreen() {
     currentUserUid: s.currentUserUid,
   })));
 
+  useGameStore(s => s.catalogConfigRev); // 카탈로그 config 갱신 시 리렌더
+  useGameStore(s => s.pieceConfigRev);   // 기물 폴더 변경 → category 조건 결과 변화
+
   const [, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'reactionGod'>('createdAt');
-  const [activeCategory, setActiveCategory] = useState<Category>('recent');
+  // 사용자가 정렬을 직접 고르면 그 세션 동안 카탈로그 정렬보다 우선한다
+  const [sortBy, setSortBy] = useState<'catalog' | 'createdAt' | 'reactionGod'>('catalog');
+  const [activeCatalogId, setActiveCatalogId] = useState<string>(DEFAULT_CATALOG_ID);
   const [selected, setSelected] = useState<MapDocument | null>(null);
 
+  const catalogs = getCatalogs();
+  const activeCatalog = catalogs.find(c => c.id === activeCatalogId) ?? catalogs[0];
+
+  // 서버 조회는 limit(50) 이라 정렬 키에 따라 표본이 달라진다 — 사용자가 God 정렬을
+  // 고르면 그 기준으로 다시 받아온다. 그 외에는 최신순으로 받고 선별/정렬은 클라이언트.
+  const fetchKey: 'createdAt' | 'reactionGod' = sortBy === 'reactionGod' ? 'reactionGod' : 'createdAt';
   useEffect(() => {
     setLoading(true);
-    fetchLibraryList(sortBy)
+    fetchLibraryList(fetchKey)
       .then(setAllLibraryMaps)
       .finally(() => setLoading(false));
-  }, [sortBy, setAllLibraryMaps]);
+  }, [fetchKey, setAllLibraryMaps]);
 
   function playMap(map: MapDocument) {
     const s = useGameStore.getState();
@@ -129,7 +136,7 @@ export function LibraryScreen() {
     useGameStore.getState().showNotification('새로운 맵이 생성되었습니다!', '#e67e22');
   }
 
-  // 검색어가 있으면 카테고리 무관 전체에서 부분일치
+  // 검색어가 있으면 카탈로그 무관 전체에서 부분일치
   const isSearching = search.trim() !== '';
   let visibleMaps: MapDocument[];
   if (isSearching) {
@@ -137,55 +144,42 @@ export function LibraryScreen() {
     visibleMaps = allLibraryMaps.filter(m =>
       m.title.toLowerCase().includes(q) || m.author.toLowerCase().includes(q)
     );
+  } else if (activeCatalog) {
+    // 사용자가 정렬을 직접 고르면 카탈로그 정렬을 덮어쓴다
+    const override = sortBy === 'catalog' ? undefined : { by: sortBy, dir: 'desc' as const };
+    visibleMaps = selectCatalogMaps(
+      override ? { ...activeCatalog, sort: override } : activeCatalog,
+      allLibraryMaps,
+      { uid: currentUserUid, mapStates: getAllMapStates() },
+    );
   } else {
-    switch (activeCategory) {
-      case 'featured':
-        visibleMaps = [...allLibraryMaps]
-          .filter(m => (m.reactionGod ?? 0) >= 3)
-          .sort((a, b) => (b.reactionGod ?? 0) - (a.reactionGod ?? 0));
-        break;
-      case 'original':
-        visibleMaps = [...allLibraryMaps]
-          .filter(m => m.author === 'RayOriginal')
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case 'hall':
-        visibleMaps = [...allLibraryMaps]
-          .sort((a, b) => (b.reactionGod ?? 0) - (a.reactionGod ?? 0))
-          .slice(0, HALL_LIMIT);
-        break;
-      case 'mine':
-        visibleMaps = currentUserUid
-          ? allLibraryMaps.filter(m => m.authorUid === currentUserUid)
-          : [];
-        break;
-      default:
-        visibleMaps = allLibraryMaps;
-    }
+    visibleMaps = allLibraryMaps;
   }
 
   const emptyMessage =
-    activeCategory === 'mine' && !currentUserUid && !isSearching
-      ? '로그인하면 내가 만든 맵이 표시됩니다.'
+    activeCatalog && needsLogin(activeCatalog) && !currentUserUid && !isSearching
+      ? '로그인하면 표시됩니다.'
       : '맵이 없습니다.';
 
   return (
     <div className="flex flex-col lg:flex-row h-full overflow-hidden bg-canvas text-ink">
 
-      {/* ① 좌 존 (데스크탑): 카테고리 내비 */}
+      {/* ① 좌 존 (데스크탑): 카탈로그 내비 — 정의는 catalogConfig 단일 소스 */}
       <aside className="hidden lg:flex w-56 shrink-0 bg-surface border-r border-line p-3 flex-col gap-1">
         <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted mb-1">카탈로그</h5>
-        {CATEGORIES.map(c => (
-          <Button
-            key={c.id}
-            variant={activeCategory === c.id && !isSearching ? 'accent' : 'ghost'}
-            block
-            className="justify-start"
-            onClick={() => { setActiveCategory(c.id); setSearch(''); }}
-          >
-            {c.label}
-          </Button>
-        ))}
+        <div className="flex flex-col gap-1 overflow-y-auto">
+          {catalogs.map(c => (
+            <Button
+              key={c.id}
+              variant={activeCatalog?.id === c.id && !isSearching ? 'accent' : 'ghost'}
+              block
+              className="justify-start"
+              onClick={() => { setActiveCatalogId(c.id); setSearch(''); }}
+            >
+              {catalogLabel(c)}
+            </Button>
+          ))}
+        </div>
         <div className="mt-auto border-t border-line pt-3">
           <Button variant="warning" block onClick={createNewMap}>
             ✨ 새 맵 만들기
@@ -193,18 +187,18 @@ export function LibraryScreen() {
         </div>
       </aside>
 
-      {/* ①′ 모바일: 카테고리 = 상단 세그먼트 */}
+      {/* ①′ 모바일: 카탈로그 = 상단 세그먼트 */}
       <div className="lg:hidden shrink-0 p-2 bg-surface border-b border-line overflow-x-auto hide-scrollbar">
         <Tabs
           variant="segment"
-          items={CATEGORIES.map(c => ({ id: c.id, label: c.label }))}
-          value={isSearching ? '' : activeCategory}
-          onChange={(id) => { setActiveCategory(id as Category); setSearch(''); }}
+          items={catalogs.map(c => ({ id: c.id, label: catalogLabel(c) }))}
+          value={isSearching ? '' : (activeCatalog?.id ?? '')}
+          onChange={(id) => { setActiveCatalogId(id); setSearch(''); }}
           className="whitespace-nowrap"
         />
       </div>
 
-      {/* ② 중앙: 선택 카테고리 맵 그리드 */}
+      {/* ② 중앙: 선택 카탈로그 맵 그리드 */}
       <section className="flex-1 overflow-y-auto p-4 min-h-0">
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <TextInput
@@ -220,8 +214,9 @@ export function LibraryScreen() {
             className="!w-auto cursor-pointer"
             aria-label="정렬"
           >
+            <option value="catalog">카탈로그 기본 정렬</option>
             <option value="createdAt">최신 등록순</option>
-            <option value="reactionGod">갓맵(👍)순</option>
+            <option value="reactionGod">갓맵(🌟)순</option>
           </Select>
           <Button variant="warning" className="lg:hidden" onClick={createNewMap}>
             ✨ 새 맵

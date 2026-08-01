@@ -6,6 +6,7 @@ import { useTheme } from './hooks/useTheme';
 import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
 import { loadPieceConfig } from './lib/pieceConfig';
+import { loadCatalogConfig } from './lib/catalogConfig';
 import { EditorPage } from './pages/EditorPage';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import type { CellData, Rotation } from './types/game';
@@ -55,11 +56,20 @@ function usePieceConfigLoader() {
   }, [bump]);
 }
 
+// 부팅 시 1회: 라이브러리 카탈로그 오버레이 로드 (실패해도 코드 기본값으로 동작)
+function useCatalogConfigLoader() {
+  const bump = useGameStore(s => s.bumpCatalogConfigRev);
+  useEffect(() => {
+    loadCatalogConfig().then(result => { if (result) bump(); });
+  }, [bump]);
+}
+
 export function App() {
   useTheme();
   useAuth();
   useUrlMapLoader();
   usePieceConfigLoader();
+  useCatalogConfigLoader();
 
   return (
     <Routes>

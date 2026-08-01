@@ -31,6 +31,12 @@ export function getMapState(mapId: string): MapState {
   return loadMapStates()[mapId] ?? { ok: false, god: false, diff: null };
 }
 
+// 카탈로그 규칙(플레이·반응·투표 조건)이 쓰는 전체 스냅샷.
+// 키가 존재하면 "플레이한 맵" 으로 본다 (NextMapPanel 과 같은 규약).
+export function getAllMapStates(): Record<string, MapState> {
+  return loadMapStates();
+}
+
 export function useMapReactions() {
   const {
     currentLoadedMapObj, currentUserUid, showNotification,

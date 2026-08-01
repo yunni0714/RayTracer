@@ -130,6 +130,7 @@ interface GameStore {
   theme: 'light' | 'dark';
   confirmState: ConfirmOpts | null;
   pieceConfigRev: number; // 기물 config 오버레이 적용 시 증가 → SVG/라벨 리렌더 트리거
+  catalogConfigRev: number; // 카탈로그 config 오버레이 적용 시 증가 → 라이브러리 카탈로그 리렌더
 
   // ── 액션: 그리드 ─────────────────────────────
   setMapData: (data: (CellData | null)[][]) => void;
@@ -192,6 +193,7 @@ interface GameStore {
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark') => void;
   bumpPieceConfigRev: () => void;
+  bumpCatalogConfigRev: () => void;
   requestConfirm: (opts: ConfirmOpts) => Promise<boolean>;
   resolveConfirm: (result: boolean) => void;
 
@@ -235,6 +237,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   theme: initialTheme(),
   confirmState: null,
   pieceConfigRev: 0,
+  catalogConfigRev: 0,
 
   // ── 그리드 ───────────────────────────────────
   setMapData: (data) => set({ mapData: data, gridSize: data.length }),
@@ -499,6 +502,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   setTheme: (t) => set({ theme: t }),
   bumpPieceConfigRev: () => set((s) => ({ pieceConfigRev: s.pieceConfigRev + 1 })),
+  bumpCatalogConfigRev: () => set((s) => ({ catalogConfigRev: s.catalogConfigRev + 1 })),
 
   // ── 확인 다이얼로그 (네이티브 confirm 대체) ──
   requestConfirm: (opts) => new Promise<boolean>((resolve) => {

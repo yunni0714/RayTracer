@@ -1,3 +1,6 @@
+import type { Difficulty } from '../types/game';
+import type { MapCategory } from './mapCategory';
+
 /* ════════════════════════════════════════════════════════
    라이브러리 카탈로그 config 오버레이 (어드민)
 
@@ -9,32 +12,47 @@
    ⚠️ 카탈로그 목록에 접근할 때는 항상 getCatalogs()/getCatalog() 를 쓸 것.
       DEFAULT_CATALOGS 를 직접 읽으면 어드민 오버라이드가 무시된다.
 
-   rule(규칙) / pinnedMapIds·excludedMapIds(수동 큐레이션) 은 편집 UI 가
-   붙기 전 단계의 스키마다. 5개 빌트인을 표현할 수 있을 만큼만 정의되어
-   있고, 세부 조건 문법은 후속 작업에서 확장한다.
+   맵 선별(평가)은 여기 없다 — `catalogRules.ts` 가 담당한다 (정의/평가 분리).
    ════════════════════════════════════════════════════════ */
 
-// 카탈로그가 맵을 고르는 규칙. 현재는 빌트인 5종을 표현할 수 있는 최소 집합.
-export type CatalogRule =
-  | { kind: 'all' }                                          // 전체 (최근)
-  | { kind: 'author'; author: string }                       // 특정 작성자명 (원본)
-  | { kind: 'mine' }                                         // 로그인 사용자의 맵 (내 맵)
-  | {                                                        // 반응 수 기준 (추천 / 명예의전당)
-      kind: 'reaction';
-      field: 'reactionOk' | 'reactionGod';
-      min?: number;   // 이 값 이상만
-      top?: number;   // 상위 N개만
-    };
+export type SortKey = 'createdAt' | 'reactionGod' | 'reactionOk' | 'title';
+export type SortDir = 'asc' | 'desc';
+export interface CatalogSort { by: SortKey; dir: SortDir }
+
+/* 카탈로그 조건 — 배열에 담기면 전부 만족(AND)해야 한다.
+   'mine' | 'played' | 'reacted' | 'voted' 는 로그인 사용자 기준(needsLogin). */
+export type CatalogCondition =
+  | { kind: 'author'; author: string }
+  | { kind: 'reaction'; field: 'reactionOk' | 'reactionGod'; min?: number; max?: number }
+  | { kind: 'difficulty'; values: Difficulty[] }
+  | { kind: 'category'; values: MapCategory[] }
+  | { kind: 'recent'; days: number }
+  | { kind: 'gridSize'; min?: number; max?: number }
+  | { kind: 'pieceCount'; min?: number; max?: number }
+  | { kind: 'containsPiece'; types: string[]; mode: 'any' | 'all' }
+  | { kind: 'titleContains'; text: string }
+  // ── 로그인 사용자 기준 ──
+  | { kind: 'mine'; owned: boolean }
+  | { kind: 'played'; played: boolean }
+  | { kind: 'reacted'; field: 'ok' | 'god' | 'any'; reacted: boolean }
+  | { kind: 'voted'; voted: boolean };
+
+export type CatalogConditionKind = CatalogCondition['kind'];
+
+export const USER_CONDITION_KINDS: readonly CatalogConditionKind[] =
+  ['mine', 'played', 'reacted', 'voted'] as const;
 
 export interface CatalogDef {
   id: string;
   label: string;
   emoji?: string;
   order: number;
-  hidden?: boolean;         // 라이브러리에서 숨김 (정의는 유지)
-  rule?: CatalogRule;
-  pinnedMapIds?: string[];  // 규칙과 무관하게 항상 포함 (수동 큐레이션)
-  excludedMapIds?: string[]; // 규칙에 걸려도 제외 (수동 큐레이션)
+  hidden?: boolean;             // 라이브러리에서 숨김 (정의는 유지)
+  conditions?: CatalogCondition[]; // AND. 없거나 빈 배열이면 전체
+  sort?: CatalogSort;           // 기본 createdAt desc
+  limit?: number;               // 상위 N개만 (명예의전당 = 20)
+  pinnedMapIds?: string[];      // 규칙과 무관하게 포함 (정렬 후 맨 앞)
+  excludedMapIds?: string[];    // 규칙에 걸려도 제외 (최우선)
 }
 
 export interface CatalogConfigDoc {
@@ -43,13 +61,34 @@ export interface CatalogConfigDoc {
 }
 
 /* ── 코드 기본값 ────────────────────────────────────────── */
-// LibraryScreen 의 하드코딩 카테고리 5종을 그대로 옮긴 것.
+// 라이브러리 빌트인 5종. 예전 LibraryScreen 하드코딩 필터와 동작이 같다.
 export const DEFAULT_CATALOGS: readonly CatalogDef[] = [
-  { id: 'featured', label: '추천', emoji: '🔥', order: 0, rule: { kind: 'reaction', field: 'reactionGod', min: 3 } },
-  { id: 'original', label: '원본', emoji: '🏛', order: 1, rule: { kind: 'author', author: 'RayOriginal' } },
-  { id: 'recent', label: '최근', emoji: '🕗', order: 2, rule: { kind: 'all' } },
-  { id: 'hall', label: '명예의전당', emoji: '🏆', order: 3, rule: { kind: 'reaction', field: 'reactionGod', top: 20 } },
-  { id: 'mine', label: '내 맵', emoji: '👤', order: 4, rule: { kind: 'mine' } },
+  {
+    id: 'featured', label: '추천', emoji: '🔥', order: 0,
+    conditions: [{ kind: 'reaction', field: 'reactionGod', min: 3 }],
+    sort: { by: 'reactionGod', dir: 'desc' },
+  },
+  {
+    id: 'original', label: '원본', emoji: '🏛', order: 1,
+    conditions: [{ kind: 'author', author: 'RayOriginal' }],
+    sort: { by: 'createdAt', dir: 'desc' },
+  },
+  {
+    id: 'recent', label: '최근', emoji: '🕗', order: 2,
+    conditions: [],
+    sort: { by: 'createdAt', dir: 'desc' },
+  },
+  {
+    id: 'hall', label: '명예의전당', emoji: '🏆', order: 3,
+    conditions: [],
+    sort: { by: 'reactionGod', dir: 'desc' },
+    limit: 20,
+  },
+  {
+    id: 'mine', label: '내 맵', emoji: '👤', order: 4,
+    conditions: [{ kind: 'mine', owned: true }],
+    sort: { by: 'createdAt', dir: 'desc' },
+  },
 ];
 
 const BUILTIN_IDS: ReadonlySet<string> = new Set(DEFAULT_CATALOGS.map(c => c.id));
@@ -59,6 +98,8 @@ const CATALOG_ID_MAX = 48;
 const LABEL_MAX = 40;
 const EMOJI_MAX = 8;
 const MAP_ID_LIST_MAX = 300;
+const CONDITIONS_MAX = 12;
+const PIECE_TYPES_MAX = 40;
 
 export function isValidCatalogId(id: string): boolean {
   return id.length > 0 && id.length <= CATALOG_ID_MAX && CATALOG_ID_RE.test(id);
@@ -68,6 +109,15 @@ export function isBuiltinCatalogId(id: string): boolean {
   return BUILTIN_IDS.has(id);
 }
 
+export function getBuiltinCatalog(id: string): CatalogDef | undefined {
+  const found = DEFAULT_CATALOGS.find(c => c.id === id);
+  return found ? structuredCloneDef(found) : undefined;
+}
+
+function structuredCloneDef(def: CatalogDef): CatalogDef {
+  return JSON.parse(JSON.stringify(def)) as CatalogDef;
+}
+
 /* ── 오버레이 상태 ──────────────────────────────────────── */
 
 let overrides: Record<string, Partial<CatalogDef>> = {};
@@ -75,7 +125,7 @@ let overrides: Record<string, Partial<CatalogDef>> = {};
 // order 순 정렬된 카탈로그 목록. 빌트인 5종은 config 가 빠뜨려도 항상 포함.
 export function getCatalogs(opts: { includeHidden?: boolean } = {}): CatalogDef[] {
   const byId = new Map<string, CatalogDef>();
-  for (const def of DEFAULT_CATALOGS) byId.set(def.id, { ...def });
+  for (const def of DEFAULT_CATALOGS) byId.set(def.id, structuredCloneDef(def));
 
   for (const [id, patch] of Object.entries(overrides)) {
     const base = byId.get(id);
@@ -101,27 +151,120 @@ export function getCatalogOverrides(): Record<string, Partial<CatalogDef>> {
   return { ...overrides };
 }
 
+export function getCustomCatalogIds(): string[] {
+  return Object.keys(overrides).filter(id => !BUILTIN_IDS.has(id));
+}
+
 /* ── 검증 ───────────────────────────────────────────────── */
 
-function sanitizeRule(raw: unknown): CatalogRule | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const r = raw as Partial<CatalogRule> & Record<string, unknown>;
-  switch (r.kind) {
-    case 'all':
-    case 'mine':
-      return { kind: r.kind };
+const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
+const CATEGORIES: MapCategory[] = ['basic', 'logic', 'advanced', 'advanced_logic'];
+const SORT_KEYS: SortKey[] = ['createdAt', 'reactionGod', 'reactionOk', 'title'];
+
+function num(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+function strList(raw: unknown, allowed: readonly string[] | null, max: number): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const seen = new Set<string>();
+  for (const v of raw) {
+    if (typeof v !== 'string' || !v) continue;
+    if (allowed && !allowed.includes(v)) continue;
+    seen.add(v);
+    if (seen.size >= max) break;
+  }
+  return seen.size ? [...seen] : undefined;
+}
+
+// 조건 하나를 검증한다. 못 쓰는 형태면 undefined — 그 조건만 버리고 나머지는 살린다.
+export function sanitizeCondition(raw: unknown): CatalogCondition | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const c = raw as Record<string, unknown>;
+
+  switch (c.kind) {
     case 'author':
-      return typeof r.author === 'string' && r.author ? { kind: 'author', author: r.author } : undefined;
+      return typeof c.author === 'string' && c.author.trim()
+        ? { kind: 'author', author: c.author.trim() } : undefined;
+
     case 'reaction': {
-      if (r.field !== 'reactionOk' && r.field !== 'reactionGod') return undefined;
-      const rule: CatalogRule = { kind: 'reaction', field: r.field };
-      if (typeof r.min === 'number' && Number.isFinite(r.min)) rule.min = r.min;
-      if (typeof r.top === 'number' && Number.isFinite(r.top) && r.top > 0) rule.top = Math.floor(r.top);
-      return rule;
+      if (c.field !== 'reactionOk' && c.field !== 'reactionGod') return undefined;
+      const out: CatalogCondition = { kind: 'reaction', field: c.field };
+      const min = num(c.min); const max = num(c.max);
+      if (min !== undefined) out.min = min;
+      if (max !== undefined) out.max = max;
+      return out;
     }
+
+    case 'difficulty': {
+      const values = strList(c.values, DIFFICULTIES, DIFFICULTIES.length) as Difficulty[] | undefined;
+      return values ? { kind: 'difficulty', values } : undefined;
+    }
+
+    case 'category': {
+      const values = strList(c.values, CATEGORIES, CATEGORIES.length) as MapCategory[] | undefined;
+      return values ? { kind: 'category', values } : undefined;
+    }
+
+    case 'recent': {
+      const days = num(c.days);
+      return days !== undefined && days > 0 ? { kind: 'recent', days: Math.floor(days) } : undefined;
+    }
+
+    case 'gridSize':
+    case 'pieceCount': {
+      const min = num(c.min); const max = num(c.max);
+      if (min === undefined && max === undefined) return undefined;
+      const out = { kind: c.kind } as Extract<CatalogCondition, { kind: 'gridSize' | 'pieceCount' }>;
+      if (min !== undefined) out.min = min;
+      if (max !== undefined) out.max = max;
+      return out;
+    }
+
+    case 'containsPiece': {
+      const types = strList(c.types, null, PIECE_TYPES_MAX);
+      if (!types) return undefined;
+      return { kind: 'containsPiece', types, mode: c.mode === 'all' ? 'all' : 'any' };
+    }
+
+    case 'titleContains':
+      return typeof c.text === 'string' && c.text.trim()
+        ? { kind: 'titleContains', text: c.text.trim() } : undefined;
+
+    case 'mine':
+      return { kind: 'mine', owned: c.owned !== false };
+
+    case 'played':
+      return { kind: 'played', played: c.played !== false };
+
+    case 'reacted': {
+      const field = c.field === 'ok' || c.field === 'god' ? c.field : 'any';
+      return { kind: 'reacted', field, reacted: c.reacted !== false };
+    }
+
+    case 'voted':
+      return { kind: 'voted', voted: c.voted !== false };
+
     default:
       return undefined;
   }
+}
+
+function sanitizeConditions(raw: unknown): CatalogCondition[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: CatalogCondition[] = [];
+  for (const item of raw.slice(0, CONDITIONS_MAX)) {
+    const cond = sanitizeCondition(item);
+    if (cond) out.push(cond);
+  }
+  return out; // 빈 배열도 유효 (= 전체)
+}
+
+function sanitizeSort(raw: unknown): CatalogSort | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const s = raw as Record<string, unknown>;
+  if (typeof s.by !== 'string' || !SORT_KEYS.includes(s.by as SortKey)) return undefined;
+  return { by: s.by as SortKey, dir: s.dir === 'asc' ? 'asc' : 'desc' };
 }
 
 function sanitizeMapIds(raw: unknown): string[] | undefined {
@@ -130,19 +273,64 @@ function sanitizeMapIds(raw: unknown): string[] | undefined {
   return ids.length ? ids : undefined;
 }
 
+/* 레거시(v1) 단일 rule → v2 조건/정렬/limit 승격.
+   프로덕션 config 문서는 아직 없지만, 초기 스키마로 저장된 문서가 있어도 깨지지 않게 한다. */
+function liftLegacyRule(raw: unknown): Pick<CatalogDef, 'conditions' | 'sort' | 'limit'> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  switch (r.kind) {
+    case 'all':
+      return { conditions: [] };
+    case 'mine':
+      return { conditions: [{ kind: 'mine', owned: true }] };
+    case 'author': {
+      const cond = sanitizeCondition({ kind: 'author', author: r.author });
+      return cond ? { conditions: [cond] } : null;
+    }
+    case 'reaction': {
+      const cond = sanitizeCondition({ kind: 'reaction', field: r.field, min: r.min });
+      if (!cond) return null;
+      const out: Pick<CatalogDef, 'conditions' | 'sort' | 'limit'> = {
+        conditions: [cond],
+        sort: { by: (r.field === 'reactionOk' ? 'reactionOk' : 'reactionGod'), dir: 'desc' },
+      };
+      const top = num(r.top);
+      if (top !== undefined && top > 0) out.limit = Math.floor(top);
+      return out;
+    }
+    default:
+      return null;
+  }
+}
+
 // 부분 패치를 검증한다. 형태가 아예 아니면 null (해당 엔트리 skip).
 function sanitizeEntry(raw: unknown, isBuiltin: boolean): Partial<CatalogDef> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const e = raw as Partial<CatalogDef> & Record<string, unknown>;
+  const e = raw as Record<string, unknown>;
   const out: Partial<CatalogDef> = {};
 
   if (typeof e.label === 'string' && e.label.trim()) out.label = e.label.trim().slice(0, LABEL_MAX);
   if (typeof e.emoji === 'string') out.emoji = e.emoji.slice(0, EMOJI_MAX);
-  if (typeof e.order === 'number' && Number.isFinite(e.order)) out.order = e.order;
+  const order = num(e.order);
+  if (order !== undefined) out.order = order;
   if (typeof e.hidden === 'boolean') out.hidden = e.hidden;
 
-  const rule = sanitizeRule(e.rule);
-  if (rule) out.rule = rule;
+  const conditions = sanitizeConditions(e.conditions);
+  if (conditions) out.conditions = conditions;
+  const sort = sanitizeSort(e.sort);
+  if (sort) out.sort = sort;
+  const limit = num(e.limit);
+  if (limit !== undefined && limit > 0) out.limit = Math.floor(limit);
+
+  // v1 문서 호환 — conditions 가 없을 때만 rule 을 승격한다
+  if (!out.conditions && e.rule !== undefined) {
+    const lifted = liftLegacyRule(e.rule);
+    if (lifted) {
+      out.conditions = lifted.conditions;
+      if (lifted.sort && !out.sort) out.sort = lifted.sort;
+      if (lifted.limit && out.limit === undefined) out.limit = lifted.limit;
+    }
+  }
 
   const pinned = sanitizeMapIds(e.pinnedMapIds);
   if (pinned) out.pinnedMapIds = pinned;
