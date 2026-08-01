@@ -8,7 +8,7 @@
 //    Firebase Console > Authentication 에서 확인)
 export const ADMIN_UIDS: string[] = [
    'gy0yLjz0wLgZsFnC2f4ZOB1nTa53',
-   'wKf71DEChpZWBhG2bUSyYUB7GTD3'.
+   'wKf71DEChpZWBhG2bUSyYUB7GTD3',
    'UFBL4fCtI4fgJ95yHAkR4upv0fh1'
 ];
 
