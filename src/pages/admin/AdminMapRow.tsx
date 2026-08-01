@@ -4,12 +4,15 @@ import { useGameStore } from '../../store/gameStore';
 import { updateMapInDB, deleteMapWithSuggestions } from '../../lib/firebaseService';
 import { DIFFICULTIES, formatDateTime } from '../../lib/adminMaps';
 import { MiniGrid } from '../../components/library/MiniGrid';
-import { Button, DifficultyPill, Label, TextInput, TextArea, Select, Modal } from '../../components/ui';
+import { Button, DifficultyPill, Label, TextInput, TextArea, Select, Modal, cx } from '../../components/ui';
 import { MapRotationEditor } from './MapRotationEditor';
+import { MapSuggestionsPanel } from './MapSuggestionsPanel';
 import type { AdminMapsState } from './useAdminMaps';
 import type { Difficulty, MapDocument } from '../../types/game';
 
 /* 맵 한 개의 관리 행 — 요약 + 메타 편집 / 회전 편집 / 소유권 이전 / 영구 삭제.
+   메타 편집을 열면 좌(요약+메타 폼) / 우(이 맵의 풀이 제안) 2단으로 펼쳐진다 —
+   구 [제안 관리] 서브탭의 맵 드롭다운을 대체한다 (맵 관리 = 제안 관리 통합).
    ⚠️ 썸네일·편집 그리드는 revealRotation — 어드민은 정답 회전을 봐야 편집할 수 있다.
       (플레이어 화면이 아니므로 은닉 규칙 대상이 아니다.) */
 
@@ -31,7 +34,14 @@ function draftOf(map: MapDocument): MetaDraft {
   };
 }
 
-export function AdminMapRow({ map, admin }: { map: MapDocument; admin: AdminMapsState }) {
+interface Props {
+  map: MapDocument;
+  admin: AdminMapsState;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+}
+
+export function AdminMapRow({ map, admin, selected = false, onToggleSelect }: Props) {
   const { currentUserUid, showNotification, requestConfirm } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     showNotification: s.showNotification,
@@ -110,104 +120,149 @@ export function AdminMapRow({ map, admin }: { map: MapDocument; admin: AdminMaps
 
   const gridSize = map.gridSize ?? 5;
 
-  return (
-    <div className="bg-surface border border-line rounded-tile overflow-hidden">
-      {/* 요약 행 */}
-      <div className="flex items-center gap-3 p-3 flex-wrap">
-        <MiniGrid mapData={map.mapData} revealRotation variant="v1" size={84} gridSize={gridSize} />
+  /* 요약 행 — 접힘/펼침 모두에서 같은 내용 (펼치면 왼쪽 열 머리에 온다) */
+  const summary = (
+    <div className="flex items-start gap-3 p-3 flex-wrap">
+      {onToggleSelect && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(map.id)}
+          aria-label={`${map.title || '제목 없음'} 선택`}
+          title="일괄 회전 대상으로 선택"
+          className="mt-1 shrink-0 cursor-pointer"
+        />
+      )}
+      <MiniGrid mapData={map.mapData} revealRotation variant="v1" size={84} gridSize={gridSize} />
 
-        <div className="flex-1 min-w-[220px] flex flex-col gap-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-extrabold tracking-tight">{map.title || '제목 없음'}</h3>
-            <code className="text-[10px] text-ink-muted">{map.id}</code>
-            <DifficultyPill difficulty={map.difficulty} />
-          </div>
-          <p className="text-[11px] text-ink-muted">
-            작성자 <strong className="text-ink">{map.author || '없음'}</strong>
-            {' · '}UID <code className="text-[10px]">{map.authorUid || '없음'}</code>
-          </p>
-          <p className="text-[11px] text-ink-muted">
-            {formatDateTime(map.createdAt)} · {gridSize}×{gridSize} · 기물 {map.mapData?.length ?? 0}
-            {' · '}👍 {map.reactionOk ?? 0} · 🌟 {map.reactionGod ?? 0}
-          </p>
+      <div className="flex-1 min-w-[200px] flex flex-col gap-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-sm font-extrabold tracking-tight">{map.title || '제목 없음'}</h3>
+          <DifficultyPill difficulty={map.difficulty} />
         </div>
-
-        <div className="flex flex-col gap-1 shrink-0">
-          <Button variant="secondary" className="!text-xs" onClick={() => togglePanel('meta')}>
-            📝 메타 편집
-          </Button>
-          <Button variant="secondary" className="!text-xs" onClick={() => togglePanel('rotation')}>
-            🎛 회전 편집
-          </Button>
-          <Button
-            variant="secondary"
-            className="!text-xs"
-            onClick={() => { setTransferUid(currentUserUid ?? ''); setTransferOpen(true); }}
-          >
-            👑 소유권 이전
-          </Button>
-          <Button variant="danger" className="!text-xs" onClick={deleteMap} disabled={saving}>
-            🗑 영구 삭제
-          </Button>
-        </div>
+        <p className="text-[11px] text-ink-muted break-all">
+          <code className="text-[10px]">{map.id}</code>
+        </p>
+        <p className="text-[11px] text-ink-muted break-all">
+          작성자 <strong className="text-ink">{map.author || '없음'}</strong>
+          {' · '}UID <code className="text-[10px]">{map.authorUid || '없음'}</code>
+        </p>
+        <p className="text-[11px] text-ink-muted">
+          {formatDateTime(map.createdAt)} · {gridSize}×{gridSize} · 기물 {map.mapData?.length ?? 0}
+          {' · '}👍 {map.reactionOk ?? 0} · 🌟 {map.reactionGod ?? 0}
+        </p>
       </div>
 
-      {/* 메타 편집 */}
-      {panel === 'meta' && (
-        <div className="border-t border-line p-3 flex flex-col gap-3 bg-surface-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Label>
-              제목
-              <TextInput
-                value={meta.title}
-                maxLength={50}
-                onChange={e => setMeta({ ...meta, title: e.target.value })}
-                className="mt-1"
-              />
-            </Label>
-            <Label>
-              난이도
-              <Select
-                value={meta.difficulty}
-                onChange={e => setMeta({ ...meta, difficulty: e.target.value as Difficulty })}
-                className="mt-1"
-              >
-                {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-              </Select>
-            </Label>
-            <Label>
-              작성자명
-              <TextInput
-                value={meta.author}
-                maxLength={30}
-                onChange={e => setMeta({ ...meta, author: e.target.value })}
-                className="mt-1"
-              />
-            </Label>
-            <Label>
-              설명
-              <TextArea
-                value={meta.description}
-                rows={3}
-                onChange={e => setMeta({ ...meta, description: e.target.value })}
-                className="mt-1"
-              />
-            </Label>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setPanel('none')}>취소</Button>
-            <Button variant="success" onClick={saveMeta} disabled={saving}>
-              {saving ? '저장 중…' : '💾 저장'}
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* 2×2 — 세로 4단이면 카드가 쓸데없이 높아지고 가로로 비어 보인다 */}
+      <div className="grid grid-cols-2 gap-1 shrink-0">
+        <Button
+          variant={panel === 'meta' ? 'accent' : 'secondary'}
+          className="!text-xs"
+          onClick={() => togglePanel('meta')}
+        >
+          📝 메타 편집
+        </Button>
+        <Button
+          variant={panel === 'rotation' ? 'accent' : 'secondary'}
+          className="!text-xs"
+          onClick={() => togglePanel('rotation')}
+        >
+          🎛 회전 편집
+        </Button>
+        <Button
+          variant="secondary"
+          className="!text-xs"
+          onClick={() => { setTransferUid(currentUserUid ?? ''); setTransferOpen(true); }}
+        >
+          👑 소유권 이전
+        </Button>
+        <Button variant="danger" className="!text-xs" onClick={deleteMap} disabled={saving}>
+          🗑 영구 삭제
+        </Button>
+      </div>
+    </div>
+  );
 
-      {/* 회전 편집 */}
-      {panel === 'rotation' && (
-        <div className="border-t border-line p-3 bg-surface-2">
-          <MapRotationEditor map={map} admin={admin} onClose={() => setPanel('none')} />
+  /* 메타 편집 폼 — 2단 레이아웃에서 왼쪽 열 나머지 높이를 채운다 (오른쪽 제안 열과 높이 정렬) */
+  const metaForm = (
+    <div className="border-t border-line p-3 flex flex-col gap-3 bg-surface-2 flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Label>
+          제목
+          <TextInput
+            value={meta.title}
+            maxLength={50}
+            onChange={e => setMeta({ ...meta, title: e.target.value })}
+            className="mt-1"
+          />
+        </Label>
+        <Label>
+          난이도
+          <Select
+            value={meta.difficulty}
+            onChange={e => setMeta({ ...meta, difficulty: e.target.value as Difficulty })}
+            className="mt-1"
+          >
+            {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+          </Select>
+        </Label>
+        <Label>
+          작성자명
+          <TextInput
+            value={meta.author}
+            maxLength={30}
+            onChange={e => setMeta({ ...meta, author: e.target.value })}
+            className="mt-1"
+          />
+        </Label>
+        <Label>
+          설명
+          <TextArea
+            value={meta.description}
+            rows={3}
+            onChange={e => setMeta({ ...meta, description: e.target.value })}
+            className="mt-1"
+          />
+        </Label>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="secondary" onClick={() => setPanel('none')}>취소</Button>
+        <Button variant="success" onClick={saveMeta} disabled={saving}>
+          {saving ? '저장 중…' : '💾 저장'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={cx(
+        'bg-surface border rounded-tile overflow-hidden',
+        panel !== 'none' && 'xl:col-span-2', // 펼친 카드는 그리드 전체 폭 사용
+        selected ? 'border-accent' : 'border-line',
+      )}
+    >
+      {panel === 'meta' ? (
+        /* 메타 편집 = 좌(요약+폼) / 우(제안) 2단 */
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
+          <div className="min-w-0 flex flex-col">
+            {summary}
+            {metaForm}
+          </div>
+          <div className="min-w-0 border-t lg:border-t-0 lg:border-l border-line bg-surface-2">
+            <MapSuggestionsPanel map={map} />
+          </div>
         </div>
+      ) : (
+        <>
+          {summary}
+          {/* 회전 편집 */}
+          {panel === 'rotation' && (
+            <div className="border-t border-line p-3 bg-surface-2">
+              <MapRotationEditor map={map} admin={admin} onClose={() => setPanel('none')} />
+            </div>
+          )}
+        </>
       )}
 
       {/* 소유권 이전 */}
