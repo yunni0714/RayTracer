@@ -73,7 +73,7 @@ RayTracer/
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
 │   │   ├── catalogConfig.ts             # 카탈로그 정의/스키마 + 오버레이 (Firestore config/catalog 머지)
 │   │   ├── catalogRules.ts              # 카탈로그 규칙 평가 (조건 AND, 고정/제외, 정렬, limit)
-│   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전 순수 로직
+│   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전(단일·일괄) 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
@@ -93,14 +93,16 @@ RayTracer/
 │   │       ├── PiecesTab.tsx            # [기물] 면별 behavior 에디터, 폴더/커스텀 기물 CRUD
 │   │       ├── MapMasterTab.tsx         # [맵 마스터] 서브탭 셸 (/admin/mapmaster/:sub) + 맵 목록 로드
 │   │       ├── useAdminMaps.ts          # └ 맵 목록 상태 훅 (조회/재조회/로컬 patch·remove)
-│   │       ├── MapsTab.tsx              # └ [맵 관리] 목록·검색·정렬
-│   │       ├── AdminMapRow.tsx          # └   맵 행 — 메타 편집/회전 편집/소유권 이전/영구 삭제
-│   │       ├── MapRotationEditor.tsx    # └   기물 각도 편집 (NxN 그리드 클릭 선택)
-│   │       ├── SuggestionsTab.tsx       # └ [제안 관리] 맵별 제안 조회/삭제
+│   │       ├── MapsTab.tsx              # └ [맵·제안 관리] 목록(2열 카드)·검색·정렬·선택·일괄 회전 진입
+│   │       ├── AdminMapRow.tsx          # └   맵 카드 — 메타 편집(+제안 2단)/회전 편집/소유권 이전/영구 삭제
+│   │       ├── MapSuggestionsPanel.tsx  # └   맵별 풀이 제안 조회/삭제 (메타 편집 패널 오른쪽 열)
+│   │       ├── MapRotationEditor.tsx    # └   기물 각도 편집 (NxN 그리드 클릭 선택 + 같은 기물 전체)
+│   │       ├── BulkRotationModal.tsx    # └   일괄 회전 — 스코프(선택/검색/전체) × 기물 타입 다중 선택
 │   │       ├── StatsTab.tsx             # └ [통계] 반응 합계·난이도 분포·Top 5
-│   │       ├── CatalogTab.tsx           # [카탈로그] 빌트인/커스텀 목록 + 메타·규칙·큐레이션 편집 + 미리보기
+│   │       ├── CatalogTab.tsx           # [카탈로그] 3열 — 목록 / 메타·규칙·큐레이션 편집 / 미리보기
 │   │       ├── CatalogRuleEditor.tsx    # └ 조건 카드 리스트(AND) + 정렬 + 상위 N개
 │   │       ├── CatalogCurationPanel.tsx # └ 고정/제외 맵 목록
+│   │       ├── CatalogPreviewPanel.tsx  # └ 미리보기 전용 열 (썸네일 그리드 + 순위·📌 표시)
 │   │       └── MapPickerModal.tsx       # └ 맵 검색·다중 선택 모달
 │   │
 │   ├── components/
@@ -159,7 +161,7 @@ RayTracer/
 │   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
 │   ├── catalogConfig.test.ts            # 카탈로그 스키마 v2 검증/머지/레거시 rule 승격/손상 방어
 │   ├── catalogRules.test.ts             # 조건 13종 매칭, AND, 고정/제외 우선순위, 빌트인 회귀
-│   ├── adminMaps.test.ts                # 어드민 검색/정렬/통계 집계/회전 델타
+│   ├── adminMaps.test.ts                # 어드민 검색/정렬/통계 집계/회전 델타/일괄 회전 계획
 │   ├── mapCategory.test.ts              # 맵 카테고리 판정 + 폴더 오버라이드 반영
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
@@ -366,28 +368,39 @@ Header
 
 #### `src/pages/admin/MapMasterTab.tsx` — [맵 마스터] 탭 (서브탭 셸)
 - 맵 관련 관리 기능 묶음. 서브탭 바는 `Tabs variant="segment"` (바깥 폴더탭과 구분)
-- 서브탭도 URL 이 단일 진실: `/admin/mapmaster/:sub` (`maps` · `suggestions` · `stats`). 누락·미지 슬러그 → `maps` 로 `replace`
-- 본문은 `MapsTab`/`SuggestionsTab`/`StatsTab` 을 그대로 렌더
+- 서브탭도 URL 이 단일 진실: `/admin/mapmaster/:sub` (`maps` · `stats`). 누락·미지 슬러그 → `maps` 로 `replace`
+  (구 `suggestions` 링크도 미지 슬러그로 `maps` 폴백 — 제안 관리는 맵 카드에 흡수됐다)
+- 본문은 `MapsTab`/`StatsTab` 을 그대로 렌더
 
-#### `src/pages/admin/{MapsTab,AdminMapRow,MapRotationEditor}.tsx` — [맵 관리] 서브탭
+#### `src/pages/admin/{MapsTab,AdminMapRow,MapSuggestionsPanel,MapRotationEditor,BulkRotationModal}.tsx` — [맵·제안 관리] 서브탭
 - `MapsTab`: 새로고침 / 제목·작성자 검색 / 정렬(최신·🌟·👍) + 로딩·빈·에러 상태
+  - 카드는 `grid xl:grid-cols-2` 2열 — 카드가 가로로 늘어나 비어 보이지 않게. 펼친 카드만 `xl:col-span-2`
+  - 체크박스 다중 선택(`목록 전체 선택`/`선택 해제`) + `🎛 일괄 회전` → `BulkRotationModal`
 - `AdminMapRow`: 썸네일(`MiniGrid revealRotation`, gridSize 반영) · 제목/id/작성자/authorUid/난이도/생성일/기물 수/반응, 액션 4종
-  - 메타 편집(제목≤50·난이도·작성자≤30·설명) → `updateMapInDB()`
+  - 메타 편집(제목≤50·난이도·작성자≤30·설명) → `updateMapInDB()`.
+    **열면 좌(요약+폼) / 우(`MapSuggestionsPanel`) 2단** — 구 [제안 관리] 서브탭의 맵 드롭다운을 대체
   - 소유권 이전 → `Modal` + UID 입력(`내 UID 넣기` 버튼) → `updateMapInDB({authorUid})`
   - 영구 삭제 → `requestConfirm(danger)` → `deleteMapWithSuggestions()` (제안 서브컬렉션 먼저 삭제)
+- `MapSuggestionsPanel`: 카드 마운트 시 `fetchSuggestionsFromDB(map.id)` → 풀이 썸네일(`revealRotation`)·카테고리 배지·닉네임·코멘트·날짜 + 삭제
 - `MapRotationEditor`: NxN 그리드 클릭으로 기물 선택 → ±45/±90 · 절대 각도 지정 → `updateMapInDB({mapData})`.
+  `같은 기물 전체에 적용` 체크 시 이 맵 안의 동일 타입 전부에 같은 연산(`applyBulkRotationToItems`)
   **저장된 rotation = 정답 회전이므로 정규화 없이 그대로 저장**, 회전 외 필드는 건드리지 않는다.
+- `BulkRotationModal`: 여러 맵 일괄 회전. 스코프(선택한 맵/검색 결과/전체) × 기물 타입 다중 선택
+  × 필터(인벤토리 포함·회전 가능만) × 연산(상대 ±45/±90/180 · 절대 지정)
+  - 대상 집계·계획은 순수 함수 (`collectPieceTypeCounts`/`planBulkRotation`) — 실제로 바뀌는 맵만 저장
+  - 적용 전 `requestConfirm(danger)`, 맵 단위 순차 저장 + 진행률, 실패는 맵별로 모아 모달에 표시
 - 서버 쓰기 성공 후 `useAdminMaps` 의 `patchMap`/`removeMap` 으로 목록만 갱신 (전체 재조회 없음)
-
-#### `src/pages/admin/SuggestionsTab.tsx` — [제안 관리] 서브탭
-- 맵 `Select`(공유 목록) → `fetchSuggestionsFromDB()` → 풀이 썸네일(`revealRotation`)·카테고리 배지·닉네임·코멘트·날짜 + 삭제
 
 #### `src/pages/admin/StatsTab.tsx` — [통계] 서브탭
 - `computeMapStats()` 결과 렌더 — 전체/👍/🌟 카드, 난이도 분포, God·Ok Top 5 표. 별도 조회 없음(공유 목록 사용)
 
 #### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭
+- 3열 레이아웃 (`xl` 이상): 좌 목록 / 중 편집 / 우 미리보기
 - 좌: **빌트인 / 커스텀 접이식 섹션**, 항목별 `↑↓` 순서 변경, `➕ 새 카탈로그`
-- 우: 메타(이름·이모지·순서·노출) + `CatalogRuleEditor`(조건 카드 AND / 정렬 / 상위 N) + `CatalogCurationPanel`(고정·제외 맵) + **미리보기**(편집 중 정의로 `selectCatalogMaps()` 실행 — 매칭 수 + 썸네일 8개, `내 계정 기준으로 평가` 토글)
+- 중: 메타(이름·이모지·순서·노출) + `CatalogRuleEditor`(조건 카드 AND / 정렬 / 상위 N) + `CatalogCurationPanel`(고정·제외 맵)
+- 우: `CatalogPreviewPanel` — 편집 중 정의로 `selectCatalogMaps()` 실행. 매칭 수 + **전체 결과** 썸네일 그리드
+  (순위 번호·📌 고정 표시·난이도·작성자·gridSize·반응), `내 계정 기준으로 평가` 토글.
+  `xl` 미만에서는 같은 패널이 편집 폼 아래로 내려온다 (`xl:hidden` / `hidden xl:flex` 한 쌍)
 - 저장 = `saveCatalogEntry()` → `applyCatalogConfig()` 로컬 재적용 → `bumpCatalogConfigRev()` → 라이브러리 즉시 반영
 - 빌트인: 전체 편집·숨김 가능, **삭제 불가** — `↩ 기본값으로`(config 엔트리 삭제). 커스텀: 삭제 가능
 - 큐레이션 맵 선택은 `MapPickerModal` (어드민 맵 목록 + `filterMaps()` 재사용)
@@ -424,10 +437,10 @@ Header
 | **정답 보기** | `store/gameStore.ts` (showAnswer, hideAnswer) | `pages/EditorPage.tsx` (버튼) |
 | **특성 덧칠(canMove/canRotate/isInventory)** | `hooks/useGridDragDrop.ts` (paintTargetRef, onPointerUp) | `store/gameStore.ts` (setModRotatable/Lock/Inv), `components/palette/PalettePanel.tsx` (ModChip) |
 | **그리드 크기(5~9) 동작** | `store/gameStore.ts` (setGridSize) | `components/layout/InspectorPanel.tsx`, `tests/gridSize.test.ts` |
-| **맵/제안/통계 어드민 UI** | `pages/admin/MapsTab.tsx`·`AdminMapRow.tsx`·`MapRotationEditor.tsx`·`SuggestionsTab.tsx`·`StatsTab.tsx` | `lib/adminMaps.ts` (순수 로직), `pages/admin/useAdminMaps.ts`, `lib/firebaseService.ts` |
+| **맵/제안/통계 어드민 UI** | `pages/admin/MapsTab.tsx`·`AdminMapRow.tsx`·`MapSuggestionsPanel.tsx`·`MapRotationEditor.tsx`·`BulkRotationModal.tsx`·`StatsTab.tsx` | `lib/adminMaps.ts` (순수 로직), `pages/admin/useAdminMaps.ts`, `lib/firebaseService.ts` |
 | **기물 어드민 UI** | `pages/admin/PiecesTab.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
 | **기물 config 검증/머지/폴백** | `lib/pieceConfig.ts` | `tests/pieceConfig.test.ts`, `lib/laserEngine.ts`/`svgArt.ts`/`pieceActions.ts` (set*Overrides) |
-| **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·스키마), `lib/catalogRules.ts` (평가) | `pages/admin/CatalogTab.tsx`·`CatalogRuleEditor.tsx`·`CatalogCurationPanel.tsx`·`MapPickerModal.tsx`, `components/library/LibraryScreen.tsx`, `tests/catalogConfig.test.ts`·`catalogRules.test.ts` |
+| **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·스키마), `lib/catalogRules.ts` (평가) | `pages/admin/CatalogTab.tsx`·`CatalogRuleEditor.tsx`·`CatalogCurationPanel.tsx`·`CatalogPreviewPanel.tsx`·`MapPickerModal.tsx`, `components/library/LibraryScreen.tsx`, `tests/catalogConfig.test.ts`·`catalogRules.test.ts` |
 | **관리자 권한** | `lib/admin.ts` (ADMIN_UIDS) + `firestore.rules` (isAdmin) — **동시 수정** | `components/layout/Header.tsx`, `pages/admin/AdminLayout.tsx` |
 | **Firebase 데이터 구조 변경** | `lib/firebaseService.ts` | `types/game.ts`, `store/gameStore.ts`, `firestore.rules` |
 | **Firestore 보안 규칙** | `firestore.rules` (실배포 별도 필요) | `lib/admin.ts` |
@@ -780,7 +793,7 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
 | `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 조건 13종 sanitize, sort/limit, 레거시 rule 승격, 손상 config 폴백 |
 | `catalogRules.test.ts` | 조건별 매칭(맵 속성·로그인 사용자), AND 조합, 고정/제외 우선순위, 정렬·limit, 빌트인 5종 회귀 |
-| `adminMaps.test.ts` | filterMaps/sortMaps(3키·누락 필드), computeMapStats(합계·분포·Top5), rotateMapItem/setMapItemRotation(랩어라운드·불변) |
+| `adminMaps.test.ts` | filterMaps/sortMaps(3키·누락 필드), computeMapStats(합계·분포·Top5), rotateMapItem/setMapItemRotation(랩어라운드·불변), collectPieceTypeCounts/applyBulkRotationToItems/planBulkRotation(타입 집계·필터·정규화·원본 불변) |
 | `mapCategory.test.ts` | 4종 판정 규칙, 빈 맵, 인벤토리 포함, 미지 기물, 어드민 폴더 이동 반영 |
 | `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
 | `penUndo.test.ts` | GameSnapshot.penStrokes — 획 커밋/전체지우기 undo, 기물·펜 혼합 순서, 모드 전환 초기화 |

@@ -4,13 +4,13 @@ import { cx } from './cx';
 interface ModalProps {
   title: React.ReactNode;
   onClose: () => void;
-  width?: 'sm' | 'md';
+  width?: 'sm' | 'md' | 'lg';
   footer?: React.ReactNode;
   dismissable?: boolean; // false면 Esc/백드롭 닫기 비활성
   children: React.ReactNode;
 }
 
-const WIDTHS = { sm: 'w-80', md: 'w-96' } as const;
+const WIDTHS = { sm: 'w-80', md: 'w-96', lg: 'w-[min(780px,92vw)]' } as const;
 
 export function Modal({
   title, onClose, width = 'sm', footer, dismissable = true, children,

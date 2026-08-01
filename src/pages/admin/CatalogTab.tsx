@@ -9,17 +9,17 @@ import {
 import { selectCatalogMaps, describeCatalog, needsLogin } from '../../lib/catalogRules';
 import { saveCatalogEntry, deleteCatalogEntry, saveCatalogPatch } from '../../lib/firebaseService';
 import { getAllMapStates } from '../../hooks/useMapReactions';
-import { MiniGrid } from '../../components/library/MiniGrid';
 import { Button, IconButton, Label, TextInput, Pill, cx } from '../../components/ui';
 import { CatalogRuleEditor } from './CatalogRuleEditor';
 import { CatalogCurationPanel } from './CatalogCurationPanel';
+import { CatalogPreviewPanel } from './CatalogPreviewPanel';
 import { useAdminMaps } from './useAdminMaps';
 
 /* 카탈로그 편집 — 라이브러리 카탈로그(구 카테고리) 정의를 어드민에서 관리한다.
    저장 = Firestore config/catalog 머지 → 로컬 오버레이 즉시 재적용 → 라이브러리 반영.
-   빌트인 5종은 전체 편집·숨김 가능하지만 삭제는 불가 (기본값으로 되돌리기 제공). */
-
-const PREVIEW_LIMIT = 8;
+   빌트인 5종은 전체 편집·숨김 가능하지만 삭제는 불가 (기본값으로 되돌리기 제공).
+   레이아웃: 좌(목록) / 중(편집) / 우(미리보기 전용 열, xl 이상). 좁은 화면에서는
+   미리보기가 편집 폼 아래로 내려온다 — 같은 CatalogPreviewPanel 을 두 자리에 건다. */
 
 function errDetail(err: unknown): string {
   if (err instanceof Error) {
@@ -331,8 +331,8 @@ export function CatalogTab() {
         )}
       </aside>
 
-      {/* 우: 편집 */}
-      <section className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 max-w-3xl">
+      {/* 중: 편집 */}
+      <section className="flex-1 min-w-0 overflow-y-auto p-4 flex flex-col gap-4">
         {!current ? (
           <p className="text-xs text-ink-muted">카탈로그가 없습니다.</p>
         ) : (
@@ -423,45 +423,17 @@ export function CatalogTab() {
               onChange={patchDraft}
             />
 
-            {/* 미리보기 */}
-            <section className="flex flex-col gap-2 border border-line rounded-tile p-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">미리보기</h5>
-                {admin.loading
-                  ? <span className="text-[11px] text-ink-muted">맵 불러오는 중…</span>
-                  : admin.error
-                    ? <span className="text-[11px] text-danger">맵 목록 로드 실패</span>
-                    : <span className="text-[11px] text-ink-muted">
-                        매칭 <strong className="text-ink">{preview.length}</strong>개 / 전체 {admin.maps.length}개
-                      </span>}
-                <label className="flex items-center gap-1 text-[11px] text-ink-muted ml-auto">
-                  <input
-                    type="checkbox"
-                    checked={previewAsMe}
-                    onChange={e => setPreviewAsMe(e.target.checked)}
-                  />
-                  내 계정 기준으로 평가
-                </label>
-              </div>
-
-              {preview.length === 0 ? (
-                <p className="text-[11px] text-ink-muted py-2">조건에 맞는 맵이 없습니다.</p>
-              ) : (
-                <div className="flex gap-2 flex-wrap">
-                  {preview.slice(0, PREVIEW_LIMIT).map(m => (
-                    <div key={m.id} className="w-24 flex flex-col gap-1" title={m.title}>
-                      <MiniGrid mapData={m.mapData} revealRotation variant="v2" gridSize={m.gridSize ?? 5} />
-                      <span className="text-[10px] truncate">{m.title || '제목 없음'}</span>
-                    </div>
-                  ))}
-                  {preview.length > PREVIEW_LIMIT && (
-                    <span className="self-center text-[11px] text-ink-muted">
-                      +{preview.length - PREVIEW_LIMIT}개
-                    </span>
-                  )}
-                </div>
-              )}
-            </section>
+            {/* 미리보기 — 좁은 화면 전용 (넓은 화면은 오른쪽 전용 열) */}
+            <CatalogPreviewPanel
+              className="xl:hidden border border-line rounded-tile p-3"
+              maps={preview}
+              totalCount={admin.maps.length}
+              pinnedMapIds={current.pinnedMapIds ?? []}
+              loading={admin.loading}
+              error={admin.error}
+              previewAsMe={previewAsMe}
+              onPreviewAsMe={setPreviewAsMe}
+            />
 
             {isBuiltinCatalogId(current.id) && (
               <p className="text-[10px] text-ink-muted pb-8">
@@ -472,6 +444,21 @@ export function CatalogTab() {
           </>
         )}
       </section>
+
+      {/* 우: 미리보기 전용 열 */}
+      {current && (
+        <aside className="hidden xl:flex w-[clamp(300px,26vw,440px)] shrink-0 bg-surface border-l border-line p-3 flex-col min-h-0">
+          <CatalogPreviewPanel
+            maps={preview}
+            totalCount={admin.maps.length}
+            pinnedMapIds={current.pinnedMapIds ?? []}
+            loading={admin.loading}
+            error={admin.error}
+            previewAsMe={previewAsMe}
+            onPreviewAsMe={setPreviewAsMe}
+          />
+        </aside>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { updateMapInDB } from '../../lib/firebaseService';
 import { getSvgArt } from '../../lib/svgArt';
 import { getPieceLabel } from '../../lib/pieceActions';
 import {
-  ROTATIONS, findItemIndexAt, rotateMapItem, setMapItemRotation,
+  ROTATIONS, findItemIndexAt, rotateMapItem, setMapItemRotation, applyBulkRotationToItems,
 } from '../../lib/adminMaps';
 import { Button, Select, Pill, cx } from '../../components/ui';
 import type { AdminMapsState } from './useAdminMaps';
@@ -13,7 +13,9 @@ import type { MapDocument, MapItemDTO } from '../../types/game';
 
 /* 저장된 맵의 기물 각도 편집기 (ADMIN.html 회전 편집 패널 이식).
    저장된 rotation = 정답 회전이므로 그대로 렌더/저장한다 — 정규화 금지.
-   회전 외 필드(좌표·특성·인벤토리 여부)는 건드리지 않는다. */
+   회전 외 필드(좌표·특성·인벤토리 여부)는 건드리지 않는다.
+   "같은 기물 전체" 토글을 켜면 이 맵 안의 동일 타입 기물에 같은 연산을 건다
+   (여러 맵 단위 일괄 회전은 맵 관리 툴바의 BulkRotationModal). */
 
 const DELTAS = [-90, -45, 45, 90] as const;
 
@@ -27,15 +29,38 @@ export function MapRotationEditor({
 
   const [items, setItems] = useState<MapItemDTO[]>(() => map.mapData.map(i => ({ ...i })));
   const [selected, setSelected] = useState<number | null>(null);
+  const [sameType, setSameType] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const gridSize = map.gridSize ?? 5;
   const item = selected != null ? items[selected] : undefined;
+  const sameTypeCount = item ? items.filter(i => i.type === item.type).length : 0;
 
   function apply(next: MapItemDTO[]) {
     setItems(next);
     setDirty(true);
+  }
+
+  // 같은 기물 전체 모드면 동일 타입 전부에, 아니면 선택 기물 하나에만 적용
+  function rotate(delta: number) {
+    if (selected == null || !item) return;
+    if (!sameType) { apply(rotateMapItem(items, selected, delta)); return; }
+    apply(applyBulkRotationToItems(
+      items,
+      { types: [item.type], includeInventory: true, rotatableOnly: false },
+      { mode: 'delta', delta },
+    ).items);
+  }
+
+  function setRotation(rotation: number) {
+    if (selected == null || !item) return;
+    if (!sameType) { apply(setMapItemRotation(items, selected, rotation)); return; }
+    apply(applyBulkRotationToItems(
+      items,
+      { types: [item.type], includeInventory: true, rotatableOnly: false },
+      { mode: 'set', rotation },
+    ).items);
   }
 
   async function handleClose() {
@@ -133,13 +158,27 @@ export function MapRotationEditor({
                 </div>
               </div>
 
+              <label
+                className="flex items-center gap-1.5 text-[11px] text-ink-muted"
+                title="이 맵 안의 같은 타입 기물 전부에 같은 회전을 적용합니다"
+              >
+                <input
+                  type="checkbox"
+                  checked={sameType}
+                  onChange={e => setSameType(e.target.checked)}
+                  disabled={sameTypeCount < 2}
+                />
+                같은 기물 전체에 적용
+                <strong className="text-ink">({sameTypeCount}개)</strong>
+              </label>
+
               <div className="flex gap-1 flex-wrap">
                 {DELTAS.map(d => (
                   <Button
                     key={d}
                     variant="secondary"
                     className="!text-xs"
-                    onClick={() => apply(rotateMapItem(items, selected!, d))}
+                    onClick={() => rotate(d)}
                   >
                     {d < 0 ? '↺' : '↻'} {d > 0 ? `+${d}` : d}°
                   </Button>
@@ -150,7 +189,7 @@ export function MapRotationEditor({
                 직접 지정
                 <Select
                   value={item.rotation}
-                  onChange={e => apply(setMapItemRotation(items, selected!, Number(e.target.value)))}
+                  onChange={e => setRotation(Number(e.target.value))}
                   className="!w-auto"
                 >
                   {ROTATIONS.map(r => <option key={r} value={r}>{r}°</option>)}

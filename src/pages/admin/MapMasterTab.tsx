@@ -2,19 +2,19 @@ import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import { Tabs } from '../../components/ui';
 import { useAdminMaps } from './useAdminMaps';
 import { MapsTab } from './MapsTab';
-import { SuggestionsTab } from './SuggestionsTab';
 import { StatsTab } from './StatsTab';
 
 /* 맵 마스터 — 맵 관련 관리 기능 묶음.
-   맵 목록은 여기서 한 번 로드해 세 서브탭이 공유한다 (탭 전환 시 재조회 없음).
-   서브탭 상태도 URL 이 단일 진실: /admin/mapmaster/:sub (AdminLayout 과 같은 폴백 규칙). */
+   맵 목록은 여기서 한 번 로드해 서브탭이 공유한다 (탭 전환 시 재조회 없음).
+   서브탭 상태도 URL 이 단일 진실: /admin/mapmaster/:sub (AdminLayout 과 같은 폴백 규칙).
+   ⚠️ 구 [제안 관리] 서브탭은 [맵 관리] 카드의 메타 편집 패널로 흡수됐다 —
+      옛 링크(/admin/mapmaster/suggestions)는 알 수 없는 슬러그로 맵 관리에 폴백된다. */
 
-const SUB_IDS = ['maps', 'suggestions', 'stats'] as const;
+const SUB_IDS = ['maps', 'stats'] as const;
 type SubId = typeof SUB_IDS[number];
 
 const SUB_LABELS: Record<SubId, string> = {
-  maps: '🗺 맵 관리',
-  suggestions: '💬 제안 관리',
+  maps: '🗺 맵 · 제안 관리',
   stats: '📊 통계',
 };
 
@@ -46,7 +46,6 @@ export function MapMasterTab() {
 
       <div className="flex-1 min-h-0 overflow-hidden">
         {active === 'maps' && <MapsTab admin={admin} />}
-        {active === 'suggestions' && <SuggestionsTab admin={admin} />}
         {active === 'stats' && <StatsTab admin={admin} />}
       </div>
     </div>
