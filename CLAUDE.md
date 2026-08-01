@@ -22,6 +22,7 @@ npm run lint       # ESLint
 - **상태는 전부 `src/store/gameStore.ts`** (Zustand 단일 스토어). 부분 구독은 `useShallow()` 필수, 이벤트 핸들러 안에서는 stale closure 방지를 위해 `useGameStore.getState()` 직접 호출.
 - **그리드 크기는 `mapData.length`에서 유도** (NxN, 5~9). `svgArt.ts`의 `GRID_SIZE`/`CELL_SIZE`는 레거시 상수 — 런타임 로직에 쓰지 말 것. `MapDocument.gridSize`는 optional (없으면 5, 하위호환).
 - **레이저 엔진(`src/lib/laserEngine.ts`)은 계산/렌더 분리.** `computeLaser()`는 순수 함수(캔버스 없이 단위테스트 가능), `drawSegments()`가 그리기만, `simulateLaser()`는 래퍼. 기물 동작은 면별(per-face) 선언 스키마 `PieceBehaviorDef`로 정의하고 `buildBehavior()`가 컴파일. 조건부 기물(게이트/프로젝터)은 고정점 루프(MAX_ITERS=8)로 수렴시키고, 미수렴 시 전부 OFF 강제로 결정적 종결.
+- **라이브러리 카탈로그는 `src/lib/catalogConfig.ts`(정의) + `catalogRules.ts`(평가) 단일 소스.** Firestore `config/catalog` 오버레이, 빌트인 5종은 삭제 불가(숨김만). 라이브러리·어드민이 같은 `selectCatalogMaps()` 를 쓴다 — 화면에서 필터를 다시 구현하지 말 것. 적용 후 UI 갱신은 `bumpCatalogConfigRev()`.
 - **기물 config 오버레이(`src/lib/pieceConfig.ts`)**: Firestore `config/pieces` 문서를 코드 기본값(`DEFAULT_DEFS`, `SVG_ART`, `PIECE_LABELS`) 위에 머지. config 미존재/손상 시 코드 기본값으로 silent fallback — `loadPieceConfig()`는 절대 throw 금지. 적용 후 UI 갱신은 `bumpPieceConfigRev()`.
 - **기물 타입 접근은 항상 안전 접근자 사용**: `getSvgArt()` / `getBehavior()` / `getPieceLabel()` / `getPieceDefaults()`. `SVG_ART[type]` 직접 인덱싱 금지 — 커스텀/삭제된 기물에서 깨진다. 미지 타입은 PLACEHOLDER SVG + 통과(PASSIVE) 동작으로 폴백.
 - **드래그앤드롭은 Pointer Events 기반** (`src/hooks/useGridDragDrop.ts`, 마우스+터치 통합). 우클릭 = 회전, 좌클릭(기물) = 선택 → 팝오버/인스펙터. 기물 조작 로직은 `src/lib/pieceActions.ts`에 모여 있다 (PiecePopover와 SelectedPieceInfo가 공유).

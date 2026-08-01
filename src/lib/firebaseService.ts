@@ -140,10 +140,46 @@ export async function fetchPieceConfig(): Promise<Record<string, unknown> | null
   return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
 }
 
-// 라이브러리 카탈로그 config (어드민 오버레이). 쓰기 경로는 편집 UI 와 함께 추가한다.
+// ── 라이브러리 카탈로그 config (어드민 오버레이) ─────────
+// 쓰기 권한 강제는 firestore.rules 의 config/{docId} 규칙.
+
 export async function fetchCatalogConfig(): Promise<Record<string, unknown> | null> {
   const snap = await getDoc(doc(db, 'config', 'catalog'));
   return snap.exists() ? (snap.data() as Record<string, unknown>) : null;
+}
+
+// config/pieces 와 같은 read-modify-write — setDoc(merge) 의 깊은 병합이
+// 지운 조건/필드를 되살리기 때문에 엔트리 서브트리를 통째로 교체한다.
+export async function saveCatalogEntry(id: string, entry: Record<string, unknown>): Promise<void> {
+  const ref = doc(db, 'config', 'catalog');
+  const snap = await getDoc(ref);
+  const data = (snap.exists() ? snap.data() : { version: 2 }) as Record<string, unknown>;
+  // UI 가 만든 객체의 undefined 는 setDoc 이 거부한다 — JSON 왕복으로 제거
+  const cleaned = JSON.parse(JSON.stringify(entry)) as Record<string, unknown>;
+  const catalogs = { ...(data.catalogs as Record<string, unknown> | undefined), [id]: cleaned };
+  await setDoc(ref, { ...data, version: 2, catalogs });
+}
+
+export async function deleteCatalogEntry(id: string): Promise<void> {
+  const ref = doc(db, 'config', 'catalog');
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const data = snap.data() as Record<string, unknown>;
+  const catalogs = { ...(data.catalogs as Record<string, unknown> | undefined) };
+  delete catalogs[id];
+  await setDoc(ref, { ...data, version: 2, catalogs });
+}
+
+// 복수 엔트리 부분 패치 (순서 일괄 변경 등)
+export async function saveCatalogPatch(patch: Record<string, Record<string, unknown>>): Promise<void> {
+  const ref = doc(db, 'config', 'catalog');
+  const snap = await getDoc(ref);
+  const data = (snap.exists() ? snap.data() : { version: 2 }) as Record<string, unknown>;
+  const current = { ...(data.catalogs as Record<string, Record<string, unknown>> | undefined) };
+  for (const [id, entryPatch] of Object.entries(patch)) {
+    current[id] = JSON.parse(JSON.stringify({ ...current[id], ...entryPatch })) as Record<string, unknown>;
+  }
+  await setDoc(ref, { ...data, version: 2, catalogs: current });
 }
 
 export async function savePieceConfigEntry(

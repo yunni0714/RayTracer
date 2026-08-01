@@ -71,7 +71,8 @@ RayTracer/
 │   │   ├── laserEngine.ts               # 면별 behavior 스키마 + 순수 계산 + 캔버스 렌더
 │   │   ├── artClip.ts                   # 빔-아트 클리핑 (SVG 래스터 알파 샘플링, 렌더 보조)
 │   │   ├── pieceConfig.ts               # 기물 config 오버레이 (Firestore config/pieces 머지)
-│   │   ├── catalogConfig.ts             # 라이브러리 카탈로그 오버레이 (Firestore config/catalog 머지)
+│   │   ├── catalogConfig.ts             # 카탈로그 정의/스키마 + 오버레이 (Firestore config/catalog 머지)
+│   │   ├── catalogRules.ts              # 카탈로그 규칙 평가 (조건 AND, 고정/제외, 정렬, limit)
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
@@ -97,7 +98,10 @@ RayTracer/
 │   │       ├── MapRotationEditor.tsx    # └   기물 각도 편집 (NxN 그리드 클릭 선택)
 │   │       ├── SuggestionsTab.tsx       # └ [제안 관리] 맵별 제안 조회/삭제
 │   │       ├── StatsTab.tsx             # └ [통계] 반응 합계·난이도 분포·Top 5
-│   │       └── CatalogTab.tsx           # [카탈로그] 카탈로그 목록/현재 규칙 표시 (편집 폼 미구현)
+│   │       ├── CatalogTab.tsx           # [카탈로그] 빌트인/커스텀 목록 + 메타·규칙·큐레이션 편집 + 미리보기
+│   │       ├── CatalogRuleEditor.tsx    # └ 조건 카드 리스트(AND) + 정렬 + 상위 N개
+│   │       ├── CatalogCurationPanel.tsx # └ 고정/제외 맵 목록
+│   │       └── MapPickerModal.tsx       # └ 맵 검색·다중 선택 모달
 │   │
 │   ├── components/
 │   │   ├── ui/                          # 공용 프리미티브 (토큰 기반, 다크 자동 대응)
@@ -153,7 +157,8 @@ RayTracer/
 │   ├── groupB.test.ts                   # 조건부/상태형 기물 5종 (고정점 루프)
 │   ├── gridSize.test.ts                 # emptyGrid/setGridSize 리사이즈
 │   ├── pieceConfig.test.ts              # config 검증/머지/커스텀/폴더/hidden/손상 방어
-│   ├── catalogConfig.test.ts            # 카탈로그 기본값/머지/커스텀/hidden/손상 방어
+│   ├── catalogConfig.test.ts            # 카탈로그 스키마 v2 검증/머지/레거시 rule 승격/손상 방어
+│   ├── catalogRules.test.ts             # 조건 13종 매칭, AND, 고정/제외 우선순위, 빌트인 회귀
 │   ├── adminMaps.test.ts                # 어드민 검색/정렬/통계 집계/회전 델타
 │   ├── mapCategory.test.ts              # 맵 카테고리 판정 + 폴더 오버라이드 반영
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
@@ -210,6 +215,7 @@ RayTracer/
 - 부팅 훅 4종: `useTheme()`, `useAuth()`, `useUrlMapLoader()`, `usePieceConfigLoader()`
 - `useUrlMapLoader`: URL `?mapId=X` → `fetchFromDB()` → `loadMapForPlay()` 자동 로드 (gridSize 반영)
 - `usePieceConfigLoader`: 부팅 시 1회 `loadPieceConfig()` → 성공 시 `bumpPieceConfigRev()`
+- `useCatalogConfigLoader`: 부팅 시 1회 `loadCatalogConfig()` → 성공 시 `bumpCatalogConfigRev()`
 - 라우트: `/` → `EditorPage`, `/admin` · `/admin/:tab` · `/admin/:tab/:sub` → `AdminLayout`, `*` → `EditorPage`
 
 ---
@@ -263,14 +269,24 @@ Firestore `config/pieces` 문서를 코드 기본값 위에 머지하는 레이�
 
 **exports**: `loadPieceConfig()`, `applyPieceConfig()`, `resetPieceConfig()`, `getFolders()`, `getPieceFolder()`, `getPieceDefaults()`, `getCustomTypes()`, `isPieceHidden()`, `sanitizeSvg()`, `PALETTE_ORDER`, `DEFAULT_FOLDERS`, `isValidCustomTypeId()` 등
 
-### `src/lib/catalogConfig.ts` — 라이브러리 카탈로그 오버레이
+### `src/lib/catalogConfig.ts` — 카탈로그 정의 + 오버레이
 Firestore `config/catalog` 문서를 코드 기본값 위에 머지. `pieceConfig.ts` 와 같은 모델 (미존재/손상 시 silent fallback, `loadCatalogConfig()` 는 throw 하지 않는다).
-- `CatalogDef`: `id/label/emoji/order/hidden` + `rule`(자동 선별 규칙) + `pinnedMapIds`/`excludedMapIds`(수동 큐레이션)
-- `DEFAULT_CATALOGS`: 라이브러리 빌트인 5종(추천·원본·최근·명예의전당·내 맵). **직접 읽지 말고 `getCatalogs()`/`getCatalog()` 접근자 사용**
-- `rule` 은 빌트인 5종을 표현하는 최소 스키마(`all`/`author`/`mine`/`reaction`) — 세부 문법은 편집 UI 와 함께 확장
-- 현재 `LibraryScreen` 은 아직 이 레이어를 쓰지 않는다 (자체 상수 + switch). 연결은 편집 기능 구현 시.
+- `CatalogDef`: `id/label/emoji/order/hidden` + `conditions[]`(AND) + `sort` + `limit` + `pinnedMapIds`/`excludedMapIds`
+- `CatalogCondition` 13종 — `author`·`reaction`·`difficulty`·`category`·`recent`·`gridSize`·`pieceCount`·`containsPiece`·`titleContains` + **로그인 사용자 기준** `mine`·`played`·`reacted`·`voted`(`USER_CONDITION_KINDS`)
+- `DEFAULT_CATALOGS`: 빌트인 5종(추천·원본·최근·명예의전당·내 맵). **직접 읽지 말고 `getCatalogs()`/`getCatalog()` 접근자 사용**
+- 손상 방어: 조건 하나가 깨져도 그 조건만 버리고 나머지는 살린다. v1 단일 `rule` 문서는 `conditions`/`sort`/`limit` 로 자동 승격
+- **라이브러리(`LibraryScreen`)와 어드민(`CatalogTab`)이 이 정의를 공유한다** — 하드코딩 필터 없음
 
-**exports**: `getCatalogs()`, `getCatalog()`, `applyCatalogConfig()`, `loadCatalogConfig()`, `resetCatalogConfig()`, `getCatalogOverrides()`, `isBuiltinCatalogId()`, `isValidCatalogId()`, `DEFAULT_CATALOGS`
+**exports**: `getCatalogs()`, `getCatalog()`, `getBuiltinCatalog()`, `getCatalogOverrides()`, `getCustomCatalogIds()`, `applyCatalogConfig()`, `loadCatalogConfig()`, `resetCatalogConfig()`, `sanitizeCondition()`, `isBuiltinCatalogId()`, `isValidCatalogId()`, `DEFAULT_CATALOGS`
+
+### `src/lib/catalogRules.ts` — 카탈로그 규칙 평가 (순수)
+카탈로그 정의 + 맵 목록 + 사용자 컨텍스트 → 보여줄 맵. 라이브러리와 어드민 미리보기가 같은 함수를 쓴다.
+- 평가 순서 **고정**: ① `excludedMapIds` 제거(최우선) → ② `conditions` AND → ③ `pinnedMapIds` 추가 → ④ `sort`(기본 createdAt desc, 고정 맵은 맨 앞) → ⑤ `limit`
+- `CatalogContext = { uid, mapStates, now? }`. `mapStates` = `localStorage['ray_map_states']` (`getAllMapStates()`), 키 존재 = 플레이한 맵
+- `needsLogin(catalog)` 이 true 인데 비로그인이면 결과가 비고 라이브러리가 "로그인하면 표시됩니다" 를 띄운다
+- `category` 조건은 `computeMapCategory()` 재사용 — 기물 폴더가 바뀌면 카탈로그 결과도 바뀐다
+
+**exports**: `selectCatalogMaps()`, `matchesCondition()`, `needsLogin()`, `sortMapsBy()`, `describeCondition()`, `describeCatalog()`
 
 ### `src/lib/mapCategory.ts` — 맵 카테고리 (기물 등급 파생)
 맵에 쓰인 기물 등급에서 자동 판정하는 값. 작성자가 고르지 않고 `mapData` 에서 계산하므로 DB 필드가 없다.
@@ -369,10 +385,12 @@ Header
 #### `src/pages/admin/StatsTab.tsx` — [통계] 서브탭
 - `computeMapStats()` 결과 렌더 — 전체/👍/🌟 카드, 난이도 분포, God·Ok Top 5 표. 별도 조회 없음(공유 목록 사용)
 
-#### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭 (편집 백본)
-- 마운트 시 `loadCatalogConfig()` 1회 (앱 부팅 로더에는 없다 — 플레이어 쪽 네트워크 추가 방지)
-- 좌: `getCatalogs({ includeHidden: true })` 목록. 우: 선택 카탈로그의 현재 규칙 요약 + `메타`/`규칙`/`수동 큐레이션` 섹션 골격
-- **쓰기 경로 없음** — 읽기 전용. 편집 폼과 `savePieceConfig*` 대응 저장 함수는 세부 확정 후 추가
+#### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭
+- 좌: **빌트인 / 커스텀 접이식 섹션**, 항목별 `↑↓` 순서 변경, `➕ 새 카탈로그`
+- 우: 메타(이름·이모지·순서·노출) + `CatalogRuleEditor`(조건 카드 AND / 정렬 / 상위 N) + `CatalogCurationPanel`(고정·제외 맵) + **미리보기**(편집 중 정의로 `selectCatalogMaps()` 실행 — 매칭 수 + 썸네일 8개, `내 계정 기준으로 평가` 토글)
+- 저장 = `saveCatalogEntry()` → `applyCatalogConfig()` 로컬 재적용 → `bumpCatalogConfigRev()` → 라이브러리 즉시 반영
+- 빌트인: 전체 편집·숨김 가능, **삭제 불가** — `↩ 기본값으로`(config 엔트리 삭제). 커스텀: 삭제 가능
+- 큐레이션 맵 선택은 `MapPickerModal` (어드민 맵 목록 + `filterMaps()` 재사용)
 
 ---
 
@@ -382,7 +400,7 @@ Header
 - **`GridCell`**: `data-row`/`data-col`로 DnD 식별. 특성 배지 — 🎒 유저지급, 🔒 유저지급+회전불가, 🔄 고정+회전가능.
 - **`PiecePopover`** (데스크탑) / **`SelectedPieceInfo`** (인스펙터·모바일 공용): 같은 `pieceActions`를 호출하므로 자동 동기화.
 - **`PalettePanel`**: 폴더 탭은 config(`getFolders`/`getPieceFolder`) 연동, hidden 기물 제외, 커스텀 기물 포함. 특성 덧칠 칩 3종(🔄/🔒/🎒)은 상호 배타 규칙 있음. JSON 가져오기/내보내기, 맵 등록(신규일 때만).
-- **`LibraryScreen`**: 카탈로그(구 카테고리) 5종 — 추천(🌟3+), 원본(author='RayOriginal'), 최근, 명예의전당(상위 20), 내 맵. 정의는 아직 이 파일의 상수+switch (어드민 오버레이는 `lib/catalogConfig.ts` 에 준비됨). 검색 시 카탈로그 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
+- **`LibraryScreen`**: 카탈로그 내비/그리드. **정의·필터는 전부 `lib/catalogConfig` + `lib/catalogRules`** (하드코딩 없음). 정렬 셀렉트에서 `카탈로그 기본 정렬` 이 기본이고, 사용자가 다른 정렬을 고르면 그 세션 동안 카탈로그 `sort` 를 덮어쓴다. 검색 시 카탈로그 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
 - **`UploadModal`**: 신규 업로드 시 공유 URL 자동 클립보드 복사 + 업로드된 맵 즉시 플레이 로드. 수정 시 `version` +1. `canRotate=true` 기물도 작성자가 맞춘 회전값(=정답)을 그대로 저장 — 은닉은 로드 시 `loadMapForPlay`/`MiniGrid`가 담당.
 - 기물 SVG를 렌더하는 컴포넌트는 `useGameStore(s => s.pieceConfigRev)` 구독으로 config 갱신 시 리렌더.
 
@@ -409,7 +427,7 @@ Header
 | **맵/제안/통계 어드민 UI** | `pages/admin/MapsTab.tsx`·`AdminMapRow.tsx`·`MapRotationEditor.tsx`·`SuggestionsTab.tsx`·`StatsTab.tsx` | `lib/adminMaps.ts` (순수 로직), `pages/admin/useAdminMaps.ts`, `lib/firebaseService.ts` |
 | **기물 어드민 UI** | `pages/admin/PiecesTab.tsx` | `lib/pieceConfig.ts`, `lib/firebaseService.ts` (savePieceConfig*) |
 | **기물 config 검증/머지/폴백** | `lib/pieceConfig.ts` | `tests/pieceConfig.test.ts`, `lib/laserEngine.ts`/`svgArt.ts`/`pieceActions.ts` (set*Overrides) |
-| **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·오버레이), `pages/admin/CatalogTab.tsx` (어드민 UI) | `components/library/LibraryScreen.tsx` (현재는 자체 상수·switch), `tests/catalogConfig.test.ts` |
+| **라이브러리 카탈로그(구 카테고리)** | `lib/catalogConfig.ts` (정의·스키마), `lib/catalogRules.ts` (평가) | `pages/admin/CatalogTab.tsx`·`CatalogRuleEditor.tsx`·`CatalogCurationPanel.tsx`·`MapPickerModal.tsx`, `components/library/LibraryScreen.tsx`, `tests/catalogConfig.test.ts`·`catalogRules.test.ts` |
 | **관리자 권한** | `lib/admin.ts` (ADMIN_UIDS) + `firestore.rules` (isAdmin) — **동시 수정** | `components/layout/Header.tsx`, `pages/admin/AdminLayout.tsx` |
 | **Firebase 데이터 구조 변경** | `lib/firebaseService.ts` | `types/game.ts`, `store/gameStore.ts`, `firestore.rules` |
 | **Firestore 보안 규칙** | `firestore.rules` (실배포 별도 필요) | `lib/admin.ts` |
@@ -737,7 +755,8 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `updateMapInDB(id, data)` / `deleteMapFromDB(id)` | 맵 수정/삭제 |
 | `uploadSuggestionToDB()` / `fetchSuggestionsFromDB()` / `deleteSuggestionFromDB()` | 풀이 제안 |
 | `fetchPieceConfig()` | `config/pieces` 문서 조회 |
-| `fetchCatalogConfig()` | `config/catalog` 문서 조회 (쓰기 함수는 아직 없음) |
+| `fetchCatalogConfig()` | `config/catalog` 문서 조회 |
+| `saveCatalogEntry(id, entry)` / `deleteCatalogEntry(id)` / `saveCatalogPatch(patch)` | 카탈로그 저장/삭제/일괄 패치 (read-modify-write) |
 | `fetchAllMapsForAdmin()` | 어드민 맵 목록 (createdAt desc, limit 없음) |
 | `deleteMapWithSuggestions(id)` | 제안 서브컬렉션 삭제 후 맵 삭제 (어드민 영구 삭제) |
 | `savePieceConfigEntry(type, entry)` | 기물 1개 엔트리 머지 저장 |
@@ -759,7 +778,8 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `groupB.test.ts` | transistor/cross/priority gate, target/inverting projector (고정점 루프) |
 | `gridSize.test.ts` | emptyGrid(size), setGridSize 확대/축소, 테스트 모드 리사이즈 불가 |
 | `pieceConfig.test.ts` | behavior/svg/label/defaults 오버라이드, 커스텀 타입, 폴더, hidden, 손상 config 방어, 접근자 폴백 |
-| `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 규칙·큐레이션 sanitize, 손상 config 폴백 |
+| `catalogConfig.test.ts` | 카탈로그 기본값 5종, label/order/hidden 오버라이드, 커스텀 카탈로그, 조건 13종 sanitize, sort/limit, 레거시 rule 승격, 손상 config 폴백 |
+| `catalogRules.test.ts` | 조건별 매칭(맵 속성·로그인 사용자), AND 조합, 고정/제외 우선순위, 정렬·limit, 빌트인 5종 회귀 |
 | `adminMaps.test.ts` | filterMaps/sortMaps(3키·누락 필드), computeMapStats(합계·분포·Top5), rotateMapItem/setMapItemRotation(랩어라운드·불변) |
 | `mapCategory.test.ts` | 4종 판정 규칙, 빈 맵, 인벤토리 포함, 미지 기물, 어드민 폴더 이동 반영 |
 | `loadMapForPlay.test.ts` | 플레이 로드 회전 정규화(normalizePlayCell), editorMapDataBackup 원본 보존, showAnswer/hideAnswer |
