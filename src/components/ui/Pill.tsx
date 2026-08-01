@@ -4,7 +4,7 @@ import type { Difficulty } from '../../types/game';
 export type PillTone =
   | 'tutor' | 'easy' | 'normal' | 'hard' | 'insane' | 'none'
   | 'neutral' | 'success' | 'danger' | 'info'
-  | 'catBasic' | 'catLogic' | 'catAdvanced' | 'catAdvancedLogic';
+  | 'catClassic' | 'catLogic' | 'catAdvanced';
 
 const TONES: Record<PillTone, string> = {
   tutor:   'bg-[var(--diff-tutor)] text-white',
@@ -18,10 +18,9 @@ const TONES: Record<PillTone, string> = {
   danger:  'bg-danger text-white',
   info:    'bg-primary text-primary-ink',
   // 맵 카테고리 (기물 등급 파생 — lib/mapCategory.ts)
-  catBasic:        'bg-[var(--cat-basic)] text-white',
-  catLogic:        'bg-[var(--cat-logic)] text-white',
-  catAdvanced:     'bg-[var(--cat-advanced)] text-white',
-  catAdvancedLogic:'bg-[var(--cat-advanced-logic)] text-white',
+  catClassic:  'bg-[var(--cat-classic)] text-[var(--cat-classic-ink)] border border-line',
+  catLogic:    'bg-[var(--cat-logic)] text-[var(--cat-logic-ink)]',
+  catAdvanced: 'bg-[var(--cat-advanced)] text-[var(--cat-advanced-ink)]',
 };
 
 interface PillProps {

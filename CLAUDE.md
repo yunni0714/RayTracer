@@ -32,7 +32,7 @@ npm run lint       # ESLint
 - **`src/lib/admin.ts`의 `ADMIN_UIDS`와 `firestore.rules`의 `isAdmin()` UID 목록은 반드시 동기화.** 클라이언트 목록은 UI 숨김일 뿐이고 실제 권한 강제는 firestore.rules가 전부다. rules 수정 후 실배포(`firebase deploy --only firestore:rules`)는 메이커 액션.
 - **config의 SVG는 전 플레이어에게 innerHTML로 렌더된다** — config 경유 SVG는 반드시 `sanitizeSvg()`를 거친다(저장형 XSS 방어). 새 SVG 주입 경로를 추가하면 같은 새니타이즈를 적용할 것.
 - **확인 다이얼로그는 `requestConfirm()`** (스토어) — 네이티브 `window.confirm` 사용 금지.
-- **색은 토큰만**: Tailwind 시맨틱 클래스(`bg-surface`, `text-ink`, `border-line`, ...) 또는 `var(--token)`. 하드코딩 hex 금지 (다크모드 깨짐). 토큰 정의는 `src/styles/global.css`(`:root` + `.dark`), 매핑은 `tailwind.config.js`. 맵 카테고리 색은 `--cat-*` 4종(`lib/mapCategory.ts` 파생값 전용). 레거시 `ray-*`/`diff-*` 색은 점진 마이그레이션 전까지 유지 — 지우지 말 것.
+- **색은 토큰만**: Tailwind 시맨틱 클래스(`bg-surface`, `text-ink`, `border-line`, ...) 또는 `var(--token)`. 하드코딩 hex 금지 (다크모드 깨짐). 토큰 정의는 `src/styles/global.css`(`:root` + `.dark`), 매핑은 `tailwind.config.js`. 맵 카테고리 색은 `--cat-{classic,logic,advanced}` 3종 + 각 `-ink` 짝(`lib/mapCategory.ts` 파생값 전용 — Classic 흰색 / Logic 시안 / Advanced 마젠타). 레거시 `ray-*`/`diff-*` 색은 점진 마이그레이션 전까지 유지 — 지우지 말 것.
 - **UI는 공용 프리미티브 사용** (`src/components/ui/`): 버튼=`Button`/`IconButton`, 다이얼로그=`Modal`, 배지=`Pill`, 탭=`Tabs`, 입력=`Field`. 인라인 hover 스타일 금지.
 - **인벤토리 키 규칙** (`invKey()`): `type_canRotate_rot`. 회전 가능 기물은 rot=0 통일, block은 항상 rot=0. 이 규칙은 저장/환수/카운트 전부가 공유 — 변경 시 전 경로 영향.
 - **canMove는 isInventory에 종속** — 유저지급 기물만 플레이 중 이동 가능 (`getPieceDefaults()`, 덧칠, 팝오버 토글 모두 이 규칙을 지킨다).

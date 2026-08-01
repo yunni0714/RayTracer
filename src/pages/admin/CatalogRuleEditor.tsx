@@ -1,8 +1,8 @@
 import { getSvgArt } from '../../lib/svgArt';
 import { getPieceLabel } from '../../lib/pieceActions';
 import { PALETTE_ORDER, getCustomTypes } from '../../lib/pieceConfig';
-import { CATEGORY_LABELS, type MapCategory } from '../../lib/mapCategory';
-import { describeCondition } from '../../lib/catalogRules';
+import { CATEGORY_LABELS, CATEGORY_ORDER, type MapCategory } from '../../lib/mapCategory';
+import { describeCondition, describeSort, SORT_KEY_LABELS } from '../../lib/catalogRules';
 import {
   USER_CONDITION_KINDS,
   type CatalogCondition, type CatalogConditionKind, type CatalogSort, type SortKey,
@@ -14,13 +14,11 @@ import type { Difficulty } from '../../types/game';
    조건 스키마는 lib/catalogConfig.ts 의 CatalogCondition 과 1:1. */
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
-const CATEGORIES: MapCategory[] = ['basic', 'logic', 'advanced', 'advanced_logic'];
-const SORT_KEYS: { id: SortKey; label: string }[] = [
-  { id: 'createdAt', label: '생성일' },
-  { id: 'reactionGod', label: '🌟 반응' },
-  { id: 'reactionOk', label: '👍 반응' },
-  { id: 'title', label: '제목' },
+const CATEGORIES: readonly MapCategory[] = CATEGORY_ORDER;
+const SORT_KEYS: SortKey[] = [
+  'createdAt', 'reactionGod', 'reactionOk', 'difficulty', 'pieceCount', 'gridSize', 'title',
 ];
+const DEFAULT_SORT: CatalogSort = { by: 'createdAt', dir: 'desc' };
 
 // 조건 추가 드롭다운 — kind 별 기본값
 const CONDITION_TEMPLATES: { kind: CatalogConditionKind; label: string; make: () => CatalogCondition }[] = [
@@ -263,9 +261,57 @@ interface Props {
   onChange: (patch: { conditions?: CatalogCondition[]; sort?: CatalogSort; limit?: number }) => void;
 }
 
-export function CatalogRuleEditor({ conditions, sort, limit, onChange }: Props) {
-  const effectiveSort: CatalogSort = sort ?? { by: 'createdAt', dir: 'desc' };
+/* 기본 정렬 — 카탈로그를 열었을 때의 정렬. 라이브러리에서 사용자가 정렬을
+   직접 고르면 그 세션 동안만 이 값을 덮어쓴다. */
+function SortSection({ sort, limit, onChange }: {
+  sort: CatalogSort | undefined;
+  limit: number | undefined;
+  onChange: (patch: { sort?: CatalogSort; limit?: number }) => void;
+}) {
+  const effective = sort ?? DEFAULT_SORT;
+  const isDefault = !sort;
 
+  return (
+    <section className="flex flex-col gap-2 border border-line rounded-tile p-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">기본 정렬</h5>
+        <span className="text-[11px] text-ink-muted">
+          카탈로그를 열었을 때의 순서. 라이브러리에서 사용자가 정렬을 고르면 그 세션 동안만 덮어씁니다.
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label className="flex items-center gap-1 !text-[11px]">
+          기준
+          <Select
+            value={effective.by}
+            onChange={e => onChange({ sort: { ...effective, by: e.target.value as SortKey } })}
+            className="!w-auto !text-xs !py-1"
+          >
+            {SORT_KEYS.map(k => <option key={k} value={k}>{SORT_KEY_LABELS[k]}</option>)}
+          </Select>
+        </Label>
+        <Button
+          variant="secondary"
+          className="!text-xs"
+          onClick={() => onChange({ sort: { ...effective, dir: effective.dir === 'desc' ? 'asc' : 'desc' } })}
+        >
+          {effective.dir === 'desc' ? '내림차순 ↓' : '오름차순 ↑'}
+        </Button>
+        <NumField label="상위 N개" value={limit} onChange={v => onChange({ limit: v })} />
+        {isDefault && <Pill tone="neutral" className="!text-[9px] !px-1 !py-0">기본값</Pill>}
+      </div>
+
+      <p className="text-[11px] text-ink-muted">
+        현재: <strong className="text-ink">{describeSort(effective)}</strong>
+        {limit ? ` · 상위 ${limit}개만` : ''}
+        {' '}· 고정(📌)한 맵은 정렬과 무관하게 맨 앞에 옵니다.
+      </p>
+    </section>
+  );
+}
+
+export function CatalogRuleEditor({ conditions, sort, limit, onChange }: Props) {
   function setCondition(index: number, cond: CatalogCondition) {
     onChange({ conditions: conditions.map((c, i) => (i === index ? cond : c)) });
   }
@@ -280,9 +326,10 @@ export function CatalogRuleEditor({ conditions, sort, limit, onChange }: Props) 
   }
 
   return (
+    <div className="flex flex-col gap-4">
     <section className="flex flex-col gap-2 border border-line rounded-tile p-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">규칙</h5>
+        <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">일반 규칙</h5>
         <span className="text-[11px] text-ink-muted">조건을 <strong className="text-ink">전부</strong> 만족하는 맵(AND). 조건이 없으면 전체.</span>
       </div>
 
@@ -322,27 +369,10 @@ export function CatalogRuleEditor({ conditions, sort, limit, onChange }: Props) 
           <option value="">＋ 조건 추가…</option>
           {CONDITION_TEMPLATES.map(t => <option key={t.kind} value={t.kind}>{t.label}</option>)}
         </Select>
-
-        <Label className="flex items-center gap-1 !text-[11px]">
-          정렬
-          <Select
-            value={effectiveSort.by}
-            onChange={e => onChange({ sort: { ...effectiveSort, by: e.target.value as SortKey } })}
-            className="!w-auto !text-xs !py-1"
-          >
-            {SORT_KEYS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </Select>
-        </Label>
-        <Button
-          variant="secondary"
-          className="!text-xs"
-          onClick={() => onChange({ sort: { ...effectiveSort, dir: effectiveSort.dir === 'desc' ? 'asc' : 'desc' } })}
-        >
-          {effectiveSort.dir === 'desc' ? '내림차순 ↓' : '오름차순 ↑'}
-        </Button>
-
-        <NumField label="상위 N개" value={limit} onChange={v => onChange({ limit: v })} />
       </div>
     </section>
+
+    <SortSection sort={sort} limit={limit} onChange={onChange} />
+    </div>
   );
 }

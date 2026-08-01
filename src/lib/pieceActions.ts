@@ -1,6 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 import { getBehaviorDef } from './laserEngine';
-import type { CellData, PieceType, Rotation } from '../types/game';
+import type { PieceType, Rotation } from '../types/game';
 // PieceType 는 PIECE_LABELS(빌트인 전수 보장)에만 사용 — 접근자 시그니처는 string.
 
 export const PIECE_LABELS: Record<PieceType, string> = {
@@ -35,32 +35,8 @@ export const PIECE_LABELS: Record<PieceType, string> = {
   inverting_projector: '반전 프로젝터',
 };
 
-const ADVANCED_TYPES: readonly string[] = [
-  'mirror_45', 'half_mirror_45', 'diag_single_mirror_a', 'v_target_mirror_a',
-  'diag_single_mirror_b', 'v_target_mirror_b', 'v_mirror', 'v_half_mirror', 'v_single_mirror',
-];
-
-function isAdvancedMap(
-  mapData: (CellData | null)[][],
-  inventory: Record<string, { type: string; count: number }>,
-): boolean {
-  for (const row of mapData) {
-    for (const cell of row) {
-      if (cell && ADVANCED_TYPES.includes(cell.type)) return true;
-    }
-  }
-  for (const key in inventory) {
-    if (ADVANCED_TYPES.includes(inventory[key].type) && inventory[key].count > 0) return true;
-  }
-  return false;
-}
-
+// 회전 단위는 기물 def 하나만 본다 — 맵 구성에 따라 달라지지 않는다.
 export function getRotationStep(type: string): 45 | 90 {
-  if (type === 'ray' || type === 'target') {
-    // 상급 맵에서는 발사기/표적이 45° 단위로 회전 (def 와 무관한 동적 규칙)
-    const { mapData, playerInventory } = useGameStore.getState();
-    return isAdvancedMap(mapData, playerInventory) ? 45 : 90;
-  }
   return getBehaviorDef(type)?.rotationStep ?? 90;
 }
 

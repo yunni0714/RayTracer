@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { computeMapCategory, getPieceTier, CATEGORY_LABELS } from '../src/lib/mapCategory';
+import { computeMapCategory, getPieceTier, normalizeCategory, CATEGORY_LABELS } from '../src/lib/mapCategory';
 import { applyPieceConfig, resetPieceConfig } from '../src/lib/pieceConfig';
 import type { MapItemDTO } from '../src/types/game';
 
@@ -33,8 +33,8 @@ describe('getPieceTier', () => {
 });
 
 describe('computeMapCategory — 판정 규칙', () => {
-  it('초급만 → basic', () => {
-    expect(computeMapCategory([item('ray'), item(BASIC_PIECE), item('target')])).toBe('basic');
+  it('초급만 → classic', () => {
+    expect(computeMapCategory([item('ray'), item(BASIC_PIECE), item('target')])).toBe('classic');
   });
 
   it('중급 포함 → logic', () => {
@@ -45,15 +45,15 @@ describe('computeMapCategory — 판정 규칙', () => {
     expect(computeMapCategory([item('ray'), item(ADVANCED_PIECE)])).toBe('advanced');
   });
 
-  it('중급 + 상급 동시 → advanced_logic', () => {
-    expect(computeMapCategory([item(INTERMEDIATE_PIECE), item(ADVANCED_PIECE)])).toBe('advanced_logic');
+  it('중급 + 상급 동시 → advanced (중급 동반 여부는 무관)', () => {
+    expect(computeMapCategory([item(INTERMEDIATE_PIECE), item(ADVANCED_PIECE)])).toBe('advanced');
     // 순서 무관
-    expect(computeMapCategory([item(ADVANCED_PIECE), item(INTERMEDIATE_PIECE)])).toBe('advanced_logic');
+    expect(computeMapCategory([item(ADVANCED_PIECE), item(INTERMEDIATE_PIECE)])).toBe('advanced');
   });
 
-  it('빈 맵/누락은 basic', () => {
-    expect(computeMapCategory([])).toBe('basic');
-    expect(computeMapCategory(undefined)).toBe('basic');
+  it('빈 맵/누락은 classic', () => {
+    expect(computeMapCategory([])).toBe('classic');
+    expect(computeMapCategory(undefined)).toBe('classic');
   });
 
   it('인벤토리(유저 지급) 기물도 계산에 포함한다', () => {
@@ -72,7 +72,7 @@ describe('computeMapCategory — 판정 규칙', () => {
 describe('computeMapCategory — 어드민 폴더 오버라이드 반영', () => {
   it('초급 기물을 상급 폴더로 옮기면 같은 맵이 advanced 가 된다', () => {
     const items = [item('ray'), item(BASIC_PIECE)];
-    expect(computeMapCategory(items)).toBe('basic');
+    expect(computeMapCategory(items)).toBe('classic');
 
     applyPieceConfig({ version: 2, pieces: { [BASIC_PIECE]: { folderId: 'advanced' } } });
     expect(computeMapCategory(items)).toBe('advanced');
@@ -83,7 +83,7 @@ describe('computeMapCategory — 어드민 폴더 오버라이드 반영', () =>
     expect(computeMapCategory(items)).toBe('logic');
 
     applyPieceConfig({ version: 2, pieces: { [INTERMEDIATE_PIECE]: { folderId: 'basic' } } });
-    expect(computeMapCategory(items)).toBe('basic');
+    expect(computeMapCategory(items)).toBe('classic');
   });
 
   it('커스텀 폴더로 옮긴 기물은 중급 취급 (logic)', () => {
@@ -105,17 +105,25 @@ describe('computeMapCategory — 어드민 폴더 오버라이드 반영', () =>
     const items = [item('ray'), item(BASIC_PIECE)];
     applyPieceConfig({ version: 2, pieces: { [BASIC_PIECE]: { folderId: 'advanced' } } });
     resetPieceConfig();
-    expect(computeMapCategory(items)).toBe('basic');
+    expect(computeMapCategory(items)).toBe('classic');
   });
 });
 
-describe('라벨', () => {
-  it('4종 표시 문자열', () => {
+describe('라벨 / 레거시 id', () => {
+  it('3종 표시 문자열', () => {
     expect(CATEGORY_LABELS).toEqual({
-      basic: 'Basic',
+      classic: 'Classic',
       logic: 'Logic',
       advanced: 'Advanced',
-      advanced_logic: 'Advanced Logic',
     });
+  });
+
+  it('normalizeCategory — 구 스키마 4종을 현재 id 로 승격', () => {
+    expect(normalizeCategory('basic')).toBe('classic');
+    expect(normalizeCategory('advanced_logic')).toBe('advanced');
+    expect(normalizeCategory('logic')).toBe('logic');
+    expect(normalizeCategory('classic')).toBe('classic');
+    expect(normalizeCategory('없는값')).toBeUndefined();
+    expect(normalizeCategory(42)).toBeUndefined();
   });
 });
