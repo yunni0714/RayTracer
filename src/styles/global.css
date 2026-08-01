@@ -47,11 +47,16 @@
   --diff-insane: #ef4444;
   --diff-none:   #cbd5e1;
   --diff-none-ink: #475569;
-  /* 맵 카테고리 (기물 등급 파생 — lib/mapCategory.ts) */
-  --cat-basic:          #10b981;
-  --cat-logic:          #3b82f6;
-  --cat-advanced:       #8b5cf6;
-  --cat-advanced-logic: #ec4899;
+  /* 맵 카테고리 (기물 등급 파생 — lib/mapCategory.ts)
+     Classic 흰색 / Logic 시안 / Advanced 마젠타.
+     흰 배지는 라이트 모드에서 카드와 붙어버리므로 살짝 눌러 쓰고, 글자색은
+     --cat-*-ink 로 따로 잡는다. */
+  --cat-classic:      #dde5ef;
+  --cat-classic-ink:  #1e293b;
+  --cat-logic:        #0891b2;
+  --cat-logic-ink:    #ffffff;
+  --cat-advanced:     #c026d3;
+  --cat-advanced-ink: #ffffff;
   /* 그림자 / 스크롤바 */
   --shadow-sm:   0 2px 10px rgba(15, 23, 42, .06);
   --shadow-md:   0 10px 24px rgba(15, 23, 42, .10);
@@ -92,10 +97,12 @@
   --diff-insane: #f8717a;
   --diff-none:   #3a465f;
   --diff-none-ink: #b8c4d8;
-  --cat-basic:          #34d399;
-  --cat-logic:          #60a5fa;
-  --cat-advanced:       #a78bfa;
-  --cat-advanced-logic: #f472b6;
+  --cat-classic:      #ffffff;
+  --cat-classic-ink:  #0b1020;
+  --cat-logic:        #22d3ee;
+  --cat-logic-ink:    #06283a;
+  --cat-advanced:     #e879f9;
+  --cat-advanced-ink: #3b0764;
   --shadow-sm:   0 2px 12px rgba(0, 0, 0, .40);
   --shadow-md:   0 12px 28px rgba(0, 0, 0, .55);
   --scroll-thumb:#324264;
@@ -137,10 +144,12 @@ html { transition: background-color .2s ease, color .2s ease; }
 
 /* ── 라이브러리 카드 v2 ──────────────────────────────── */
 .map-card-v2 {
+  position: relative;
   background: var(--surface);
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  /* 카테고리 리본이 카드 위로 삐져나온다 — hidden 이면 잘린다 */
+  overflow: visible;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   display: flex;
@@ -155,11 +164,13 @@ html { transition: background-color .2s ease, color .2s ease; }
 
 /* ── 맵 카테고리 호버 글로우 ─────────────────────────────
    카드에 data-category 만 붙이면 색은 여기서 고른다 (lib/mapCategory.ts).
-   color-mix 미지원 브라우저는 앞의 1px 링 레이어가 폴백. */
-[data-category="basic"]          { --cat-color: var(--cat-basic); }
-[data-category="logic"]          { --cat-color: var(--cat-logic); }
-[data-category="advanced"]       { --cat-color: var(--cat-advanced); }
-[data-category="advanced_logic"] { --cat-color: var(--cat-advanced-logic); }
+   color-mix 미지원 브라우저는 앞의 1px 링 레이어가 폴백.
+   레거시 값(basic/advanced_logic)도 남은 데이터 대비로 매핑해 둔다. */
+[data-category="classic"],
+[data-category="basic"]          { --cat-color: var(--cat-classic); --cat-ink: var(--cat-classic-ink); }
+[data-category="logic"]          { --cat-color: var(--cat-logic);    --cat-ink: var(--cat-logic-ink); }
+[data-category="advanced"],
+[data-category="advanced_logic"] { --cat-color: var(--cat-advanced); --cat-ink: var(--cat-advanced-ink); }
 
 .map-card-v2[data-category]:hover,
 .next-map-card[data-category]:hover {
@@ -167,6 +178,44 @@ html { transition: background-color .2s ease, color .2s ease; }
   box-shadow:
     0 0 0 1px var(--cat-color),
     0 0 18px 3px color-mix(in srgb, var(--cat-color) 55%, transparent);
+}
+
+/* ── 카테고리 리본 (카드 우상단 세로 배너) ───────────────
+   색은 조상의 [data-category] 가 정한 --cat-color / --cat-ink 를 따른다. */
+.cat-ribbon {
+  position: absolute;
+  top: -7px;
+  right: 16px;
+  z-index: 2;
+  padding: 9px 5px 15px;
+  background: var(--cat-color, var(--cat-classic));
+  color: var(--cat-ink, var(--cat-classic-ink));
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  border-radius: 4px 4px 0 0;
+  /* 아래쪽 V 노치 — 깃발 모양 */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 7px), 0 100%);
+  /* clip-path 는 box-shadow 까지 잘라낸다 — 그림자는 filter 로 (흰 리본이
+     밝은 카드 위에서 뭉개지지 않게 테두리 한 겹) */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat-ink, #000) 16%, transparent);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── 내가 반응한 맵의 카운트 발광 ────────────────────── */
+.reaction-count.is-reacted {
+  text-shadow:
+    0 0 6px currentColor,
+    0 0 14px currentColor;
+  filter: brightness(1.15);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reaction-count.is-reacted { transition: text-shadow 0.2s ease; }
 }
 
 /* ── 펜 방사형 메뉴 촤르륵 팝 ─────────────────────────── */

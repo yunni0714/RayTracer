@@ -67,10 +67,10 @@ describe('matchesCondition — 맵 속성 기준', () => {
   });
 
   it('category — mapCategory 파생값 사용', () => {
-    expect(matchesCondition(a, { kind: 'category', values: ['basic'] }, ctx())).toBe(true);
+    expect(matchesCondition(a, { kind: 'category', values: ['classic'] }, ctx())).toBe(true);
     expect(matchesCondition(b, { kind: 'category', values: ['logic'] }, ctx())).toBe(true);
     expect(matchesCondition(c, { kind: 'category', values: ['advanced'] }, ctx())).toBe(true);
-    expect(matchesCondition(c, { kind: 'category', values: ['basic', 'logic'] }, ctx())).toBe(false);
+    expect(matchesCondition(c, { kind: 'category', values: ['classic', 'logic'] }, ctx())).toBe(false);
   });
 
   it('recent — 기간 내/외, 잘못된 날짜는 불일치', () => {
@@ -281,15 +281,31 @@ describe('sortMapsBy / describeCatalog', () => {
       .toEqual(['45도', '게이트 지옥', '기초 반사']);
   });
 
+  it('difficulty — 사전순이 아니라 체감 순서', () => {
+    // a=Normal, b=Insane, c=Easy
+    expect(sortMapsBy(MAPS, { by: 'difficulty', dir: 'desc' }).map(m => m.id)).toEqual(['b', 'a', 'c']);
+    expect(sortMapsBy(MAPS, { by: 'difficulty', dir: 'asc' }).map(m => m.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('pieceCount / gridSize 정렬', () => {
+    // a·b=3개, c=4개 / a·c=5, b=7
+    expect(sortMapsBy(MAPS, { by: 'pieceCount', dir: 'desc' })[0].id).toBe('c');
+    expect(sortMapsBy(MAPS, { by: 'pieceCount', dir: 'asc' })[2].id).toBe('c');
+    expect(sortMapsBy(MAPS, { by: 'gridSize', dir: 'desc' })[0].id).toBe('b');
+  });
+
   it('원본 배열 불변', () => {
     const order = MAPS.map(m => m.id);
     sortMapsBy(MAPS, { by: 'reactionGod', dir: 'desc' });
     expect(MAPS.map(m => m.id)).toEqual(order);
   });
 
-  it('요약 문자열', () => {
-    expect(describeCatalog(cat())).toBe('전체 맵');
+  it('요약 문자열 — 조건 + 기본 정렬 + 부가 정보', () => {
+    expect(describeCatalog(cat())).toBe('전체 맵 · 등록일 최신순');
     expect(describeCatalog(getCatalog('featured')!)).toContain('🌟 3개 이상');
-    expect(describeCatalog(cat({ limit: 20, pinnedMapIds: ['a'] }))).toBe('전체 맵 · 상위 20개 · 고정 1');
+    expect(describeCatalog(cat({ limit: 20, pinnedMapIds: ['a'] })))
+      .toBe('전체 맵 · 등록일 최신순 · 상위 20개 · 고정 1');
+    expect(describeCatalog(cat({ sort: { by: 'difficulty', dir: 'asc' } })))
+      .toBe('전체 맵 · 공식 난이도 낮은순');
   });
 });

@@ -165,6 +165,14 @@ describe('sanitizeCondition — 조건별 검증', () => {
     expect(ok({ kind: 'titleContains', text: ' 튜토 ' })).toEqual({ kind: 'titleContains', text: '튜토' });
   });
 
+  it('category — 구 스키마 id 는 현재 id 로 승격, 중복은 합쳐진다', () => {
+    expect(ok({ kind: 'category', values: ['basic'] })).toEqual({ kind: 'category', values: ['classic'] });
+    expect(ok({ kind: 'category', values: ['advanced_logic'] })).toEqual({ kind: 'category', values: ['advanced'] });
+    expect(ok({ kind: 'category', values: ['advanced', 'advanced_logic'] }))
+      .toEqual({ kind: 'category', values: ['advanced'] });
+    expect(ok({ kind: 'category', values: ['없는카테고리'] })).toBeUndefined();
+  });
+
   it('사용자 기준 조건은 불리언 기본값이 true', () => {
     expect(ok({ kind: 'mine' })).toEqual({ kind: 'mine', owned: true });
     expect(ok({ kind: 'played', played: false })).toEqual({ kind: 'played', played: false });

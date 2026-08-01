@@ -1,5 +1,8 @@
-import { computeMapCategory } from './mapCategory';
-import { USER_CONDITION_KINDS, type CatalogCondition, type CatalogDef, type CatalogSort } from './catalogConfig';
+import { computeMapCategory, CATEGORY_LABELS } from './mapCategory';
+import {
+  USER_CONDITION_KINDS,
+  type CatalogCondition, type CatalogDef, type CatalogSort, type SortKey,
+} from './catalogConfig';
 import type { Difficulty, MapDocument } from '../types/game';
 
 /* ════════════════════════════════════════════════════════
@@ -111,13 +114,23 @@ export function needsLogin(catalog: CatalogDef): boolean {
 
 const DEFAULT_SORT: CatalogSort = { by: 'createdAt', dir: 'desc' };
 
+// 난이도는 문자열이라 사전순이 무의미 — 체감 순서로 매긴다
+const DIFFICULTY_RANK: Record<Difficulty, number> = {
+  Tutor: 0, Easy: 1, Normal: 2, Hard: 3, Insane: 4,
+};
+
 export function sortMapsBy(maps: MapDocument[], sort: CatalogSort = DEFAULT_SORT): MapDocument[] {
   const dir = sort.dir === 'asc' ? -1 : 1;
   return [...maps].sort((a, b) => {
     let cmp: number;
-    if (sort.by === 'createdAt') cmp = (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
-    else if (sort.by === 'title') cmp = (a.title ?? '').localeCompare(b.title ?? '');
-    else cmp = (a[sort.by] ?? 0) - (b[sort.by] ?? 0);
+    switch (sort.by) {
+      case 'createdAt': cmp = (a.createdAt ?? '').localeCompare(b.createdAt ?? ''); break;
+      case 'title': cmp = (a.title ?? '').localeCompare(b.title ?? ''); break;
+      case 'difficulty': cmp = (DIFFICULTY_RANK[a.difficulty] ?? 0) - (DIFFICULTY_RANK[b.difficulty] ?? 0); break;
+      case 'pieceCount': cmp = (a.mapData?.length ?? 0) - (b.mapData?.length ?? 0); break;
+      case 'gridSize': cmp = (a.gridSize ?? 5) - (b.gridSize ?? 5); break;
+      default: cmp = (a[sort.by] ?? 0) - (b[sort.by] ?? 0);
+    }
     return -cmp * dir; // desc 가 기본이라 부호를 뒤집는다
   });
 }
@@ -162,7 +175,7 @@ export function describeCondition(cond: CatalogCondition): string {
     }
     case 'difficulty':
       return cond.values.length === DIFF_ALL ? '난이도 전체' : `난이도 ${cond.values.join('·')}`;
-    case 'category': return `카테고리 ${cond.values.join('·')}`;
+    case 'category': return `카테고리 ${cond.values.map(v => CATEGORY_LABELS[v] ?? v).join('·')}`;
     case 'recent': return `최근 ${cond.days}일`;
     case 'gridSize': return `그리드 ${cond.min ?? ''}~${cond.max ?? ''}`.replace('~ ', '');
     case 'pieceCount': return `기물 수 ${cond.min ?? ''}~${cond.max ?? ''}`;
@@ -179,10 +192,36 @@ export function describeCondition(cond: CatalogCondition): string {
   }
 }
 
+/* 정렬 라벨 — 어드민 편집기와 라이브러리 정렬 셀렉트가 같은 문구를 쓴다. */
+export const SORT_KEY_LABELS: Record<SortKey, string> = {
+  createdAt: '등록일',
+  reactionGod: '👍 반응',
+  reactionOk: '✅ 반응',
+  title: '제목',
+  difficulty: '공식 난이도',
+  pieceCount: '기물 수',
+  gridSize: '그리드 크기',
+};
+
+// 정렬 키마다 방향 표현이 다르다 (최신/오래된 vs 많은/적은)
+const SORT_DIR_LABELS: Record<SortKey, { desc: string; asc: string }> = {
+  createdAt: { desc: '최신순', asc: '오래된순' },
+  reactionGod: { desc: '많은순', asc: '적은순' },
+  reactionOk: { desc: '많은순', asc: '적은순' },
+  title: { desc: 'ㅎ→ㄱ', asc: 'ㄱ→ㅎ' },
+  difficulty: { desc: '높은순', asc: '낮은순' },
+  pieceCount: { desc: '많은순', asc: '적은순' },
+  gridSize: { desc: '큰순', asc: '작은순' },
+};
+
+export function describeSort(sort: CatalogSort = DEFAULT_SORT): string {
+  return `${SORT_KEY_LABELS[sort.by]} ${SORT_DIR_LABELS[sort.by][sort.dir]}`;
+}
+
 export function describeCatalog(catalog: CatalogDef): string {
   const parts = (catalog.conditions ?? []).map(describeCondition);
   const base = parts.length ? parts.join(' + ') : '전체 맵';
-  const extra: string[] = [];
+  const extra: string[] = [describeSort(catalog.sort)];
   if (catalog.limit) extra.push(`상위 ${catalog.limit}개`);
   if (catalog.pinnedMapIds?.length) extra.push(`고정 ${catalog.pinnedMapIds.length}`);
   if (catalog.excludedMapIds?.length) extra.push(`제외 ${catalog.excludedMapIds.length}`);

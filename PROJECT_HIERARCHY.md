@@ -100,7 +100,7 @@ RayTracer/
 │   │       ├── BulkRotationModal.tsx    # └   일괄 회전 — 스코프(선택/검색/전체) × 기물 타입 다중 선택
 │   │       ├── StatsTab.tsx             # └ [통계] 반응 합계·난이도 분포·Top 5
 │   │       ├── CatalogTab.tsx           # [카탈로그] 3열 — 목록 / 메타·규칙·큐레이션 편집 / 미리보기
-│   │       ├── CatalogRuleEditor.tsx    # └ 조건 카드 리스트(AND) + 정렬 + 상위 N개
+│   │       ├── CatalogRuleEditor.tsx    # └ [일반 규칙] 조건 카드 리스트(AND) + [기본 정렬] 정렬 기준·방향·상위 N개
 │   │       ├── CatalogCurationPanel.tsx # └ 고정/제외 맵 목록
 │   │       ├── CatalogPreviewPanel.tsx  # └ 미리보기 전용 열 (썸네일 그리드 + 순위·📌 표시)
 │   │       └── MapPickerModal.tsx       # └ 맵 검색·다중 선택 모달
@@ -137,8 +137,9 @@ RayTracer/
 │   │   │
 │   │   ├── library/
 │   │   │   ├── LibraryScreen.tsx        # 라이브러리 (카탈로그 5종, 검색/정렬, 미리보기 패널)
-│   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 제목, 카테고리/난이도 배지, 반응, 호버 글로우)
-│   │   │   ├── MapCategoryBadge.tsx     # 맵 카테고리 배지 (mapData 에서 계산, pieceConfigRev 구독)
+│   │   │   ├── MapCard.tsx              # 맵 카드 (미니 그리드, 우상단 카테고리 리본, 제목, 난이도 배지, 반응, 호버 글로우, 더블클릭 플레이)
+│   │   │   ├── MapCategoryBadge.tsx     # 맵 카테고리 배지 (mapData 에서 계산, pieceConfigRev 구독). variant='pill'|'ribbon'
+│   │   │   ├── SuppliedPieces.tsx       # 지급(isInventory) 기물 목록 — invKey 규칙으로 묶고 회전은 0 정규화
 │   │   │   ├── MiniGrid.tsx             # NxN 미니 그리드 렌더러 (v1: pixel, v2: aspect-ratio). 회전형 고정 기물은 0도 렌더(정답 은닉), revealRotation prop으로 opt-out
 │   │   │   ├── LoadedMapInfo.tsx        # 로드 맵 정보/반응/난이도투표, 소유자 수정·삭제, 풀이 제안
 │   │   │   ├── RightSidePanel.tsx       # 수직 탭 패널 (다음 문제 / 풀이 제안)
@@ -288,19 +289,22 @@ Firestore `config/catalog` 문서를 코드 기본값 위에 머지. `pieceConfi
 - `needsLogin(catalog)` 이 true 인데 비로그인이면 결과가 비고 라이브러리가 "로그인하면 표시됩니다" 를 띄운다
 - `category` 조건은 `computeMapCategory()` 재사용 — 기물 폴더가 바뀌면 카탈로그 결과도 바뀐다
 
-**exports**: `selectCatalogMaps()`, `matchesCondition()`, `needsLogin()`, `sortMapsBy()`, `describeCondition()`, `describeCatalog()`
+- `sortMapsBy()` 정렬 키 7종: `createdAt`·`reactionGod`·`reactionOk`·`title`·`difficulty`(체감 순서 랭크)·`pieceCount`·`gridSize`
+
+**exports**: `selectCatalogMaps()`, `matchesCondition()`, `needsLogin()`, `sortMapsBy()`, `describeCondition()`, `describeSort()`, `describeCatalog()`, `SORT_KEY_LABELS`
 
 ### `src/lib/mapCategory.ts` — 맵 카테고리 (기물 등급 파생)
 맵에 쓰인 기물 등급에서 자동 판정하는 값. 작성자가 고르지 않고 `mapData` 에서 계산하므로 DB 필드가 없다.
-- 초급만 `basic` / 중급 포함 `logic` / 상급 포함 `advanced` / 중급+상급 `advanced_logic`
+- 초급만 `classic` / 중급 포함 `logic` / **상급 포함 `advanced`** (중급 동반 여부 무관 — 3종)
 - 등급 출처 = `getPieceFolder()` — 어드민이 폴더를 옮기면 카테고리도 바뀐다. 기본 3폴더 밖(커스텀 폴더·커스텀 기물)은 중급 취급
-- 인벤토리(유저 지급) 기물도 포함. 빈 맵은 `basic`
-- **exports**: `computeMapCategory()`, `getPieceTier()`, `CATEGORY_LABELS`, 타입 `MapCategory`/`PieceTier`
-- 색은 `--cat-*` 토큰 + `Pill` 톤 4종(`catBasic`/`catLogic`/`catAdvanced`/`catAdvancedLogic`), 카드 호버 글로우는 `[data-category]` CSS 규칙
+- 인벤토리(유저 지급) 기물도 포함. 빈 맵은 `classic`
+- **레거시 id**: 구 스키마 4종(`basic`/`advanced_logic`)은 `normalizeCategory()` 로 승격(`basic→classic`, `advanced_logic→advanced`). 저장된 카탈로그 config 의 `category` 조건이 이 경로로 살아난다
+- **exports**: `computeMapCategory()`, `getPieceTier()`, `normalizeCategory()`, `CATEGORY_LABELS`, `CATEGORY_ORDER`, 타입 `MapCategory`/`PieceTier`
+- 색은 `--cat-{classic,logic,advanced}` + `-ink` 짝 토큰 + `Pill` 톤 3종(`catClassic`/`catLogic`/`catAdvanced`), 카드 호버 글로우와 리본 색은 `[data-category]` CSS 규칙(`--cat-color`/`--cat-ink`)
 
 ### `src/lib/pieceActions.ts` — 기물 조작 + 라벨
 PiecePopover / SelectedPieceInfo / useGridDragDrop이 공유하는 조작 함수 모음.
-- `rotatePiece()` (rotationStep 반영 — ray/target은 상급 맵에서 45° 동적 규칙), `deletePiece()`, `refundPiece()`, `toggleRotateLock()`, `toggleUserSupply()`, `clearTraits()`
+- `rotatePiece()` (회전 단위는 기물 def 의 `rotationStep` 하나만 본다 — 맵 구성에 따라 45°로 바뀌는 동적 규칙은 제거됨), `deletePiece()`, `refundPiece()`, `toggleRotateLock()`, `toggleUserSupply()`, `clearTraits()`
 - `PIECE_LABELS` (빌트인 한글 라벨) + `getPieceLabel()` (config 오버라이드 접근자)
 - `NON_ROTATABLE` (block, high_block, omni_target — 방향성 없음)
 
@@ -397,7 +401,7 @@ Header
 #### `src/pages/admin/CatalogTab.tsx` — [카탈로그] 탭
 - 3열 레이아웃 (`xl` 이상): 좌 목록 / 중 편집 / 우 미리보기
 - 좌: **빌트인 / 커스텀 접이식 섹션**, 항목별 `↑↓` 순서 변경, `➕ 새 카탈로그`
-- 중: 메타(이름·이모지·순서·노출) + `CatalogRuleEditor`(조건 카드 AND / 정렬 / 상위 N) + `CatalogCurationPanel`(고정·제외 맵)
+- 중: 메타(이름·이모지·순서·노출) + `CatalogRuleEditor`(**일반 규칙** 조건 카드 AND + **기본 정렬** 기준·방향·상위 N) + `CatalogCurationPanel`(고정·제외 맵)
 - 우: `CatalogPreviewPanel` — 편집 중 정의로 `selectCatalogMaps()` 실행. 매칭 수 + **전체 결과** 썸네일 그리드
   (순위 번호·📌 고정 표시·난이도·작성자·gridSize·반응), `내 계정 기준으로 평가` 토글.
   `xl` 미만에서는 같은 패널이 편집 폼 아래로 내려온다 (`xl:hidden` / `hidden xl:flex` 한 쌍)
@@ -413,7 +417,7 @@ Header
 - **`GridCell`**: `data-row`/`data-col`로 DnD 식별. 특성 배지 — 🎒 유저지급, 🔒 유저지급+회전불가, 🔄 고정+회전가능.
 - **`PiecePopover`** (데스크탑) / **`SelectedPieceInfo`** (인스펙터·모바일 공용): 같은 `pieceActions`를 호출하므로 자동 동기화.
 - **`PalettePanel`**: 폴더 탭은 config(`getFolders`/`getPieceFolder`) 연동, hidden 기물 제외, 커스텀 기물 포함. 특성 덧칠 칩 3종(🔄/🔒/🎒)은 상호 배타 규칙 있음. JSON 가져오기/내보내기, 맵 등록(신규일 때만).
-- **`LibraryScreen`**: 카탈로그 내비/그리드. **정의·필터는 전부 `lib/catalogConfig` + `lib/catalogRules`** (하드코딩 없음). 정렬 셀렉트에서 `카탈로그 기본 정렬` 이 기본이고, 사용자가 다른 정렬을 고르면 그 세션 동안 카탈로그 `sort` 를 덮어쓴다. 검색 시 카탈로그 무시 전체 부분일치. 카드 클릭 → 우 존/하단 시트 미리보기 → ▶ 플레이.
+- **`LibraryScreen`**: 카탈로그 내비/그리드. **정의·필터는 전부 `lib/catalogConfig` + `lib/catalogRules`** (하드코딩 없음). 정렬 셀렉트는 `키:방향` 조합 15종(`카탈로그 기본 정렬` 기본) — 사용자가 고르면 그 세션 동안 카탈로그 `sort` 를 덮어쓰고 검색 결과에도 적용된다. `세부 필터` 패널(난이도·카테고리·그리드 크기 다중선택 + 플레이/반응 여부)은 카탈로그·검색 결과 **위에 얹는 교집합** — 규칙 평가에는 개입하지 않는다(플레이·반응은 localStorage `ray_map_states` 기준). 검색 시 카탈로그 무시 전체 부분일치. 카드 **클릭 → 미리보기**(우 존/하단 시트, 지급 기물 목록 포함) → ▶ 플레이, **더블클릭 → 즉시 플레이**.
 - **`UploadModal`**: 신규 업로드 시 공유 URL 자동 클립보드 복사 + 업로드된 맵 즉시 플레이 로드. 수정 시 `version` +1. `canRotate=true` 기물도 작성자가 맞춘 회전값(=정답)을 그대로 저장 — 은닉은 로드 시 `loadMapForPlay`/`MiniGrid`가 담당.
 - 기물 SVG를 렌더하는 컴포넌트는 `useGameStore(s => s.pieceConfigRev)` 구독으로 config 갱신 시 리렌더.
 
@@ -447,7 +451,7 @@ Header
 | **Google 로그인** | `lib/firebaseService.ts` (signInWithGoogle — 팝업 실패 시 리다이렉트 폴백) | `hooks/useAuth.ts` |
 | **닉네임 로직** | `lib/firebaseService.ts` (create/updateUserNickname) | `components/modals/NicknameModal.tsx`, `hooks/useAuth.ts` |
 | **맵 반응(✅/👍)·난이도 투표** | `hooks/useMapReactions.ts` | `lib/firebaseService.ts`, `components/library/LoadedMapInfo.tsx` |
-| **맵 카테고리(Basic/Logic/Advanced)** | `lib/mapCategory.ts` | `components/library/MapCategoryBadge.tsx`, `styles/global.css` (`--cat-*`, `[data-category]` 글로우), `components/ui/Pill.tsx`, `tests/mapCategory.test.ts` |
+| **맵 카테고리(Classic/Logic/Advanced)** | `lib/mapCategory.ts` | `components/library/MapCategoryBadge.tsx`, `styles/global.css` (`--cat-*`, `[data-category]` 글로우·`.cat-ribbon`), `components/ui/Pill.tsx`, `tests/mapCategory.test.ts` |
 | **라이브러리 UI/카탈로그 표시** | `components/library/LibraryScreen.tsx` | `MapCard.tsx`, `MiniGrid.tsx` |
 | **다음 문제 추천** | `components/library/NextMapPanel.tsx` | `components/library/RightSidePanel.tsx` |
 | **풀이 제안** | `components/library/SuggestionPanel.tsx`, `components/modals/SuggestionModal.tsx` | `lib/firebaseService.ts` (suggestions) |

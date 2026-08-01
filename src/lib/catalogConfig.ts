@@ -1,5 +1,5 @@
 import type { Difficulty } from '../types/game';
-import type { MapCategory } from './mapCategory';
+import { normalizeCategory, CATEGORY_ORDER, type MapCategory } from './mapCategory';
 
 /* ════════════════════════════════════════════════════════
    라이브러리 카탈로그 config 오버레이 (어드민)
@@ -15,7 +15,8 @@ import type { MapCategory } from './mapCategory';
    맵 선별(평가)은 여기 없다 — `catalogRules.ts` 가 담당한다 (정의/평가 분리).
    ════════════════════════════════════════════════════════ */
 
-export type SortKey = 'createdAt' | 'reactionGod' | 'reactionOk' | 'title';
+export type SortKey =
+  | 'createdAt' | 'reactionGod' | 'reactionOk' | 'title' | 'difficulty' | 'pieceCount' | 'gridSize';
 export type SortDir = 'asc' | 'desc';
 export interface CatalogSort { by: SortKey; dir: SortDir }
 
@@ -158,8 +159,21 @@ export function getCustomCatalogIds(): string[] {
 /* ── 검증 ───────────────────────────────────────────────── */
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
-const CATEGORIES: MapCategory[] = ['basic', 'logic', 'advanced', 'advanced_logic'];
-const SORT_KEYS: SortKey[] = ['createdAt', 'reactionGod', 'reactionOk', 'title'];
+const SORT_KEYS: SortKey[] = [
+  'createdAt', 'reactionGod', 'reactionOk', 'title', 'difficulty', 'pieceCount', 'gridSize',
+];
+
+// 레거시 id('basic'/'advanced_logic')도 받아 현재 카테고리로 승격한다
+function categoryList(raw: unknown, max: number): MapCategory[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const seen = new Set<MapCategory>();
+  for (const v of raw) {
+    const cat = normalizeCategory(v);
+    if (cat) seen.add(cat);
+    if (seen.size >= max) break;
+  }
+  return seen.size ? [...seen] : undefined;
+}
 
 function num(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
@@ -202,7 +216,7 @@ export function sanitizeCondition(raw: unknown): CatalogCondition | undefined {
     }
 
     case 'category': {
-      const values = strList(c.values, CATEGORIES, CATEGORIES.length) as MapCategory[] | undefined;
+      const values = categoryList(c.values, CATEGORY_ORDER.length);
       return values ? { kind: 'category', values } : undefined;
     }
 
