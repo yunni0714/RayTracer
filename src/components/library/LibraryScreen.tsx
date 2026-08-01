@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/gameStore';
 import { fetchLibraryList } from '../../lib/firebaseService';
 import { MapCard } from './MapCard';
 import { MiniGrid } from './MiniGrid';
+import { MapCategoryBadge } from './MapCategoryBadge';
 import { Button, TextInput, Select, Tabs, Pill, cx, type PillTone } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
@@ -65,6 +66,7 @@ function MapPreview({ map, onPlay }: { map: MapDocument; onPlay: (m: MapDocument
         <p className="text-xs text-ink-muted">{map.author}</p>
       </div>
       <div className="flex gap-1.5 flex-wrap">
+        <MapCategoryBadge mapData={map.mapData} />
         <Pill tone={DIFF_TONE[map.difficulty]}>공식: {map.difficulty}</Pill>
         <Pill tone={userDiff ? DIFF_TONE[userDiff] : 'none'}>평가: {userDiff ?? 'None'}</Pill>
       </div>
