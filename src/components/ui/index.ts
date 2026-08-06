@@ -7,3 +7,4 @@ export { ConfirmModal, type ConfirmOptions } from './ConfirmModal';
 export { ConfirmHost } from './ConfirmHost';
 export { Pill, DifficultyPill, type PillTone } from './Pill';
 export { Tabs, type TabItem } from './Tabs';
+export { Toggle } from './Toggle';

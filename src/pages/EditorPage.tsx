@@ -16,6 +16,8 @@ import { RightSidePanel } from '../components/library/RightSidePanel';
 import { NicknameModal } from '../components/modals/NicknameModal';
 import { UploadModal } from '../components/modals/UploadModal';
 import { SuggestionModal } from '../components/modals/SuggestionModal';
+import { SettingsModal } from '../components/modals/SettingsModal';
+import { InboxModal } from '../components/modals/InboxModal';
 import { ConfirmHost, Button, Tabs } from '../components/ui';
 
 type SheetTab = 'tools' | 'info';
@@ -141,6 +143,8 @@ export function EditorPage() {
       {activeModal === 'changeNickname' && <NicknameModal mode="change" />}
       {activeModal === 'upload' && <UploadModal />}
       {activeModal === 'suggestion' && <SuggestionModal />}
+      {activeModal === 'settings' && <SettingsModal />}
+      {activeModal === 'inbox' && <InboxModal />}
 
       <Notification />
       <ConfirmHost />

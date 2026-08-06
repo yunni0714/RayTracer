@@ -57,6 +57,15 @@
   --cat-logic-ink:    #ffffff;
   --cat-advanced:     #c026d3;
   --cat-advanced-ink: #ffffff;
+  /* 파스텔 카드 (계정 설정 pastelCards) — 카드 표면을 물들이는 전용 색.
+     --cat-* 에서 color-mix 로 파생하지 않는다: Classic 이 거의 흰색이라
+     파생하면 라이트 모드에서 구분이 사라진다. 명시 토큰이라 대비도 잡힌다. */
+  --cat-classic-pastel:        #eaeff7;
+  --cat-classic-pastel-hover:  #dde5f1;
+  --cat-logic-pastel:          #dff4fa;
+  --cat-logic-pastel-hover:    #c4ebf6;
+  --cat-advanced-pastel:       #fae7fd;
+  --cat-advanced-pastel-hover: #f4d2fa;
   /* 그림자 / 스크롤바 */
   --shadow-sm:   0 2px 10px rgba(15, 23, 42, .06);
   --shadow-md:   0 10px 24px rgba(15, 23, 42, .10);
@@ -103,6 +112,13 @@
   --cat-logic-ink:    #06283a;
   --cat-advanced:     #e879f9;
   --cat-advanced-ink: #3b0764;
+  /* 다크에서는 어두운 틴트로 — 본문 --text(밝은 색) 가독성을 유지해야 한다 */
+  --cat-classic-pastel:        #1a2440;
+  --cat-classic-pastel-hover:  #24314f;
+  --cat-logic-pastel:          #113441;
+  --cat-logic-pastel-hover:    #17475a;
+  --cat-advanced-pastel:       #2d1636;
+  --cat-advanced-pastel-hover: #401f4c;
   --shadow-sm:   0 2px 12px rgba(0, 0, 0, .40);
   --shadow-md:   0 12px 28px rgba(0, 0, 0, .55);
   --scroll-thumb:#324264;
@@ -167,10 +183,19 @@ html { transition: background-color .2s ease, color .2s ease; }
    color-mix 미지원 브라우저는 앞의 1px 링 레이어가 폴백.
    레거시 값(basic/advanced_logic)도 남은 데이터 대비로 매핑해 둔다. */
 [data-category="classic"],
-[data-category="basic"]          { --cat-color: var(--cat-classic); --cat-ink: var(--cat-classic-ink); }
-[data-category="logic"]          { --cat-color: var(--cat-logic);    --cat-ink: var(--cat-logic-ink); }
+[data-category="basic"] {
+  --cat-color: var(--cat-classic); --cat-ink: var(--cat-classic-ink);
+  --cat-pastel: var(--cat-classic-pastel); --cat-pastel-hover: var(--cat-classic-pastel-hover);
+}
+[data-category="logic"] {
+  --cat-color: var(--cat-logic); --cat-ink: var(--cat-logic-ink);
+  --cat-pastel: var(--cat-logic-pastel); --cat-pastel-hover: var(--cat-logic-pastel-hover);
+}
 [data-category="advanced"],
-[data-category="advanced_logic"] { --cat-color: var(--cat-advanced); --cat-ink: var(--cat-advanced-ink); }
+[data-category="advanced_logic"] {
+  --cat-color: var(--cat-advanced); --cat-ink: var(--cat-advanced-ink);
+  --cat-pastel: var(--cat-advanced-pastel); --cat-pastel-hover: var(--cat-advanced-pastel-hover);
+}
 
 .map-card-v2[data-category]:hover,
 .next-map-card[data-category]:hover {
@@ -178,6 +203,38 @@ html { transition: background-color .2s ease, color .2s ease; }
   box-shadow:
     0 0 0 1px var(--cat-color),
     0 0 18px 3px color-mix(in srgb, var(--cat-color) 55%, transparent);
+}
+
+/* ── 파스텔 카드 (계정 설정 pastelCards) ────────────────
+   카테고리 색을 "카드 뒤 글로우" 대신 "카드 표면"으로 옮긴다.
+   html[data-pastel="on"] 접두사가 위 글로우 규칙보다 명시도가 높아 그대로 이긴다.
+   설정 OFF 면 이 블록 전체가 비활성 = 기존 동작 그대로.
+   토글은 hooks/useUserSettings.ts 가 <html> 에 data-pastel 을 찍는다. */
+html[data-pastel="on"] .map-card-v2[data-category],
+html[data-pastel="on"] .next-map-card[data-category],
+html[data-pastel="on"] .cat-swatch[data-category] {
+  background: var(--cat-pastel);
+  border-color: var(--cat-pastel-hover);
+}
+html[data-pastel="on"] .map-card-v2[data-category]:hover,
+html[data-pastel="on"] .next-map-card[data-category]:hover {
+  background: var(--cat-pastel-hover);
+  border-color: var(--cat-color);
+  box-shadow: var(--shadow-md);
+}
+
+/* 설정 모달의 미리보기 스와치 — 카드와 같은 파스텔 규칙을 타서 즉시 반영된다 */
+.cat-swatch {
+  flex: 1;
+  padding: 14px 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  transition: background-color .2s, border-color .2s;
 }
 
 /* ── 카테고리 리본 (카드 우상단 세로 배너) ───────────────

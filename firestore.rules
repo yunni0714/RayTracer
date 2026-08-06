@@ -67,11 +67,33 @@ service cloud.firestore {
       }
     }
 
-    // ── 사용자 프로필 (닉네임) ─────────────────────────────
+    // ── 사용자 프로필 (닉네임 · 계정 설정) ─────────────────
     match /users/{userId} {
       allow read: if true;
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if isAdmin();
+
+      // ── 알림함 (메일함) ─────────────────────────────────
+      // Cloud Functions 가 없으므로 제안자의 클라이언트가 맵 소유자의
+      // 알림함에 직접 쓴다. 아무한테나 스팸을 꽂지 못하도록 생성 시
+      // 맵 문서를 get() 해서 "받는 사람 == 그 맵의 소유자" 를 검증한다.
+      match /inbox/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        allow create: if request.auth != null
+          && request.auth.uid != userId
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.type == 'suggestion'
+          && request.resource.data.read == false
+          && get(/databases/$(database)/documents/maps/$(request.resource.data.mapId))
+               .data.authorUid == userId;
+
+        // 수정: 소유자가 read 플래그만 (내용 위조 방지)
+        allow update: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     // 그 외 전부 차단
