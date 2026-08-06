@@ -3,9 +3,9 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { fetchSuggestionsFromDB, deleteSuggestionFromDB } from '../../lib/firebaseService';
 import { MiniGrid } from './MiniGrid';
+import { itemsToGrid } from '../../lib/mapGrid';
 import { Button, Pill } from '../ui';
-import type { SuggestionDocument } from '../../types/game';
-import type { CellData, Rotation } from '../../types/game';
+import { SUGGESTION_CATEGORY_LABELS, type SuggestionDocument } from '../../types/game';
 
 export function SuggestionPanel() {
   const {
@@ -37,20 +37,8 @@ export function SuggestionPanel() {
   const isMapOwner = !!currentUserUid && currentUserUid === currentLoadedMapAuthorUid;
 
   function testSuggestion(sug: SuggestionDocument) {
-    const size = currentLoadedMapObj?.gridSize ?? 5;
-    const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
-    for (const item of sug.mapData) {
-      if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
-        grid[item.y][item.x] = {
-          type: item.type,
-          rotation: item.rotation as Rotation,
-          canMove: item.canMove,
-          canRotate: item.canRotate,
-          isInventory: item.isInventory,
-        };
-      }
-    }
-    setMapData(grid);
+    // 제안은 풀이 그리드 그대로 — 정답 회전을 정규화하지 않는다
+    setMapData(itemsToGrid(sug.mapData, currentLoadedMapObj?.gridSize ?? 5));
     showNotification('제안된 풀이를 불러왔습니다. 확인해보세요!', '#27ae60');
   }
 
@@ -100,11 +88,9 @@ export function SuggestionPanel() {
                 <MiniGrid mapData={sug.mapData} revealRotation variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
               </div>
               <div className="flex-1 min-w-0 flex flex-col gap-1">
-                {sug.category === 'NG' ? (
-                  <Pill tone="danger" className="self-start">🆖 기물 줄임</Pill>
-                ) : (
-                  <Pill tone="info" className="self-start">🔠 복수정답</Pill>
-                )}
+                <Pill tone={sug.category === 'NG' ? 'danger' : 'info'} className="self-start">
+                  {SUGGESTION_CATEGORY_LABELS[sug.category]}
+                </Pill>
                 <span className="text-[11px] text-ink-muted">{dateStr}</span>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, emptyGrid } from '../../store/gameStore';
+import { useGameStore, emptyGrid, getAuthoredGrid } from '../../store/gameStore';
+import { computeLaser } from '../../lib/laserEngine';
 import { ToolItem } from './ToolItem';
 import { Button, Tabs, TextArea, cx } from '../ui';
 import { PALETTE_ORDER, getFolders, getPieceFolder, getCustomTypes, isPieceHidden } from '../../lib/pieceConfig';
@@ -44,7 +45,7 @@ export function PalettePanel() {
     setModRotatable, setModLock, setModInv,
     clearGrid,
     mapData, saveUndoSnapshot, setMapData, showNotification,
-    currentUserUid, currentLoadedMapObj, openModal,
+    currentUserUid, currentLoadedMapObj, openModal, requestConfirm,
   } = useGameStore(useShallow(s => ({
     selectedTool: s.selectedTool,
     setSelectedTool: s.setSelectedTool,
@@ -62,10 +63,35 @@ export function PalettePanel() {
     currentUserUid: s.currentUserUid,
     currentLoadedMapObj: s.currentLoadedMapObj,
     openModal: s.openModal,
+    requestConfirm: s.requestConfirm,
   })));
 
   function handleJsonChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setJsonText(e.target.value);
+  }
+
+  // 신규 등록 게이트 — 정답이 성립하는 맵만 올린다.
+  // 판정은 작성 원본 그리드(getAuthoredGrid) 기준: 테스트 상태에서 눌러도
+  // 인벤토리로 빠진 기물이 포함된 원본을, 작성자가 맞춘 정답 회전 그대로 본다.
+  // 기존 맵 수정 저장(UploadModal isEdit)은 게이트 대상이 아니다 — 예전에 올린
+  // 맵의 제목·설명만 고치려다 막히는 상황을 피한다.
+  async function handleUpload() {
+    const { targetsTotal, targetsHit, solved } =
+      computeLaser(getAuthoredGrid(useGameStore.getState()));
+
+    if (!solved) {
+      // solved 는 targetsTotal > 0 을 요구하므로 표적 0개도 여기로 온다 — 문구를 나눈다
+      await requestConfirm({
+        title: '아직 등록할 수 없습니다',
+        message: targetsTotal === 0
+          ? '표적이 없습니다.\n표적을 1개 이상 배치해야 맵을 등록할 수 있습니다.'
+          : `표적 ${targetsHit}/${targetsTotal} 만 맞았습니다.\n모든 표적을 맞히는 배치로 만든 뒤 등록해 주세요.`,
+        confirmLabel: '확인',
+        hideCancel: true,
+      });
+      return;
+    }
+    openModal('upload');
   }
 
   function handleExport() {
@@ -91,6 +117,9 @@ export function PalettePanel() {
       let parsed = JSON.parse(jsonText);
       if (!Array.isArray(parsed) && parsed.mapData) parsed = parsed.mapData;
       if (!Array.isArray(parsed)) throw new Error('invalid');
+      // lib/mapGrid 의 itemsToGrid 를 쓰지 않는다 — 여기는 신뢰할 수 없는 JSON 을
+      // 읽는 관대한 파서라 누락 필드에 기본값을 넣어야 한다(특히 canMove ?? true).
+      // itemsToGrid 는 완전한 DTO 를 그대로 옮기는 엄격한 변환이라 계약이 다르다.
       const size = mapData.length;
       const newGrid = emptyGrid(size);
       for (const item of parsed) {
@@ -201,7 +230,7 @@ export function PalettePanel() {
             📤 JSON 추출
           </Button>
           {currentUserUid && !currentLoadedMapObj && (
-            <Button variant="accent" className="!text-xs" onClick={() => openModal('upload')}>
+            <Button variant="accent" className="!text-xs" onClick={handleUpload}>
               ☁️ 맵 등록
             </Button>
           )}

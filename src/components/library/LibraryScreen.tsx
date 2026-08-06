@@ -7,32 +7,13 @@ import { getCatalogs, type CatalogDef, type CatalogSort, type SortKey } from '..
 import { selectCatalogMaps, needsLogin, sortMapsBy } from '../../lib/catalogRules';
 import { computeMapCategory, CATEGORY_LABELS, CATEGORY_ORDER, type MapCategory } from '../../lib/mapCategory';
 import { getAllMapStates } from '../../hooks/useMapReactions';
+import { mapDocToGrid } from '../../lib/mapGrid';
 import { MapCard } from './MapCard';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { SuppliedPieces } from './SuppliedPieces';
 import { Button, TextInput, Select, Tabs, Pill, cx, type PillTone } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
-import type { CellData, Rotation } from '../../types/game';
-
-function mapDocToGrid(mapObj: MapDocument): (CellData | null)[][] {
-  const size = mapObj.gridSize ?? 5;
-  const grid: (CellData | null)[][] = Array.from({ length: size }, () =>
-    Array(size).fill(null)
-  );
-  for (const item of mapObj.mapData) {
-    if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
-      grid[item.y][item.x] = {
-        type: item.type,
-        rotation: item.rotation as Rotation,
-        canMove: item.canMove,
-        canRotate: item.canRotate,
-        isInventory: item.isInventory,
-      };
-    }
-  }
-  return grid;
-}
 
 const DIFF_TONE: Record<Difficulty, PillTone> = {
   Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',

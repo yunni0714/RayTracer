@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import {
-  fetchInbox, fetchFromDB, markNotificationRead, deleteNotification,
-} from '../../lib/firebaseService';
+import { fetchFromDB, markNotificationRead, deleteNotification } from '../../lib/firebaseService';
+import { refreshInbox } from '../../hooks/useInboxRefresh';
 import { mapDocToGrid } from '../../lib/mapGrid';
 import { Modal, Button, IconButton, Pill, cx } from '../ui';
-import type { NotificationDocument } from '../../types/game';
+import { SUGGESTION_CATEGORY_LABELS, type NotificationDocument } from '../../types/game';
 
 function formatDate(iso: string): string {
   try {
@@ -20,15 +20,15 @@ function formatDate(iso: string): string {
 
 export function InboxModal() {
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   const {
-    inbox, currentUserUid, closeModal, setInbox, patchNotification, removeNotification,
+    inbox, currentUserUid, closeModal, patchNotification, removeNotification,
     loadMapForPlay, setLibraryMode, showNotification, requestConfirm,
   } = useGameStore(useShallow(s => ({
     inbox: s.inbox,
     currentUserUid: s.currentUserUid,
     closeModal: s.closeModal,
-    setInbox: s.setInbox,
     patchNotification: s.patchNotification,
     removeNotification: s.removeNotification,
     loadMapForPlay: s.loadMapForPlay,
@@ -37,17 +37,11 @@ export function InboxModal() {
     requestConfirm: s.requestConfirm,
   })));
 
-  async function refresh() {
-    if (!currentUserUid) return;
-    setBusy(true);
-    try {
-      setInbox(await fetchInbox(currentUserUid));
-    } catch {
-      showNotification('알림을 불러오지 못했습니다.', '#e74c3c');
-    } finally {
-      setBusy(false);
-    }
-  }
+  // 열자마자 최신 상태로 (스로틀 무시). 수동 새로고침 버튼을 대체한다 —
+  // 자동 갱신을 놓쳐도 모달을 닫았다 다시 열면 강제 조회된다.
+  useEffect(() => {
+    if (currentUserUid) void refreshInbox(currentUserUid, true);
+  }, [currentUserUid]);
 
   // 읽음은 낙관적으로 먼저 반영한다 — 실패해도 다음 조회에서 원상복구된다.
   function markRead(n: NotificationDocument) {
@@ -68,6 +62,7 @@ export function InboxModal() {
       loadMapForPlay(mapDocToGrid(map), map);
       setLibraryMode(false);
       closeModal();
+      navigate('/'); // 어드민 상단바에서 열었을 수도 있다 — 보드가 있는 화면으로
     } catch {
       showNotification('맵을 불러오지 못했습니다.', '#e74c3c');
     } finally {
@@ -91,12 +86,7 @@ export function InboxModal() {
       title={`🔔 알림함${unread > 0 ? ` (${unread})` : ''}`}
       onClose={closeModal}
       width="lg"
-      footer={
-        <>
-          <Button variant="secondary" onClick={refresh} disabled={busy}>🔄 새로고침</Button>
-          <Button variant="primary" onClick={closeModal}>닫기</Button>
-        </>
-      }
+      footer={<Button variant="primary" onClick={closeModal}>닫기</Button>}
     >
       {inbox.length === 0 ? (
         <p className="text-sm text-ink-muted py-6 text-center">
@@ -132,7 +122,7 @@ export function InboxModal() {
                 <span className="flex items-center gap-2 mt-1">
                   {n.suggestionCategory && (
                     <Pill tone={n.suggestionCategory === 'NG' ? 'danger' : 'info'}>
-                      {n.suggestionCategory}
+                      {SUGGESTION_CATEGORY_LABELS[n.suggestionCategory]}
                     </Pill>
                   )}
                   <span className="text-xs text-ink-muted">{formatDate(n.createdAt)}</span>

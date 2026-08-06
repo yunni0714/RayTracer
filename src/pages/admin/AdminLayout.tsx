@@ -2,6 +2,8 @@ import { Navigate, Link, useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { isAdminUid } from '../../lib/admin';
 import { Notification } from '../../components/layout/Notification';
+import { InboxButton } from '../../components/layout/InboxButton';
+import { InboxModal } from '../../components/modals/InboxModal';
 import { Button, Tabs, ConfirmHost } from '../../components/ui';
 import { PiecesTab } from './PiecesTab';
 import { MapMasterTab } from './MapMasterTab';
@@ -25,6 +27,7 @@ const DEFAULT_TAB = TABS[0].id;
 export function AdminLayout() {
   const currentUserUid = useGameStore(s => s.currentUserUid);
   const showNotification = useGameStore(s => s.showNotification);
+  const activeModal = useGameStore(s => s.activeModal);
   const { tab } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
 
@@ -59,6 +62,7 @@ export function AdminLayout() {
         <Button variant="secondary" onClick={copyUid} title={currentUserUid ?? ''}>
           🆔 내 UID 복사
         </Button>
+        <InboxButton />
         <Link to="/">
           <Button variant="secondary">← 에디터로</Button>
         </Link>
@@ -74,6 +78,7 @@ export function AdminLayout() {
         <Body />
       </main>
 
+      {activeModal === 'inbox' && <InboxModal />}
       <Notification />
       <ConfirmHost />
     </div>

@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { uploadSuggestionToDB, createSuggestionNotification } from '../../lib/firebaseService';
-import type { MapItemDTO } from '../../types/game';
+import {
+  SUGGESTION_CATEGORY_LABELS,
+  type MapItemDTO, type SuggestionCategory,
+} from '../../types/game';
 import { Modal, Button, Label, TextArea, Select } from '../ui';
 
 export function SuggestionModal() {
-  const [category, setCategory] = useState<'NG' | 'ABCD'>('NG');
+  const [category, setCategory] = useState<SuggestionCategory>('NG');
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -97,11 +100,12 @@ export function SuggestionModal() {
           카테고리
           <Select
             value={category}
-            onChange={e => setCategory(e.target.value as 'NG' | 'ABCD')}
+            onChange={e => setCategory(e.target.value as SuggestionCategory)}
             className="mt-1"
           >
-            <option value="NG">NG — 맵 자체 문제</option>
-            <option value="ABCD">ABCD — 다른 풀이</option>
+            {(Object.keys(SUGGESTION_CATEGORY_LABELS) as SuggestionCategory[]).map(c => (
+              <option key={c} value={c}>{SUGGESTION_CATEGORY_LABELS[c]}</option>
+            ))}
           </Select>
         </Label>
 

@@ -4,8 +4,8 @@ import { useGameStore } from '../../store/gameStore';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { computeMapCategory } from '../../lib/mapCategory';
+import { mapDocToGrid } from '../../lib/mapGrid';
 import type { MapDocument, Difficulty } from '../../types/game';
-import type { CellData, Rotation } from '../../types/game';
 
 const LS_KEY = 'ray_map_states';
 
@@ -71,20 +71,7 @@ export function NextMapPanel() {
     if (s.isAnswerShown) s.hideAnswer();
     if (s.isMapEditMode) s.exitMapEditMode({ restore: false });
 
-    const size = map.gridSize ?? 5;
-    const grid: (CellData | null)[][] = Array.from({ length: size }, () => Array(size).fill(null));
-    for (const item of map.mapData) {
-      if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
-        grid[item.y][item.x] = {
-          type: item.type,
-          rotation: item.rotation as Rotation,
-          canMove: item.canMove,
-          canRotate: item.canRotate,
-          isInventory: item.isInventory,
-        };
-      }
-    }
-    s.loadMapForPlay(grid, map);
+    s.loadMapForPlay(mapDocToGrid(map), map);
     setLibraryMode(false);
     s.showNotification(`[${map.title}] 플레이를 시작합니다!`, '#27ae60');
   }

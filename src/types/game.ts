@@ -80,9 +80,18 @@ export interface MapDocument {
   version: number;
 }
 
+export type SuggestionCategory = 'NG' | 'ABCD';
+
+// 제안 카테고리 표시 문구 단일 소스. 저장 값은 'NG'/'ABCD' 그대로 두고
+// 화면 문구만 여기서 가져간다 — 제안 등록·제작자 목록·어드민·알림함 공용.
+export const SUGGESTION_CATEGORY_LABELS: Record<SuggestionCategory, string> = {
+  NG: '🆖 기물 줄임',
+  ABCD: '🔠 복수정답',
+};
+
 export interface SuggestionDocument {
   id: string;
-  category: 'NG' | 'ABCD';
+  category: SuggestionCategory;
   comment: string;
   suggesterUid: string;
   suggesterNickname: string;
@@ -105,7 +114,7 @@ export interface NotificationDocument {
   fromNickname: string;
   mapId: string;
   mapTitle: string;
-  suggestionCategory?: 'NG' | 'ABCD';
+  suggestionCategory?: SuggestionCategory;
 }
 
 export type GameMode = 'editor' | 'test' | 'mapEdit';
