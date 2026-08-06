@@ -5,13 +5,13 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useUserSettings } from './hooks/useUserSettings';
 import { useInboxRefresh } from './hooks/useInboxRefresh';
-import { useGameStore, emptyGrid } from './store/gameStore';
+import { useGameStore } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
+import { mapDocToGrid } from './lib/mapGrid';
 import { loadPieceConfig } from './lib/pieceConfig';
 import { loadCatalogConfig } from './lib/catalogConfig';
 import { EditorPage } from './pages/EditorPage';
 import { AdminLayout } from './pages/admin/AdminLayout';
-import type { CellData, Rotation } from './types/game';
 
 function useUrlMapLoader() {
   const [searchParams] = useSearchParams();
@@ -27,22 +27,7 @@ function useUrlMapLoader() {
 
     fetchFromDB(mapId).then(map => {
       if (!map) return;
-
-      const size = map.gridSize ?? 5;
-      const grid = emptyGrid(size);
-      for (const item of map.mapData) {
-        if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
-          grid[item.y][item.x] = {
-            type: item.type,
-            rotation: item.rotation as Rotation,
-            canMove: item.canMove,
-            canRotate: item.canRotate,
-            isInventory: item.isInventory,
-          } as CellData;
-        }
-      }
-
-      loadMapForPlay(grid, map);
+      loadMapForPlay(mapDocToGrid(map), map);
       setLibraryMode(false);
     });
   // URL이 처음 로드될 때만 1회 실행

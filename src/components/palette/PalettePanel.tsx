@@ -117,6 +117,9 @@ export function PalettePanel() {
       let parsed = JSON.parse(jsonText);
       if (!Array.isArray(parsed) && parsed.mapData) parsed = parsed.mapData;
       if (!Array.isArray(parsed)) throw new Error('invalid');
+      // lib/mapGrid 의 itemsToGrid 를 쓰지 않는다 — 여기는 신뢰할 수 없는 JSON 을
+      // 읽는 관대한 파서라 누락 필드에 기본값을 넣어야 한다(특히 canMove ?? true).
+      // itemsToGrid 는 완전한 DTO 를 그대로 옮기는 엄격한 변환이라 계약이 다르다.
       const size = mapData.length;
       const newGrid = emptyGrid(size);
       for (const item of parsed) {

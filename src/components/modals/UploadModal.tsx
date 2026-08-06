@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, emptyGrid, getAuthoredGrid } from '../../store/gameStore';
+import { useGameStore, getAuthoredGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
-import type { CellData, Difficulty, MapDocument, MapItemDTO } from '../../types/game';
+import { itemsToGrid } from '../../lib/mapGrid';
+import type { Difficulty, MapDocument, MapItemDTO } from '../../types/game';
 import { Modal, Button, Label, TextInput, TextArea, Select } from '../ui';
 
 const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
@@ -97,18 +98,9 @@ export function UploadModal() {
         const shareUrl = `${window.location.origin}${window.location.pathname}?mapId=${newId}`;
         await navigator.clipboard.writeText(shareUrl).catch(() => {});
         const newDoc: MapDocument = { id: newId, ...newDocBody };
-        const size = sourceGrid.length;
-        const grid = emptyGrid(size);
-        for (const item of builtMapData) {
-          if (item.y >= 0 && item.y < size && item.x >= 0 && item.x < size) {
-            grid[item.y][item.x] = {
-              type: item.type, rotation: item.rotation,
-              canMove: item.canMove, canRotate: item.canRotate,
-              isInventory: item.isInventory,
-            } as CellData;
-          }
-        }
-        loadMapForPlay(grid, newDoc);
+        // gridSize 는 newDocBody 와 같은 sourceGrid.length 지만, 저장 값과 갈라져도
+        // 안전하도록 크기를 명시로 넘긴다.
+        loadMapForPlay(itemsToGrid(builtMapData, sourceGrid.length), newDoc);
         showNotification('맵이 업로드되었습니다! 링크가 복사됨.');
       }
 
