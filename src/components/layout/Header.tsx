@@ -5,6 +5,7 @@ import { signInWithGoogle, signOutUser } from '../../lib/firebaseService';
 import { isAdminUid } from '../../lib/admin';
 import { useNavigate } from 'react-router-dom';
 import { Button, IconButton, Tabs } from '../ui';
+import { InboxButton } from './InboxButton';
 
 export function Header() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export function Header() {
   const {
     currentUserUid, currentUserNickname, isEditorMode, isLibraryMode,
     toggleMode, setLibraryMode, openModal, showNotification, resetEditorState,
-    currentLoadedMapObj, isMapEditMode, inbox,
+    currentLoadedMapObj, isMapEditMode,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -25,7 +26,6 @@ export function Header() {
     resetEditorState: s.resetEditorState,
     currentLoadedMapObj: s.currentLoadedMapObj,
     isMapEditMode: s.isMapEditMode,
-    inbox: s.inbox,
   })));
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -63,8 +63,6 @@ export function Header() {
   // [편집|플레이] 세그먼트: 모드 전환 가능 상태에서만 표시
   const canToggleMode = !isLibraryMode && (!currentLoadedMapObj || isMapEditMode);
 
-  const unreadCount = inbox.filter(n => !n.read).length;
-
   return (
     <header className="flex items-center gap-2 px-4 py-2 bg-surface text-ink border-b border-line shadow-card">
       <h1 className="text-lg font-extrabold tracking-tight mr-auto">⚡ Project Ray</h1>
@@ -89,25 +87,9 @@ export function Header() {
         />
       )}
 
-      {/* 알림함 — 미읽음이 있으면 배지. 테마/어드민은 헤더에서 빠지고
-          각각 계정 설정 모달 / 계정 드롭다운으로 옮겼다. */}
-      {currentUserUid && (
-        <div className="relative">
-          <IconButton
-            variant="secondary"
-            onClick={() => openModal('inbox')}
-            aria-label="알림함"
-            title={unreadCount > 0 ? `읽지 않은 알림 ${unreadCount}개` : '알림함'}
-          >
-            🔔
-          </IconButton>
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-danger text-white text-[10px] font-bold rounded-full pointer-events-none">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </div>
-      )}
+      {/* 알림함 — 테마/어드민은 헤더에서 빠지고 각각 계정 설정 모달 /
+          계정 드롭다운으로 옮겼다. 배지 마크업은 어드민 상단바와 공유. */}
+      <InboxButton />
 
       {currentUserUid ? (
         <div className="relative" ref={dropdownRef}>

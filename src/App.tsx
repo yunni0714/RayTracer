@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useUserSettings } from './hooks/useUserSettings';
+import { useInboxRefresh } from './hooks/useInboxRefresh';
 import { useGameStore, emptyGrid } from './store/gameStore';
 import { fetchFromDB } from './lib/firebaseService';
 import { loadPieceConfig } from './lib/pieceConfig';
@@ -69,6 +70,7 @@ export function App() {
   useTheme();
   useUserSettings();
   useAuth();
+  useInboxRefresh();
   useUrlMapLoader();
   usePieceConfigLoader();
   useCatalogConfigLoader();
