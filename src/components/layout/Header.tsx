@@ -3,14 +3,16 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { signInWithGoogle, signOutUser } from '../../lib/firebaseService';
 import { isAdminUid } from '../../lib/admin';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button, IconButton, Tabs } from '../ui';
 
 export function Header() {
+  const navigate = useNavigate();
+
   const {
     currentUserUid, currentUserNickname, isEditorMode, isLibraryMode,
     toggleMode, setLibraryMode, openModal, showNotification, resetEditorState,
-    currentLoadedMapObj, isMapEditMode, theme, toggleTheme,
+    currentLoadedMapObj, isMapEditMode, inbox,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -23,8 +25,7 @@ export function Header() {
     resetEditorState: s.resetEditorState,
     currentLoadedMapObj: s.currentLoadedMapObj,
     isMapEditMode: s.isMapEditMode,
-    theme: s.theme,
-    toggleTheme: s.toggleTheme,
+    inbox: s.inbox,
   })));
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -62,6 +63,8 @@ export function Header() {
   // [편집|플레이] 세그먼트: 모드 전환 가능 상태에서만 표시
   const canToggleMode = !isLibraryMode && (!currentLoadedMapObj || isMapEditMode);
 
+  const unreadCount = inbox.filter(n => !n.read).length;
+
   return (
     <header className="flex items-center gap-2 px-4 py-2 bg-surface text-ink border-b border-line shadow-card">
       <h1 className="text-lg font-extrabold tracking-tight mr-auto">⚡ Project Ray</h1>
@@ -86,20 +89,25 @@ export function Header() {
         />
       )}
 
-      {isAdminUid(currentUserUid) && (
-        <Link to="/admin">
-          <Button variant="secondary" title="기물 어드민">🛠 어드민</Button>
-        </Link>
+      {/* 알림함 — 미읽음이 있으면 배지. 테마/어드민은 헤더에서 빠지고
+          각각 계정 설정 모달 / 계정 드롭다운으로 옮겼다. */}
+      {currentUserUid && (
+        <div className="relative">
+          <IconButton
+            variant="secondary"
+            onClick={() => openModal('inbox')}
+            aria-label="알림함"
+            title={unreadCount > 0 ? `읽지 않은 알림 ${unreadCount}개` : '알림함'}
+          >
+            🔔
+          </IconButton>
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-danger text-white text-[10px] font-bold rounded-full pointer-events-none">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </div>
       )}
-
-      <IconButton
-        variant="secondary"
-        onClick={toggleTheme}
-        aria-label="테마 전환"
-        title={theme === 'dark' ? '라이트 모드로' : '다크 모드로'}
-      >
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </IconButton>
 
       {currentUserUid ? (
         <div className="relative" ref={dropdownRef}>
@@ -107,7 +115,15 @@ export function Header() {
             👤 {currentUserNickname ?? '사용자'}
           </Button>
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-surface text-ink border border-line rounded-tile shadow-cardhover min-w-[160px] z-50 overflow-hidden p-1">
+            <div className="absolute right-0 top-full mt-1 bg-surface text-ink border border-line rounded-tile shadow-cardhover min-w-[180px] z-50 overflow-hidden p-1">
+              <Button
+                variant="ghost"
+                block
+                className="justify-start"
+                onClick={() => { openModal('settings'); setDropdownOpen(false); }}
+              >
+                ⚙️ 계정 설정
+              </Button>
               <Button
                 variant="ghost"
                 block
@@ -116,6 +132,17 @@ export function Header() {
               >
                 ✏️ 닉네임 변경
               </Button>
+              {isAdminUid(currentUserUid) && (
+                <Button
+                  variant="ghost"
+                  block
+                  className="justify-start"
+                  onClick={() => { setDropdownOpen(false); navigate('/admin'); }}
+                >
+                  🛠 어드민
+                </Button>
+              )}
+              <div className="my-1 border-t border-line" />
               <Button
                 variant="ghost"
                 block
@@ -128,10 +155,21 @@ export function Header() {
           )}
         </div>
       ) : (
-        <Button variant="secondary" onClick={handleLogin}>
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-4 h-4" />
-          구글 로그인
-        </Button>
+        <>
+          {/* 비로그인은 드롭다운이 없으므로 설정(테마 포함) 진입점을 따로 둔다 */}
+          <IconButton
+            variant="secondary"
+            onClick={() => openModal('settings')}
+            aria-label="설정"
+            title="설정"
+          >
+            ⚙️
+          </IconButton>
+          <Button variant="secondary" onClick={handleLogin}>
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" className="w-4 h-4" />
+            구글 로그인
+          </Button>
+        </>
       )}
     </header>
   );

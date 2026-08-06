@@ -75,6 +75,8 @@ RayTracer/
 │   │   ├── catalogRules.ts              # 카탈로그 규칙 평가 (조건 AND, 고정/제외, 정렬, limit)
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전(단일·일괄) 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
+│   │   ├── userSettings.ts              # 계정 설정 검증/로컬 캐시 (순수, 손상 시 기본값 폴백)
+│   │   ├── mapGrid.ts                   # MapDocument DTO → NxN 그리드 변환
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
 │   │   └── admin.ts                     # 관리자 UID 화이트리스트 (UI 게이트)
@@ -82,6 +84,7 @@ RayTracer/
 │   ├── hooks/
 │   │   ├── useAuth.ts                   # Firebase auth 리스너
 │   │   ├── useTheme.ts                  # theme → <html>.dark + localStorage 동기화
+│   │   ├── useUserSettings.ts           # settings → <html>[data-pastel] 동기화
 │   │   ├── useGridDragDrop.ts           # 드래그앤드롭 엔진 (Pointer Events)
 │   │   ├── useLaserCanvas.ts            # 캔버스 세팅(dpr/리사이즈) + 레이저 렌더 트리거
 │   │   └── useMapReactions.ts           # 반응/난이도투표 + localStorage 동기화
@@ -112,11 +115,13 @@ RayTracer/
 │   │   │   ├── Modal.tsx / ConfirmModal.tsx / ConfirmHost.tsx
 │   │   │   ├── Pill.tsx                 # Pill, DifficultyPill
 │   │   │   ├── Tabs.tsx                 # folder / segment 변형
+│   │   │   ├── Toggle.tsx               # on/off 스위치 (role="switch", 설정 항목 공용)
 │   │   │   ├── cx.ts                    # className 결합 유틸
 │   │   │   └── index.ts                 # 배럴
 │   │   │
 │   │   ├── layout/
-│   │   │   ├── Header.tsx               # 로고, 새 맵, 라이브러리 토글, [편집|플레이], 어드민 링크, 테마, 인증
+│   │   │   ├── Header.tsx               # 로고, 새 맵, 라이브러리 토글, [편집|플레이], 알림함🔔, 계정 드롭다운
+│   │   │   │                            #  (테마→계정 설정 모달, 어드민→드롭다운으로 이동)
 │   │   │   ├── StatusBar.tsx            # 하단 상태바 (기물 수/그리드/타겟 명중·해결/실행취소/레이저 토글)
 │   │   │   ├── InspectorPanel.tsx       # 우 존(편집): 맵 통계 + 그리드 크기(5~9) + 선택 기물
 │   │   │   └── Notification.tsx         # 토스트 알림 (2초 자동 소멸)
@@ -149,7 +154,9 @@ RayTracer/
 │   │   └── modals/
 │   │       ├── NicknameModal.tsx         # 닉네임 설정/변경 (2-16자, set/change 모드)
 │   │       ├── UploadModal.tsx           # 맵 업로드/수정 (제목, 난이도, 설명, gridSize/version 저장)
-│   │       └── SuggestionModal.tsx       # 풀이 제안 제출 (NG / ABCD)
+│   │       ├── SuggestionModal.tsx       # 풀이 제안 제출 (NG / ABCD) + 맵 소유자 알림 적재
+│   │       ├── SettingsModal.tsx         # 계정 설정 (테마 · 파스텔 맵 카드)
+│   │       └── InboxModal.tsx            # 알림함 — 목록/읽음/맵으로 이동/삭제
 │   │
 │   └── styles/
 │       └── global.css                   # 디자인 토큰 (:root/.dark) + 카드/미니그리드/배지 CSS
@@ -166,7 +173,8 @@ RayTracer/
 │   ├── mapCategory.test.ts              # 맵 카테고리 판정 + 폴더 오버라이드 반영
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
-│   └── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
+│   ├── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
+│   └── userSettings.test.ts             # 계정 설정 검증/폴백 + localStorage 왕복 + setSetting
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)
@@ -461,6 +469,8 @@ Header
 | **확인 다이얼로그** | `store/gameStore.ts` (requestConfirm/resolveConfirm) | `components/ui/ConfirmHost.tsx` |
 | **토스트 알림** | `components/layout/Notification.tsx` | `store/gameStore.ts` (showNotification) |
 | **다크모드/테마/색** | `styles/global.css` (토큰), `tailwind.config.js` | `hooks/useTheme.ts`, `index.html` (첫 페인트 스크립트) |
+| **계정 설정 / 시각 옵션** | `lib/userSettings.ts` (검증·캐시), `components/modals/SettingsModal.tsx` | `hooks/useUserSettings.ts`, `styles/global.css` (`--cat-*-pastel`, `html[data-pastel]`), `store/gameStore.ts` (settings/setSetting), `tests/userSettings.test.ts` |
+| **알림함(메일함)** | `components/modals/InboxModal.tsx` | `lib/firebaseService.ts` (inbox 4종), `firestore.rules` (`users/{uid}/inbox`), `components/modals/SuggestionModal.tsx` (쓰기), `hooks/useAuth.ts` (로드) |
 | **헤더** | `components/layout/Header.tsx` | `store/gameStore.ts` |
 | **JSON 가져오기/내보내기** | `components/palette/PalettePanel.tsx` | `types/game.ts` (MapItemDTO) |
 | **URL 기반 맵 로드 / 라우팅** | `src/App.tsx` | `public/404.html`, `index.html` (SPA 폴백) |
@@ -742,7 +752,12 @@ config/
   catalog                 # 라이브러리 카탈로그 오버레이 (version, catalogs{})
                           # 같은 규칙 적용 — config/{docId} 매칭. 현재 읽기 전용 사용
 
-users/{uid}               # nickname, createdAt
+users/{uid}               # nickname, createdAt, settings{} (계정 설정)
+  inbox/{notifId}         # NotificationDocument — type/read/createdAt/fromUid/
+                          # fromNickname/mapId/mapTitle/suggestionCategory
+                          # 읽기·읽음처리·삭제 = 소유자만.
+                          # 생성 = 제안자 클라이언트가 직접(Functions 없음) —
+                          # rules 가 맵 문서를 get() 해 "받는 사람 == 맵 소유자" 검증
 
 maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
   suggestions/{sugId}     # category('NG'|'ABCD'), comment, suggesterUid/Nickname,
@@ -764,6 +779,9 @@ maps/{mapId}              # MapDocument (§5) — gridSize?, version 포함
 | `signInWithGoogle()` | Google 팝업 로그인 (팝업 차단 시 리다이렉트 폴백) |
 | `signOutUser()` / `initRedirectResultHandler()` | 로그아웃 / 리다이렉트 결과 처리 |
 | `getUserProfile(uid)` / `createUserProfile()` / `updateUserNickname()` | 사용자 프로필 |
+| `updateUserSettings(uid, settings)` | 계정 설정 저장 (merge setDoc — 문서 부재 시 생성) |
+| `createSuggestionNotification(ownerUid, data)` | 맵 소유자 알림함에 적재 (실패 허용) |
+| `fetchInbox(uid, max=30)` / `markNotificationRead()` / `deleteNotification()` | 알림함 조회/읽음/삭제 |
 | `uploadToDB(data)` | 새 맵 업로드, 생성 ID 반환 |
 | `fetchFromDB(id)` | 맵 단건 조회 |
 | `fetchLibraryList(sortBy)` | 맵 목록 (최대 50, createdAt 또는 reactionGod 정렬) |

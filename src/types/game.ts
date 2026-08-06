@@ -90,6 +90,24 @@ export interface SuggestionDocument {
   mapData: MapItemDTO[];
 }
 
+// ── 알림함(메일함) ──────────────────────────────────────
+// Firestore users/{uid}/inbox/{notifId}. Cloud Functions 가 없으므로
+// 제안자의 클라이언트가 맵 소유자의 알림함에 직접 쓴다 — 스팸 주입 방어는
+// firestore.rules 가 맵 문서를 get() 해 소유권을 검증하는 쪽에서 한다.
+export type NotificationType = 'suggestion';
+
+export interface NotificationDocument {
+  id: string;
+  type: NotificationType;
+  read: boolean;
+  createdAt: string; // ISO 8601
+  fromUid: string;
+  fromNickname: string;
+  mapId: string;
+  mapTitle: string;
+  suggestionCategory?: 'NG' | 'ABCD';
+}
+
 export type GameMode = 'editor' | 'test' | 'mapEdit';
 
 // 필기 오버레이(PenLayer) 획. 좌표는 캔버스 기준 0~1 정규화.

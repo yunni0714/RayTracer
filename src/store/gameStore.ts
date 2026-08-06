@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import type {
-  CellData, InventoryItem, MapDocument, SuggestionDocument, GameSnapshot, PenStroke, SelectedTool,
+  CellData, InventoryItem, MapDocument, SuggestionDocument, NotificationDocument,
+  GameSnapshot, PenStroke, SelectedTool,
 } from '../types/game';
+import {
+  type UserSettings, loadLocalSettings, saveLocalSettings,
+} from '../lib/userSettings';
 export const DEFAULT_GRID_SIZE = 5;
 
 export function emptyGrid(size: number = DEFAULT_GRID_SIZE): (CellData | null)[][] {
@@ -74,7 +78,8 @@ interface NotificationState {
   color: string;
 }
 
-export type ActiveModal = 'upload' | 'suggestion' | 'nickname' | 'changeNickname' | null;
+export type ActiveModal =
+  | 'upload' | 'suggestion' | 'nickname' | 'changeNickname' | 'settings' | 'inbox' | null;
 
 // 필기 오버레이(PenLayer) 도구. 'off'면 그리기 비활성.
 export type PenTool = 'off' | 'blue' | 'green' | 'red' | 'erase';
@@ -124,11 +129,16 @@ interface GameStore {
   currentUserUid: string | null;
   currentUserNickname: string | null;
 
+  // ── 알림함 ───────────────────────────────────
+  inbox: NotificationDocument[];
+  inboxLoaded: boolean;
+
   // ── UI ───────────────────────────────────────
   notification: NotificationState | null;
   activeModal: ActiveModal;
   theme: 'light' | 'dark';
   confirmState: ConfirmOpts | null;
+  settings: UserSettings; // 계정 설정 (시각 옵션 등) — lib/userSettings.ts
   pieceConfigRev: number; // 기물 config 오버레이 적용 시 증가 → SVG/라벨 리렌더 트리거
   catalogConfigRev: number; // 카탈로그 config 오버레이 적용 시 증가 → 라이브러리 카탈로그 리렌더
 
@@ -185,6 +195,11 @@ interface GameStore {
   setUser: (user: { uid: string; nickname: string | null } | null) => void;
   setNickname: (nickname: string) => void;
 
+  // ── 액션: 알림함 ─────────────────────────────
+  setInbox: (items: NotificationDocument[]) => void;
+  patchNotification: (id: string, patch: Partial<NotificationDocument>) => void;
+  removeNotification: (id: string) => void;
+
   // ── 액션: UI ─────────────────────────────────
   showNotification: (message: string, color?: string) => void;
   clearNotification: () => void;
@@ -192,6 +207,8 @@ interface GameStore {
   closeModal: () => void;
   toggleTheme: () => void;
   setTheme: (t: 'light' | 'dark') => void;
+  setSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
+  applySettings: (settings: UserSettings) => void;
   bumpPieceConfigRev: () => void;
   bumpCatalogConfigRev: () => void;
   requestConfirm: (opts: ConfirmOpts) => Promise<boolean>;
@@ -232,10 +249,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   suggestions: [],
   currentUserUid: null,
   currentUserNickname: null,
+  inbox: [],
+  inboxLoaded: false,
   notification: null,
   activeModal: null,
   theme: initialTheme(),
   confirmState: null,
+  settings: loadLocalSettings(),
   pieceConfigRev: 0,
   catalogConfigRev: 0,
 
@@ -488,11 +508,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setSuggestions: (sugs) => set({ suggestions: sugs }),
 
   // ── 인증 ─────────────────────────────────────
+  // 계정이 바뀌면 알림함은 남의 것이 되므로 비운다 (useAuth 가 다시 채운다).
   setUser: (user) => set({
     currentUserUid: user?.uid ?? null,
     currentUserNickname: user?.nickname ?? null,
+    inbox: [],
+    inboxLoaded: false,
   }),
   setNickname: (nickname) => set({ currentUserNickname: nickname }),
+
+  // ── 알림함 ───────────────────────────────────
+  setInbox: (items) => set({ inbox: items, inboxLoaded: true }),
+  patchNotification: (id, patch) => set((s) => ({
+    inbox: s.inbox.map(n => (n.id === id ? { ...n, ...patch } : n)),
+  })),
+  removeNotification: (id) => set((s) => ({ inbox: s.inbox.filter(n => n.id !== id) })),
 
   // ── UI ───────────────────────────────────────
   showNotification: (message, color = '#27ae60') => set({ notification: { message, color } }),
@@ -501,6 +531,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   closeModal: () => set({ activeModal: null }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
   setTheme: (t) => set({ theme: t }),
+
+  // 설정 변경: 낙관적 반영 + localStorage(비로그인 저장 + 부팅 깜빡임 방지 캐시).
+  // 스토어는 Firebase 를 import 하지 않는다(단위 테스트가 스토어를 그대로 로드한다) —
+  // 계정 정본(users/{uid}.settings) 동기화는 호출부(SettingsModal)가 맡는다.
+  setSetting: (key, value) => {
+    const next = { ...get().settings, [key]: value };
+    set({ settings: next });
+    saveLocalSettings(next);
+  },
+  // 로그인 직후 계정 정본으로 덮어쓰기 (서버 → 로컬 캐시 동기화)
+  applySettings: (settings) => {
+    set({ settings });
+    saveLocalSettings(settings);
+  },
   bumpPieceConfigRev: () => set((s) => ({ pieceConfigRev: s.pieceConfigRev + 1 })),
   bumpCatalogConfigRev: () => set((s) => ({ catalogConfigRev: s.catalogConfigRev + 1 })),
 

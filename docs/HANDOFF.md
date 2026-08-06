@@ -145,3 +145,17 @@ npm run dev              # 로컬 미리보기
 ## 8. UX 전수 카탈로그 (사용자 마킹 대기)
 
 마우스/모드/팔레트/레이저/라이브러리/인증/단축키/네이티브 confirm/숨은·죽은 UI 까지 현재 UX를 A~J로 정리한 카탈로그를 사용자에게 전달함. 사용자가 **추가/수정/삭제 마킹을 주기로 약속**(Phase 5 입력). 전체본은 이번 세션 대화 참조. 핵심 결함: 승리판정 없음 / 모드네비 막다른길 / 숨은 기능(언두·우클릭삭제·이스터에그) / 중급탭 죽은 UI / 네이티브 confirm 6곳.
+
+---
+
+## 9. 계정 설정 + 파스텔 카드 + 알림함 베이스 (2026-08, 브랜치 `claude/account-settings-visual-options-tsl4by`)
+
+**헤더 정리**: 🌙 테마 토글 → 계정 설정 모달로, 🛠 어드민 → 계정 드롭다운으로 이동. 헤더에는 🔔 알림함(미읽음 배지)이 새로 붙었다. 드롭다운 = 계정 설정 · 닉네임 변경 · 어드민(관리자만) · 로그아웃. 비로그인은 드롭다운이 없으므로 로그인 버튼 옆 ⚙️ 로 설정에 들어간다(테마 접근성 유지).
+
+**계정 설정** (`lib/userSettings.ts` + `SettingsModal`): Firestore `users/{uid}.settings` 가 정본, localStorage `ray-settings` 는 비로그인 폴백 + 부팅 캐시. `sanitizeSettings()` 는 config 오버레이와 같은 규칙(미지 키 버림, 손상 시 기본값, throw 금지). **스토어는 Firebase 를 import 하지 않는다** — 단위 테스트가 스토어를 그대로 로드하기 때문. 서버 저장은 `SettingsModal` 이 한다.
+
+**파스텔 맵 카드** (첫 시각 옵션, 기본 OFF): `--cat-{classic,logic,advanced}-pastel` + `-pastel-hover` 토큰 6쌍(라이트/다크 각각) 신설. `--cat-*` 에서 `color-mix` 로 파생하지 **않는다** — Classic 이 거의 흰색이라 파생하면 라이트에서 구분이 사라진다. 켜면 `html[data-pastel="on"]` 셀렉터가 기존 호버 글로우를 이기고 카드 표면을 물들인다(호버 시 한 단계 진하게, 글로우 제거). 카드 컴포넌트는 무수정 — `MapCard`/`NextMapPanel` 이 이미 붙이는 `data-category` 를 그대로 쓴다.
+
+**알림함 베이스**: `users/{uid}/inbox/{notifId}`. Cloud Functions 가 없어 제안자 클라이언트가 소유자 알림함에 직접 쓰고, 스팸 방어는 `firestore.rules` 가 맵 문서를 `get()` 해 "받는 사람 == 맵 소유자" 를 검증하는 쪽에서 한다. 조회는 기존 컨벤션대로 일회성 `getDocs`(`onSnapshot` 미사용) + 모달 내 수동 새로고침. 알림 타입은 `'suggestion'` 하나 — 확장 시 `NotificationType` 유니온에 추가한다.
+
+> ⚠️ **메이커 액션 잔여**: `firebase deploy --only firestore:rules`. 배포 전에는 알림 생성이 권한 거부되지만 호출부가 try/catch 로 삼키므로 풀이 제안 등록 자체는 정상 동작한다.

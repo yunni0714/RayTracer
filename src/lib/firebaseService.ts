@@ -7,7 +7,9 @@ import {
   getRedirectResult, signOut,
 } from 'firebase/auth';
 import { db, auth } from './firebase';
-import type { MapDocument, SuggestionDocument, Difficulty } from '../types/game';
+import type {
+  MapDocument, SuggestionDocument, NotificationDocument, Difficulty,
+} from '../types/game';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -41,6 +43,8 @@ export function initRedirectResultHandler(): void {
 export interface UserProfile {
   nickname: string;
   createdAt: string;
+  /** 계정 설정 — 검증은 lib/userSettings.ts 의 sanitizeSettings() 가 한다 */
+  settings?: Record<string, unknown>;
 }
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
@@ -54,6 +58,14 @@ export async function createUserProfile(uid: string, nickname: string): Promise<
 
 export async function updateUserNickname(uid: string, nickname: string): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { nickname });
+}
+
+// 프로필 문서가 아직 없을 수도 있으므로 merge setDoc (updateDoc 은 문서 부재 시 실패).
+// rules 의 users/{userId} 는 소유자에게 create/update 를 모두 열어 둔다.
+export async function updateUserSettings(
+  uid: string, settings: Record<string, unknown>,
+): Promise<void> {
+  await setDoc(doc(db, 'users', uid), { settings }, { merge: true });
 }
 
 // ── Maps CRUD ───────────────────────────────────────────
@@ -130,6 +142,34 @@ export async function fetchSuggestionsFromDB(mapId: string): Promise<SuggestionD
 
 export async function deleteSuggestionFromDB(mapId: string, sugId: string): Promise<void> {
   await deleteDoc(doc(db, 'maps', mapId, 'suggestions', sugId));
+}
+
+// ── 알림함 (users/{uid}/inbox) ──────────────────────────
+// 소유자만 읽고/읽음처리/삭제한다. 생성은 "그 맵의 실제 소유자에게 보내는
+// 제안 알림"만 firestore.rules 가 허용한다 (맵 문서를 get() 해 검증).
+// 규칙 미배포 상태에서는 create 가 거부되므로 **호출부는 실패를 삼켜야 한다** —
+// 알림은 부가 기능이고 풀이 제안 등록 자체를 막으면 안 된다.
+
+export async function createSuggestionNotification(
+  ownerUid: string, data: Omit<NotificationDocument, 'id'>,
+): Promise<void> {
+  await addDoc(collection(db, 'users', ownerUid, 'inbox'), data);
+}
+
+export async function fetchInbox(uid: string, max = 30): Promise<NotificationDocument[]> {
+  const q = query(
+    collection(db, 'users', uid, 'inbox'), orderBy('createdAt', 'desc'), limit(max),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as NotificationDocument);
+}
+
+export async function markNotificationRead(uid: string, notifId: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid, 'inbox', notifId), { read: true });
+}
+
+export async function deleteNotification(uid: string, notifId: string): Promise<void> {
+  await deleteDoc(doc(db, 'users', uid, 'inbox', notifId));
 }
 
 // ── 기물 config (어드민 오버레이) ───────────────────────

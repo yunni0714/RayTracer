@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
-import { uploadSuggestionToDB } from '../../lib/firebaseService';
+import { uploadSuggestionToDB, createSuggestionNotification } from '../../lib/firebaseService';
 import type { MapItemDTO } from '../../types/game';
 import { Modal, Button, Label, TextArea, Select } from '../ui';
 
@@ -40,14 +40,35 @@ export function SuggestionModal() {
 
     setLoading(true);
     try {
+      const nickname = currentUserNickname ?? '익명';
       await uploadSuggestionToDB(currentLoadedMapObj.id, {
         category,
         comment: comment.trim(),
         suggesterUid: currentUserUid,
-        suggesterNickname: currentUserNickname ?? '익명',
+        suggesterNickname: nickname,
         createdAt: new Date().toISOString(),
         mapData: buildMapData(),
       });
+
+      // 맵 소유자 알림함에 적재 (본인 맵이면 생략).
+      // 부가 기능이라 실패해도 제안 등록은 성공으로 처리한다 — firestore.rules
+      // 미배포 상태에서는 여기서 권한 거부가 나는 것이 정상이다.
+      const ownerUid = currentLoadedMapObj.authorUid;
+      if (ownerUid && ownerUid !== currentUserUid) {
+        try {
+          await createSuggestionNotification(ownerUid, {
+            type: 'suggestion',
+            read: false,
+            createdAt: new Date().toISOString(),
+            fromUid: currentUserUid,
+            fromNickname: nickname,
+            mapId: currentLoadedMapObj.id,
+            mapTitle: currentLoadedMapObj.title,
+            suggestionCategory: category,
+          });
+        } catch { /* 알림 실패가 제안 등록을 되돌리지 않는다 */ }
+      }
+
       showNotification('새로운 풀이 제안이 등록되었습니다!', '#f39c12');
       closeModal();
     } catch {
