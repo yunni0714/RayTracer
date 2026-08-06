@@ -4,7 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { fetchSuggestionsFromDB, deleteSuggestionFromDB } from '../../lib/firebaseService';
 import { MiniGrid } from './MiniGrid';
 import { Button, Pill } from '../ui';
-import type { SuggestionDocument } from '../../types/game';
+import { SUGGESTION_CATEGORY_LABELS, type SuggestionDocument } from '../../types/game';
 import type { CellData, Rotation } from '../../types/game';
 
 export function SuggestionPanel() {
@@ -100,11 +100,9 @@ export function SuggestionPanel() {
                 <MiniGrid mapData={sug.mapData} revealRotation variant="v2" gridSize={currentLoadedMapObj?.gridSize ?? 5} />
               </div>
               <div className="flex-1 min-w-0 flex flex-col gap-1">
-                {sug.category === 'NG' ? (
-                  <Pill tone="danger" className="self-start">🆖 기물 줄임</Pill>
-                ) : (
-                  <Pill tone="info" className="self-start">🔠 복수정답</Pill>
-                )}
+                <Pill tone={sug.category === 'NG' ? 'danger' : 'info'} className="self-start">
+                  {SUGGESTION_CATEGORY_LABELS[sug.category]}
+                </Pill>
                 <span className="text-[11px] text-ink-muted">{dateStr}</span>
               </div>
             </div>

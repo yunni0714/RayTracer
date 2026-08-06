@@ -5,7 +5,10 @@ import { fetchSuggestionsFromDB, deleteSuggestionFromDB } from '../../lib/fireba
 import { formatDateTime } from '../../lib/adminMaps';
 import { MiniGrid } from '../../components/library/MiniGrid';
 import { Button, IconButton, Pill } from '../../components/ui';
-import type { MapDocument, SuggestionDocument } from '../../types/game';
+import {
+  SUGGESTION_CATEGORY_LABELS,
+  type MapDocument, type SuggestionDocument,
+} from '../../types/game';
 
 /* 맵 한 개의 풀이 제안 목록 — 맵 관리 카드의 메타 편집 패널 오른쪽에 붙는다.
    (구 [제안 관리] 서브탭 이식: 맵을 드롭다운으로 다시 고르지 않고 카드에서 바로 본다.)
@@ -88,9 +91,12 @@ export function MapSuggestionsPanel({ map }: { map: MapDocument }) {
               </span>
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {sug.category === 'NG'
-                    ? <Pill tone="danger" className="!text-[9px] !px-1 !py-0">🆖 기물 줄임</Pill>
-                    : <Pill tone="info" className="!text-[9px] !px-1 !py-0">🔠 복수정답</Pill>}
+                  <Pill
+                    tone={sug.category === 'NG' ? 'danger' : 'info'}
+                    className="!text-[9px] !px-1 !py-0"
+                  >
+                    {SUGGESTION_CATEGORY_LABELS[sug.category]}
+                  </Pill>
                   <strong className="text-[11px]">{sug.suggesterNickname || '익명'}</strong>
                   <code className="text-[9px] text-ink-muted truncate">{sug.suggesterUid}</code>
                 </div>

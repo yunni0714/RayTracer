@@ -6,7 +6,7 @@ import { fetchFromDB, markNotificationRead, deleteNotification } from '../../lib
 import { refreshInbox } from '../../hooks/useInboxRefresh';
 import { mapDocToGrid } from '../../lib/mapGrid';
 import { Modal, Button, IconButton, Pill, cx } from '../ui';
-import type { NotificationDocument } from '../../types/game';
+import { SUGGESTION_CATEGORY_LABELS, type NotificationDocument } from '../../types/game';
 
 function formatDate(iso: string): string {
   try {
@@ -122,7 +122,7 @@ export function InboxModal() {
                 <span className="flex items-center gap-2 mt-1">
                   {n.suggestionCategory && (
                     <Pill tone={n.suggestionCategory === 'NG' ? 'danger' : 'info'}>
-                      {n.suggestionCategory}
+                      {SUGGESTION_CATEGORY_LABELS[n.suggestionCategory]}
                     </Pill>
                   )}
                   <span className="text-xs text-ink-muted">{formatDate(n.createdAt)}</span>
