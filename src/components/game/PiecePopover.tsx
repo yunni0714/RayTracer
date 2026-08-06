@@ -18,10 +18,19 @@ export function PiecePopover() {
 
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // 외부 클릭 / Esc 로 닫기
+  // 외부 클릭 / Esc 로 닫기.
+  //
+  // ⚠️ 인스펙터(SelectedPieceInfo)는 "바깥" 이 아니다. 선택은 pointerup 에서
+  // 되는데 이 해제는 pointerdown 에서 되므로, 그냥 닫으면 인스펙터 버튼이
+  // click 도착 전에 언마운트돼 조작이 통째로 죽는다 (데스크탑·모바일 공통.
+  // 팝오버 div 는 hidden lg:flex 라 안 보일 뿐 effect 는 항상 돈다).
+  // 미디어쿼리로 분기하지 않는 이유: deps 가 [selectedCell] 이라 리사이즈 시
+  // 재평가되지 않아 뷰포트를 바꾸면 다시 깨진다.
   useEffect(() => {
     if (!selectedCell) return;
     function onPointerDown(e: PointerEvent) {
+      const target = e.target as Element | null;
+      if (target?.closest?.('[data-piece-controls]')) return;
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         useGameStore.getState().setSelectedCell(null);
       }

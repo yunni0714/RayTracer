@@ -48,8 +48,10 @@ export function SelectedPieceInfo() {
         {cell.isInventory && !cell.canRotate && <Pill tone="normal">🔒 회전 불가</Pill>}
       </div>
 
-      {/* 액션 */}
-      <div className="flex flex-col gap-1.5">
+      {/* 액션 — 데스크탑(lg+)은 PiecePopover 가 전담하므로 숨긴다.
+          data-piece-controls: PiecePopover 의 바깥클릭 해제가 이 영역을
+          건너뛰게 하는 마커 (data-testid 는 테스트용이라 동작 판정에 안 쓴다). */}
+      <div className="flex flex-col gap-1.5 lg:hidden" data-piece-controls>
         {canRotateHere && (
           <Button variant="secondary" block className="!text-xs" onClick={() => rotatePiece(row, col)}>
             ↻ 90° 회전
