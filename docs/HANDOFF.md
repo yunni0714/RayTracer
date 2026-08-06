@@ -159,3 +159,23 @@ npm run dev              # 로컬 미리보기
 **알림함 베이스**: `users/{uid}/inbox/{notifId}`. Cloud Functions 가 없어 제안자 클라이언트가 소유자 알림함에 직접 쓰고, 스팸 방어는 `firestore.rules` 가 맵 문서를 `get()` 해 "받는 사람 == 맵 소유자" 를 검증하는 쪽에서 한다. 조회는 기존 컨벤션대로 일회성 `getDocs`(`onSnapshot` 미사용) + 모달 내 수동 새로고침. 알림 타입은 `'suggestion'` 하나 — 확장 시 `NotificationType` 유니온에 추가한다.
 
 > ⚠️ **메이커 액션 잔여**: `firebase deploy --only firestore:rules`. 배포 전에는 알림 생성이 권한 거부되지만 호출부가 try/catch 로 삼키므로 풀이 제안 등록 자체는 정상 동작한다.
+
+---
+
+## 10. 알림함 자동 갱신 + 미세 수정 6건 (2026-08, 같은 브랜치 2차 라운드)
+
+**알림함 자동 갱신** (`hooks/useInboxRefresh.ts`): 로그인 시 1회만 조회하던 것을 탭 포커스 복귀(`visibilitychange`+`focus`) · 라이브러리 진입 · 모달 열림(force)에서 재조회하도록. 60초 스로틀, 실패해도 타임스탬프를 소비해 재시도 폭주를 막는다. **`onSnapshot`은 의도적으로 쓰지 않는다** — 리스너 해제를 놓치면 로그아웃 후에도 남의 `inbox` 경로를 구독해 permission-denied 가 반복된다. 근사치를 택한 트레이드오프이므로, 나중에 진짜 실시간이 필요하면 `useAuth` 한 곳에만 구독을 두고 해제를 반드시 붙일 것.
+
+**어드민에도 🔔**: 배지 마크업을 `components/layout/InboxButton.tsx` 로 추출해 헤더·어드민 상단바가 공유. `InboxModal` 의 `▶ 맵으로` 는 `navigate('/')` 까지 한다(어드민에서 열었을 수 있으므로).
+
+**인스펙터 기물 버튼 버그** (`PiecePopover`): 버튼은 원래 구현돼 있었고, 팝오버의 바깥클릭 해제가 `pointerdown` 에서 `selectedCell` 을 비워 `click` 도착 전에 버튼을 언마운트시키던 것이 원인. 데스크탑·모바일 공통이었고 팝오버가 없는 **모바일에서는 기물 조작이 처음부터 불가능**했다. `[data-piece-controls]` 가드로 수정 + 데스크탑은 팝오버가 전담하므로 인스펙터 액션을 `lg:hidden`. e2e 회귀 케이스 추가(가드를 빼면 실패하는 것 확인).
+
+**제안 카테고리 문구 통일**: `SUGGESTION_CATEGORY_LABELS`(`types/game.ts`) 단일 소스 — 등록 드롭다운·제작자 목록·어드민·알림함 네 곳. 저장 값 `'NG'`/`'ABCD'` 는 불변.
+
+**타겟 카운트 + 등록 게이트**: 인벤토리에 남은 표적이 총계에서 빠져 "✓ 해결!" 이 잘못 뜨던 문제를 `lib/targets.ts` 로 보정(엔진 불변). `☁️ 맵 등록` 은 `getAuthoredGrid()` 기준 `solved` 일 때만 열린다 — **신규 등록만**, 맵 수정은 게이트 없음(예전 맵 메타만 고치려다 막히는 상황 방지). `ConfirmModal` 에 `hideCancel` 추가(안내 전용 alert).
+
+**DTO→그리드 통합**: 같은 변환이 6곳에 복사돼 있던 것을 `lib/mapGrid.ts`(`itemsToGrid`/`mapDocToGrid`)로. `PalettePanel` JSON 임포트만 제외 — 누락 필드에 기본값을 넣는 관대한 파서라 계약이 다르다.
+
+> **알려진 기존 e2e 실패 5건** (이번 변경과 무관, `da38feb` 에서도 동일 재현): `[data-tool=...]`·팝오버 버튼 로케이터가 데스크탑 aside 와 모바일 시트 양쪽에 매칭돼 strict mode 위반 또는 타임아웃. `inventory` 2건 · `palette-leak` 1건 · `piece-popover` 1건 · `rotation` 1건. 로케이터를 `:visible` 로 좁히면 해소된다.
+
+> **메이커 액션 여전히 잔여**: `firebase deploy --only firestore:rules`.

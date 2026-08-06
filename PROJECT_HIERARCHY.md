@@ -76,7 +76,8 @@ RayTracer/
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전(단일·일괄) 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
 │   │   ├── userSettings.ts              # 계정 설정 검증/로컬 캐시 (순수, 손상 시 기본값 폴백)
-│   │   ├── mapGrid.ts                   # MapDocument DTO → NxN 그리드 변환
+│   │   ├── mapGrid.ts                   # 희소 DTO → NxN 그리드 단일 소스 (itemsToGrid/mapDocToGrid)
+│   │   ├── targets.ts                   # 인벤토리 표적 수 (StatusBar 승리판정 보정)
 │   │   ├── pieceActions.ts              # 기물 조작 (회전/삭제/회수/특성 토글) + 라벨
 │   │   ├── svgArt.ts                    # 빌트인 SVG 29종 + getSvgArt() 오버라이드 접근자
 │   │   └── admin.ts                     # 관리자 UID 화이트리스트 (UI 게이트)
@@ -85,6 +86,7 @@ RayTracer/
 │   │   ├── useAuth.ts                   # Firebase auth 리스너
 │   │   ├── useTheme.ts                  # theme → <html>.dark + localStorage 동기화
 │   │   ├── useUserSettings.ts           # settings → <html>[data-pastel] 동기화
+│   │   ├── useInboxRefresh.ts           # 알림함 자동 갱신 (탭 포커스 복귀·라이브러리 진입, 60초 스로틀)
 │   │   ├── useGridDragDrop.ts           # 드래그앤드롭 엔진 (Pointer Events)
 │   │   ├── useLaserCanvas.ts            # 캔버스 세팅(dpr/리사이즈) + 레이저 렌더 트리거
 │   │   └── useMapReactions.ts           # 반응/난이도투표 + localStorage 동기화
@@ -122,7 +124,9 @@ RayTracer/
 │   │   ├── layout/
 │   │   │   ├── Header.tsx               # 로고, 새 맵, 라이브러리 토글, [편집|플레이], 알림함🔔, 계정 드롭다운
 │   │   │   │                            #  (테마→계정 설정 모달, 어드민→드롭다운으로 이동)
+│   │   │   ├── InboxButton.tsx          # 🔔 + 미읽음 배지 (헤더·어드민 상단바 공용)
 │   │   │   ├── StatusBar.tsx            # 하단 상태바 (기물 수/그리드/타겟 명중·해결/실행취소/레이저 토글)
+│   │   │   │                            #  타겟 총계는 인벤토리 표적 포함 (lib/targets.ts)
 │   │   │   ├── InspectorPanel.tsx       # 우 존(편집): 맵 통계 + 그리드 크기(5~9) + 선택 기물
 │   │   │   └── Notification.tsx         # 토스트 알림 (2초 자동 소멸)
 │   │   │
@@ -174,7 +178,10 @@ RayTracer/
 │   ├── loadMapForPlay.test.ts           # 플레이 로드 회전 정규화 / 원본 백업 불변식
 │   ├── penUndo.test.ts                  # undo 스택 필기(pen) 통합 — 획/전체지우기 되돌리기
 │   ├── mapEditSave.test.ts              # 맵 수정 저장 시 인벤토리 기물 보존 (getAuthoredGrid)
-│   └── userSettings.test.ts             # 계정 설정 검증/폴백 + localStorage 왕복 + setSetting
+│   ├── userSettings.test.ts             # 계정 설정 검증/폴백 + localStorage 왕복 + setSetting
+│   ├── inboxRefresh.test.ts             # 알림함 자동 갱신 스로틀/force/실패 시 기존 유지
+│   ├── targets.test.ts                  # 인벤토리 표적 카운트 + 승리판정 보정
+│   └── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)
@@ -470,7 +477,9 @@ Header
 | **토스트 알림** | `components/layout/Notification.tsx` | `store/gameStore.ts` (showNotification) |
 | **다크모드/테마/색** | `styles/global.css` (토큰), `tailwind.config.js` | `hooks/useTheme.ts`, `index.html` (첫 페인트 스크립트) |
 | **계정 설정 / 시각 옵션** | `lib/userSettings.ts` (검증·캐시), `components/modals/SettingsModal.tsx` | `hooks/useUserSettings.ts`, `styles/global.css` (`--cat-*-pastel`, `html[data-pastel]`), `store/gameStore.ts` (settings/setSetting), `tests/userSettings.test.ts` |
-| **알림함(메일함)** | `components/modals/InboxModal.tsx` | `lib/firebaseService.ts` (inbox 4종), `firestore.rules` (`users/{uid}/inbox`), `components/modals/SuggestionModal.tsx` (쓰기), `hooks/useAuth.ts` (로드) |
+| **알림함(메일함)** | `components/modals/InboxModal.tsx`, `hooks/useInboxRefresh.ts` (자동 갱신) | `lib/firebaseService.ts` (inbox 4종), `firestore.rules` (`users/{uid}/inbox`), `components/modals/SuggestionModal.tsx` (쓰기), `components/layout/InboxButton.tsx`, `tests/inboxRefresh.test.ts` |
+| **DTO↔그리드 변환** | `lib/mapGrid.ts` (`itemsToGrid`/`mapDocToGrid`) | 맵 로드 경로 전부(`App`·`LibraryScreen`·`NextMapPanel`·`UploadModal`·`SuggestionPanel`·`InboxModal`), `tests/mapGrid.test.ts`. **PalettePanel JSON 임포트는 제외** — 기본값을 넣는 관대한 파서라 계약이 다르다 |
+| **승리 판정 표시 / 등록 게이트** | `components/layout/StatusBar.tsx`, `lib/targets.ts` | `components/palette/PalettePanel.tsx` (`☁️ 맵 등록` 게이트), `components/ui/ConfirmModal.tsx` (`hideCancel`), `tests/targets.test.ts` |
 | **헤더** | `components/layout/Header.tsx` | `store/gameStore.ts` |
 | **JSON 가져오기/내보내기** | `components/palette/PalettePanel.tsx` | `types/game.ts` (MapItemDTO) |
 | **URL 기반 맵 로드 / 라우팅** | `src/App.tsx` | `public/404.html`, `index.html` (SPA 폴백) |
