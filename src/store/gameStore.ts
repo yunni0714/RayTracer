@@ -70,6 +70,7 @@ function initialTheme(): 'light' | 'dark' {
 // ConfirmModal 표시 옵션. resolver 는 직렬화 회피 위해 모듈 변수에 보관.
 type ConfirmOpts = {
   title?: string; message: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean;
+  hideCancel?: boolean; // 취소 없는 안내 전용(alert)
 };
 let confirmResolver: ((v: boolean) => void) | null = null;
 

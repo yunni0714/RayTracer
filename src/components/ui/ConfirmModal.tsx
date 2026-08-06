@@ -7,6 +7,8 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** 취소 버튼을 숨겨 안내 전용(alert) 으로 쓴다 — 선택지가 없는 차단 안내용 */
+  hideCancel?: boolean;
 }
 
 interface ConfirmModalProps extends ConfirmOptions {
@@ -15,7 +17,8 @@ interface ConfirmModalProps extends ConfirmOptions {
 }
 
 export function ConfirmModal({
-  title = '확인', message, confirmLabel = '확인', cancelLabel = '취소', danger, onConfirm, onCancel,
+  title = '확인', message, confirmLabel = '확인', cancelLabel = '취소', danger, hideCancel,
+  onConfirm, onCancel,
 }: ConfirmModalProps) {
   return (
     <Modal
@@ -23,7 +26,7 @@ export function ConfirmModal({
       onClose={onCancel}
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>
+          {!hideCancel && <Button variant="ghost" onClick={onCancel}>{cancelLabel}</Button>}
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} autoFocus>
             {confirmLabel}
           </Button>
