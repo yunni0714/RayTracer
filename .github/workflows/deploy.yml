@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -44,11 +44,23 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # 아티팩트 이름에 시도 번호를 붙인다.
+      # 아티팩트는 run 단위로 보관되고 재실행해도 이전 시도 것이 지워지지 않는데,
+      # deploy-pages 는 run 전체에서 이름으로 아티팩트를 찾는다. 이름이 고정이면
+      # 재실행 시 같은 이름이 2개가 되어 "Multiple artifacts named github-pages ...
+      # Artifact count is 2" 로 배포가 통째로 막힌다(이전 시도 아티팩트가 만료될
+      # 때까지 재실행이 계속 실패). 시도별로 이름을 갈라 충돌 자체를 없앤다.
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: './dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+          # 기본 타임아웃 10분(600000ms)은 Pages 배포 큐가 밀리는 날 부족하다.
+          # deployment_queued 에서 10분 만에 중단된 전례가 있어 20분으로 올린다.
+          timeout: 1200000
