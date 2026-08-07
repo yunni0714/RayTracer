@@ -221,18 +221,54 @@ function decodeBehaviorGroups(raw: unknown): unknown {
   return { ...d, conditional: { ...d.conditional, groups } };
 }
 
+// 숫자 엔티티(&#106; / &#x6a;)와 스킴 위장에 쓰이는 명명 엔티티를 푼다.
+//
+// ⚠️ 탐지 전용 사본에만 쓸 것 — 되돌린 문자열을 출력에 실으면 &#60; 가 실제 '<' 로
+//    부활해 브라우저가 태그로 파싱한다(이중 디코딩 = XSS 재도입).
+function decodeForDetection(v: string): string {
+  const cp = (code: number, fallback: string) =>
+    Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : fallback;
+  return v
+    .replace(/&#x([0-9a-f]{1,6});?/gi, (m, h) => cp(parseInt(h, 16), m))
+    .replace(/&#(\d{1,7});?/g, (m, d) => cp(parseInt(d, 10), m))
+    .replace(/&colon;/gi, ':')
+    .replace(/&(tab|newline);/gi, ' ');
+}
+
+// 실행 가능한 URI 스킴. data: 는 text/html 만 막는다 — data:image/png 같은 임베드
+// 래스터는 기물 아트에 정상적으로 쓰이므로 통째로 막으면 기존 config 가 깨진다.
+const DANGEROUS_URI = /^(?:javascript:|vbscript:|data:text\/html)/i;
+
+// 속성값이 위장된 실행 스킴인지 — 엔티티를 풀고 공백·제어문자를 걷어낸 뒤 판정.
+// 브라우저가 URL 스킴에서 탭/개행을 무시하므로 `java&#9;script:` 도 잡아야 한다.
+function isDangerousValue(raw: string): boolean {
+  const unquoted = raw.replace(/^(["'])([\s\S]*)\1$/, '$2');
+  // 공백류 + C0/DEL 제어문자 제거. 정규식에 제어문자를 직접 박지 않고 코드포인트로 거른다.
+  const flat = [...decodeForDetection(unquoted)]
+    .filter(ch => ch.charCodeAt(0) > 0x20 && ch.charCodeAt(0) !== 0x7f)
+    .join('');
+  return DANGEROUS_URI.test(flat);
+}
+
 // SVG 새니타이즈 — config 의 SVG 는 전 플레이어에게 innerHTML 로 렌더되므로
 // 실행 가능한 요소/속성을 제거한다 (저장형 XSS 방어, 심층 방어).
-// 정규식 기반 스크러버: script/foreignObject 제거, on* 핸들러·javascript: URI 제거.
+// 정규식 기반 스크러버: script/foreignObject 제거, on* 핸들러·위험 URI 스킴 제거.
+//
+// 구분자 주의: HTML 파서는 '/' 도 속성 구분자로 받아들인다(self-closing 시작 태그가
+// before-attribute-name 상태로 복귀). 공백류만 보면 `<svg/onload=alert(1)>` 가 통과하므로
+// on* 패턴의 선행 문자는 반드시 `[\s/]` 여야 한다.
 export function sanitizeSvg(svg: string): string {
   return svg
     .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '')
     .replace(/<\s*script\b[^>]*\/?>/gi, '')
     .replace(/<\s*foreignObject[\s\S]*?<\s*\/\s*foreignObject\s*>/gi, '')
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
-    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
-    .replace(/(href|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '')
+    .replace(/[\s/]on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/[\s/]on\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/[\s/]on\w+\s*=\s*[^\s>]+/gi, '')
+    // href/xlink:href 뿐 아니라 모든 속성을 본다 — <set attributeName="href" to="javascript:...">
+    // 같은 SMIL 우회가 특정 속성 이름만 보는 필터를 빠져나간다.
+    .replace(/[\w:.-]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/g, (m, v: string) =>
+      isDangerousValue(v) ? '' : m)
     .replace(/javascript:/gi, '');
 }
 
