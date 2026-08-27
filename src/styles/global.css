@@ -39,11 +39,15 @@
   --pen-blue:    #3b82f6;
   --pen-green:   #22c55e;
   --pen-red:     #e11d48;
-  /* 난이도 */
+  /* 난이도 (쉬움→어려움). Tricky 를 Normal↔Hard 사이에 넣으면서 Hard 를 진한
+     주황으로 밀었다 — 원래 Normal(#f59e0b)과 Hard(#e67e22)가 ΔE 19 로 거의 같은
+     주황이라, 사이에 그냥 끼우면 ΔE 9(사실상 구분 불가)가 된다. 지금은 인접 최소
+     ΔE 23 으로 오히려 예전보다 잘 구분된다. 난이도를 더 넣으려면 여기부터 재검토. */
   --diff-tutor:  #3498db;
   --diff-easy:   #22c55e;
   --diff-normal: #f59e0b;
-  --diff-hard:   #e67e22;
+  --diff-tricky: #f97316;
+  --diff-hard:   #c2410c;
   --diff-insane: #ef4444;
   --diff-none:   #cbd5e1;
   --diff-none-ink: #475569;
@@ -102,7 +106,8 @@
   --diff-tutor:  #3b9fe0;
   --diff-easy:   #34d27d;
   --diff-normal: #fbb024;
-  --diff-hard:   #f08a3c;
+  --diff-tricky: #fb8c3c;
+  --diff-hard:   #e8551c;
   --diff-insane: #f8717a;
   --diff-none:   #3a465f;
   --diff-none-ink: #b8c4d8;
@@ -329,6 +334,7 @@ html[data-pastel="on"] .next-map-card[data-category]:hover {
 .diff-pill.diff-Tutor   { background: var(--diff-tutor); }
 .diff-pill.diff-Easy    { background: var(--diff-easy); }
 .diff-pill.diff-Normal  { background: var(--diff-normal); }
+.diff-pill.diff-Tricky  { background: var(--diff-tricky); }
 .diff-pill.diff-Hard    { background: var(--diff-hard); }
 .diff-pill.diff-Insane  { background: var(--diff-insane); }
 .diff-pill.diff-None    { background: var(--diff-none); color: var(--diff-none-ink); }

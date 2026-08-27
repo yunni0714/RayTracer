@@ -23,7 +23,7 @@ import type { PillTone } from '../components/ui/Pill';
 
 /** 쉬운 것 → 어려운 것 순. 화면의 모든 난이도 목록이 이 순서를 따른다. */
 export const DIFFICULTIES: readonly Difficulty[] = [
-  'Tutor', 'Easy', 'Normal', 'Hard', 'Insane',
+  'Tutor', 'Easy', 'Normal', 'Tricky', 'Hard', 'Insane',
 ] as const;
 
 /** 정렬용 랭크. 난이도는 문자열이라 사전순이 무의미하다 — 순서 배열에서 파생. */
@@ -33,13 +33,14 @@ export const DIFFICULTY_RANK: Record<Difficulty, number> = Object.fromEntries(
 
 /** Pill 톤. 새 난이도를 추가하면 여기가 컴파일 에러로 잡아준다. */
 export const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
+  Tutor: 'tutor', Easy: 'easy', Normal: 'normal',
+  Tricky: 'tricky', Hard: 'hard', Insane: 'insane',
 };
 
 /** 난이도 색 CSS 변수명 (투표 칩이 인라인 style 로 쓴다). */
 export const DIFF_VAR: Record<Difficulty, string> = {
   Tutor: '--diff-tutor', Easy: '--diff-easy', Normal: '--diff-normal',
-  Hard: '--diff-hard', Insane: '--diff-insane',
+  Tricky: '--diff-tricky', Hard: '--diff-hard', Insane: '--diff-insane',
 };
 
 /** 난이도 값 검증 (config 오버레이 등 신뢰할 수 없는 입력용). */

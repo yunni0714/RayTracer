@@ -37,7 +37,7 @@ export type AnyPieceType = string;
 
 export type Rotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
-export type Difficulty = 'Tutor' | 'Easy' | 'Normal' | 'Hard' | 'Insane';
+export type Difficulty = 'Tutor' | 'Easy' | 'Normal' | 'Tricky' | 'Hard' | 'Insane';
 
 export interface CellData {
   type: AnyPieceType;

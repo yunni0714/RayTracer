@@ -3,7 +3,7 @@ import type { Difficulty } from '../../types/game';
 import { DIFF_TONE } from '../../lib/difficulty';
 
 export type PillTone =
-  | 'tutor' | 'easy' | 'normal' | 'hard' | 'insane' | 'none'
+  | 'tutor' | 'easy' | 'normal' | 'tricky' | 'hard' | 'insane' | 'none'
   | 'neutral' | 'success' | 'danger' | 'info'
   | 'catClassic' | 'catLogic' | 'catAdvanced';
 
@@ -11,6 +11,7 @@ const TONES: Record<PillTone, string> = {
   tutor:   'bg-[var(--diff-tutor)] text-white',
   easy:    'bg-[var(--diff-easy)] text-white',
   normal:  'bg-[var(--diff-normal)] text-white',
+  tricky:  'bg-[var(--diff-tricky)] text-white',
   hard:    'bg-[var(--diff-hard)] text-white',
   insane:  'bg-[var(--diff-insane)] text-white',
   none:    'bg-[var(--diff-none)] text-[var(--diff-none-ink)]',

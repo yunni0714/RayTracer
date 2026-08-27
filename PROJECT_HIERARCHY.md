@@ -253,7 +253,7 @@ RayTracer/
 | `PieceType` | 빌트인 29개 피스 유니온 (기본 18 + Group A 6 + Group B 5) |
 | `AnyPieceType` | `string` — 빌트인 또는 config 커스텀 id. 저장·렌더 경계 타입 |
 | `Rotation` | 0\|45\|90\|135\|180\|225\|270\|315 |
-| `Difficulty` | 'Tutor'\|'Easy'\|'Normal'\|'Hard'\|'Insane' |
+| `Difficulty` | 'Tutor'\|'Easy'\|'Normal'\|'Tricky'\|'Hard'\|'Insane' (순서·색은 `lib/difficulty.ts` 단일 소스) |
 | `CellData` | 셀 데이터 (type, rotation, canMove, canRotate, isInventory) |
 | `InventoryItem` | 인벤토리 아이템 (count, type, canRotate, rotation) |
 | `MapItemDTO` | 저장/로드용 맵 아이템 (x, y 포함, 희소 배열 요소) |
