@@ -1,13 +1,19 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/gameStore';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { computeMapCategory } from '../../lib/mapCategory';
 import { mapDocToGrid } from '../../lib/mapGrid';
+import { fetchLibraryPage } from '../../lib/firebaseService';
 import type { MapDocument, Difficulty } from '../../types/game';
 
 const LS_KEY = 'ray_map_states';
+
+// 추천 표본. 라이브러리를 거쳐 왔으면 누적본(1페이지 = 24개)으로 충분하고,
+// ?mapId= 딥링크로 바로 들어온 경우에만 따로 한 번 받아온다.
+const NEXT_POOL_MIN = 12;
+const NEXT_POOL_SIZE = 30;
 
 function getPlayedIds(): Set<string> {
   try {
@@ -59,11 +65,25 @@ export function NextMapPanel() {
   })));
   useGameStore(s => s.pieceConfigRev); // 폴더 오버레이 갱신 시 카테고리 재계산
 
+  // 딥링크로 바로 들어오면 라이브러리 누적본이 비어 있어 추천이 통째로 안 뜬다.
+  // 그 경우에만 표본을 한 번 받아온다 — 라이브러리를 거쳤으면 추가 조회 0회.
+  const [fallbackPool, setFallbackPool] = useState<MapDocument[]>([]);
+  const fetched = useRef(false);
+  useEffect(() => {
+    if (fetched.current || allLibraryMaps.length >= NEXT_POOL_MIN) return;
+    fetched.current = true;
+    fetchLibraryPage({ sortBy: 'createdAt', pageSize: NEXT_POOL_SIZE })
+      .then(page => setFallbackPool(page.maps))
+      .catch(err => console.error('[nextmap] 추천 표본 조회 실패:', err));
+  }, [allLibraryMaps.length]);
+
+  const pool = allLibraryMaps.length >= NEXT_POOL_MIN ? allLibraryMaps : fallbackPool;
+
   const nextMaps = useMemo(
-    () => currentLoadedMapObj ? pickNextMaps(allLibraryMaps, currentLoadedMapObj.id) : [],
+    () => currentLoadedMapObj ? pickNextMaps(pool, currentLoadedMapObj.id) : [],
     // currentLoadedMapObj.id 변경 시마다 새로 섞음
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allLibraryMaps, currentLoadedMapObj?.id]
+    [pool, currentLoadedMapObj?.id]
   );
 
   function playMap(map: MapDocument) {

@@ -42,6 +42,8 @@ npm run lint       # ESLint
 - **계정 설정(`src/lib/userSettings.ts`)은 `sanitizeSettings()`를 반드시 통과** — Firestore `users/{uid}.settings` 정본 + localStorage `ray-settings` 캐시(비로그인 폴백). config 오버레이와 같은 규칙: **절대 throw 금지**, 손상 시 기본값. 스토어는 Firebase를 import하지 않는다(단위 테스트가 스토어를 그대로 로드) — 서버 저장은 호출부(`SettingsModal`)가 한다. 시각 옵션은 `<html>[data-pastel]` + CSS 토큰으로만 구현하고 카드 컴포넌트는 건드리지 않는다.
 - **DTO↔그리드 변환은 `lib/mapGrid.ts` 하나** (`itemsToGrid`/`mapDocToGrid`) — gridSize 기본 5·범위 밖 폐기·필드 목록 규칙이 갈라지면 특정 로드 경로에서만 기물이 사라진다. 새 맵 로드 경로는 이걸 쓸 것. 단 `PalettePanel` JSON 임포트는 예외(누락 필드에 기본값을 넣는 관대한 파서라 계약이 다름).
 - **승리 판정 표시는 인벤토리 표적을 더한다** — `computeLaser()`는 그리드만 보는 순수 함수라 아직 안 꺼낸 표적을 모른다. `StatusBar`가 `countInventoryTargets()`(`lib/targets.ts`)로 보정한다. 엔진에 인벤토리를 주입하지 말 것. `☁️ 맵 등록`은 `getAuthoredGrid()` 기준 `solved`일 때만 열린다(신규 등록만, 맵 수정은 게이트 없음).
+- **라이브러리 목록은 커서 페이지네이션이고, 서버에 넘기는 조건은 정렬 키 + 난이도뿐** (`fetchLibraryPage()`). 예전엔 `limit(50)` 한 방이라 맵이 50개를 넘긴 뒤 오래된 맵이 클라이언트에 도달조차 못 했다 — 카탈로그·검색·필터가 전부 `allLibraryMaps` 배열 위에서만 돌기 때문에 사실상 존재하지 않는 맵이 됐다. 그래서 **`allLibraryMaps` 는 "전체"가 아니라 "지금까지 이어 받은 누적본"**이다. 새 목록 화면을 만들 때 전량을 가정하지 말 것. 자동 추가 로드에는 반드시 상한(`MAX_AUTO_LOADS`)을 둔다 — 없으면 희귀 필터 하나가 컬렉션 전량 읽기로 번진다. 커서 정렬에 `documentId()` tiebreaker 를 빼지 말 것(중복/누락). 어드민만 `fetchAllMapsForAdmin()` 전량 조회.
+- **서버 쿼리로 내릴 수 있는 맵 조건은 "모든 맵에 있는 실제 필드"뿐.** `difficulty` 는 최초 버전부터 있어 안전하다. **`gridSize` 는 6/10 이후 맵에만 있어서 안 된다** — Firestore 색인에는 그 필드를 가진 문서만 등재되고 "필드 부재"를 거는 연산자도 없어서, `where('gridSize','==',5)` 를 쓰면 옛날 맵이 통째로 사라진다(코드의 `?? 5` 는 런타임 약속일 뿐 DB는 모른다). `scripts/backfill-grid-size.mjs` 로 값을 채운 뒤에야 가능하다. `category`/`pieceCount`/`containsPiece` 는 파생값, `played`/`reacted`/`voted` 는 localStorage 기준이라 애초에 불가. 카탈로그 조건 전체를 서버로 내리는 것도 불가 — 어드민이 `config/catalog` 로 **런타임에** 카탈로그를 정의하므로 복합 인덱스를 미리 배포할 수 없다.
 - **알림함은 `onSnapshot`을 쓰지 않는다** — 조회는 전부 일회성 `getDocs`. 자동 갱신은 `hooks/useInboxRefresh.ts`가 탭 포커스 복귀·라이브러리 진입에서 60초 스로틀로 재조회한다. 리스너 수명 관리(로그아웃 후 남의 경로 구독) 위험을 지지 않는 대신 근사치를 택한 것.
 - **`PiecePopover`의 바깥클릭 해제는 `[data-piece-controls]`를 건너뛴다** — 선택은 `pointerup`, 해제는 `pointerdown`이라 이 가드가 없으면 인스펙터 버튼이 click 도착 전에 언마운트돼 조작이 통째로 죽는다(팝오버가 안 보이는 모바일 포함 — `hidden lg:flex`는 CSS일 뿐 effect는 항상 돈다). 미디어쿼리로 분기하지 말 것(deps가 `[selectedCell]`이라 리사이즈에 재평가 안 됨).
 - **알림함 쓰기 실패는 본 동작을 막지 않는다** — Cloud Functions가 없어 제안자 클라이언트가 `users/{ownerUid}/inbox`에 직접 쓴다. 스팸 방어는 `firestore.rules`가 맵 문서를 `get()`해 "받는 사람 == 맵 소유자"를 검증하는 쪽. **rules 실배포(`firebase deploy --only firestore:rules`)는 메이커 액션**이라 배포 전에는 알림 생성이 거부되므로, 호출부는 반드시 try/catch로 삼키고 풀이 제안 등록은 성공 처리한다.
@@ -58,6 +60,7 @@ npm run lint       # ESLint
 - SPA 라우팅 폴백: `public/404.html` → sessionStorage 리다이렉트 → `index.html` 인라인 스크립트가 복원.
 - `index.html` 인라인 스크립트가 첫 페인트 전 다크 테마 적용 (깜빡임 방지) — 제거 금지.
 - `ADMIN.html`: 레포 루트의 독립 정적 관리자 툴 (레거시/백업). 맵·제안·통계 관리는 React 어드민 `/admin/mapmaster` 로 이식 완료 — 새 기능은 React 쪽에만 추가한다.
+- `firebase.json` + `firestore.indexes.json`: rules/인덱스 배포 대상 선언. **인덱스 실배포(`firebase deploy --only firestore:indexes`)도 rules와 같은 메이커 액션** — 배포 전에는 라이브러리 난이도 서버 필터가 거부되고 클라이언트 필터로 폴백한다(동작은 유지, 읽기 횟수만 늘어난다).
 
 ## 문서
 

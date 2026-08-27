@@ -6,6 +6,9 @@ import type {
 import {
   type UserSettings, loadLocalSettings, saveLocalSettings,
 } from '../lib/userSettings';
+// 타입 전용 import — 컴파일 시 완전히 지워지므로 스토어에 Firebase 런타임 의존이
+// 생기지 않는다 (단위 테스트가 스토어를 그대로 로드하는 규칙 유지).
+import type { LibraryCursor, LibraryPage } from '../lib/firebaseService';
 export const DEFAULT_GRID_SIZE = 5;
 
 export function emptyGrid(size: number = DEFAULT_GRID_SIZE): (CellData | null)[][] {
@@ -120,7 +123,13 @@ interface GameStore {
 
   // ── 라이브러리 ───────────────────────────────
   isLibraryMode: boolean;
+  // 서버에서 지금까지 이어 받은 맵 (전체가 아니다 — 커서 페이지네이션 누적본).
+  // 카탈로그 선별·검색·세부 필터가 전부 이 배열 위에서 돈다.
   allLibraryMaps: MapDocument[];
+  libraryCursor: LibraryCursor | null;
+  libraryHasMore: boolean;
+  /** 누적본이 어떤 서버 쿼리(정렬 키 + 난이도)의 결과인지. 바뀌면 처음부터 다시 받는다. */
+  libraryQueryKey: string;
   currentLoadedMapObj: MapDocument | null;
   currentLoadedMapAuthorUid: string | null;
   currentMapReactions: { ok: number; god: number };
@@ -189,6 +198,10 @@ interface GameStore {
   // ── 액션: 라이브러리 ─────────────────────────
   setLibraryMode: (on: boolean) => void;
   setAllLibraryMaps: (maps: MapDocument[]) => void;
+  /** 서버 쿼리가 바뀌었다 — 누적본·커서를 비우고 1페이지부터 다시 받는다. */
+  resetLibraryPage: (queryKey: string) => void;
+  /** 받은 페이지를 누적본 뒤에 잇는다. 커서 경합으로 같은 맵이 두 번 오면 버린다. */
+  appendLibraryMaps: (page: LibraryPage) => void;
   setCurrentMapReactions: (counts: { ok: number; god: number }) => void;
   setSuggestions: (sugs: SuggestionDocument[]) => void;
 
@@ -244,6 +257,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   penStrokes: [],
   isLibraryMode: false,
   allLibraryMaps: [],
+  libraryCursor: null,
+  libraryHasMore: true,
+  libraryQueryKey: '',
   currentLoadedMapObj: null,
   currentLoadedMapAuthorUid: null,
   currentMapReactions: { ok: 0, god: 0 },
@@ -505,6 +521,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // ── 라이브러리 ───────────────────────────────
   setLibraryMode: (on) => set({ isLibraryMode: on }),
   setAllLibraryMaps: (maps) => set({ allLibraryMaps: maps }),
+
+  resetLibraryPage: (queryKey) => set({
+    allLibraryMaps: [],
+    libraryCursor: null,
+    libraryHasMore: true,
+    libraryQueryKey: queryKey,
+  }),
+
+  appendLibraryMaps: (page) => set((s) => {
+    // 커서가 안정적이면 중복은 안 생기지만, 페이지 로드 중 새 맵이 등록되면
+    // 경계가 밀려 같은 맵이 두 번 올 수 있다 — id 로 한 번 더 막는다.
+    const seen = new Set(s.allLibraryMaps.map(m => m.id));
+    const fresh = page.maps.filter(m => !seen.has(m.id));
+    return {
+      allLibraryMaps: fresh.length > 0 ? [...s.allLibraryMaps, ...fresh] : s.allLibraryMaps,
+      libraryCursor: page.cursor,
+      libraryHasMore: page.hasMore,
+    };
+  }),
   setCurrentMapReactions: (counts) => set({ currentMapReactions: counts }),
   setSuggestions: (sugs) => set({ suggestions: sugs }),
 

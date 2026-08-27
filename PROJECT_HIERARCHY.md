@@ -181,7 +181,8 @@ RayTracer/
 │   ├── userSettings.test.ts             # 계정 설정 검증/폴백 + localStorage 왕복 + setSetting
 │   ├── inboxRefresh.test.ts             # 알림함 자동 갱신 스로틀/force/실패 시 기존 유지
 │   ├── targets.test.ts                  # 인벤토리 표적 카운트 + 승리판정 보정
-│   └── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
+│   ├── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
+│   └── libraryPaging.test.ts            # 라이브러리 커서 페이지네이션 (이어붙이기·중복 방지·쿼리키 리셋)
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)
@@ -198,7 +199,8 @@ RayTracer/
 │   └── PIECE_TAXONOMY.md                # 기물 분류 멘탈 모델 (사용자 정본)
 │
 ├── scripts/
-│   └── migrate-author-uid.mjs           # 익명 UID → 구글 UID 일괄 마이그레이션 (firebase-admin, 1회용)
+│   ├── migrate-author-uid.mjs           # 익명 UID → 구글 UID 일괄 마이그레이션 (firebase-admin, 1회용)
+│   └── backfill-grid-size.mjs           # gridSize 없는 옛 맵에 5 채우기 (assert-then-write, --dry-run, 1회용)
 │
 ├── public/
 │   ├── favicon.svg
@@ -206,6 +208,8 @@ RayTracer/
 │
 ├── .github/workflows/deploy.yml         # main 푸시 → 빌드(VITE_FIREBASE_* 시크릿) → Pages 배포
 ├── firestore.rules                      # Firestore 보안 규칙 (admin.ts와 UID 동기화 필수)
+├── firestore.indexes.json               # 복합 인덱스 — 라이브러리 난이도 서버 필터용 (difficulty × createdAt/reactionGod)
+├── firebase.json                        # firestore rules/indexes 배포 대상 선언 (deploy 명령이 이걸 읽는다)
 ├── ADMIN.html                           # 독립 정적 관리자 툴 (레거시/백업 — /admin/mapmaster 로 이식됨)
 ├── PIECE_EDITOR.html                    # 독립 정적 기물 SVG 에디터 (100×100 그리드 드로잉 → svgArt.ts/config 용 SVG 문자열, 빌드 무관)
 ├── index.html                           # SPA 리다이렉트 복원 + 첫 페인트 전 다크 테마 적용
@@ -272,6 +276,11 @@ RayTracer/
 
 ### `src/lib/firebaseService.ts` — Firebase CRUD
 Auth / 사용자 / 맵 / 풀이 제안 / **기물 config** 전체 Firestore 연산. 상세는 [§10](#10-firebase-연동-구조).
+
+라이브러리 목록은 `fetchLibraryPage()` **커서 페이지네이션**이다 (기본 24개/페이지).
+- 서버에 넘기는 조건은 **정렬 키 + 난이도** 둘뿐. `documentId()` desc tiebreaker 필수 — `createdAt` 이 ISO 문자열이라 동일 초 업로드가 가능하고, 정렬이 불안정하면 커서 경계에서 맵이 중복되거나 건너뛰어진다
+- `isMissingIndexError()` — 복합 인덱스 미배포(`failed-precondition`) 판별. 호출부는 서버 난이도 필터를 끄고 클라이언트 필터로 폴백한다
+- 어드민만 `fetchAllMapsForAdmin()` 로 전량 조회 (검색·일괄 회전·통계가 전량을 전제로 한다)
 
 ### `src/lib/laserEngine.ts` — 레이저 엔진 (계산/렌더 분리)
 - `computeLaser(mapData)`: 순수 계산 — `BeamSegment[]` + 셀별 incidence + 승리 판정(`solved`)

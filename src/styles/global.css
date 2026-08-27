@@ -172,6 +172,11 @@ html { transition: background-color .2s ease, color .2s ease; }
   flex-direction: column;
   border: 1px solid var(--line);
 }
+/* ⚠️ 여기에 `content-visibility: auto` 를 걸지 말 것.
+   그 값은 paint 컨테인먼트를 함께 적용하는데, .cat-ribbon 이 `top: -7px` 로
+   카드 밖까지 나오도록 만든 리본이라 위쪽이 잘린다 (바로 위 overflow: visible 과
+   같은 이유). 카드 목록 가상화가 필요해지면 카드 자체가 아니라 바깥 슬롯
+   요소에 걸고 그 슬롯이 리본 오버행만큼 여백을 갖게 할 것. */
 .map-card-v2:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);

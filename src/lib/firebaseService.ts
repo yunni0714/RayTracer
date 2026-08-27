@@ -1,7 +1,9 @@
 import {
   collection, addDoc, doc, getDoc, getDocs,
   setDoc, query, orderBy, limit, updateDoc, increment, deleteDoc,
+  where, startAfter, documentId,
 } from 'firebase/firestore';
+import type { DocumentData, QueryConstraint, QueryDocumentSnapshot } from 'firebase/firestore';
 import {
   GoogleAuthProvider, signInWithPopup, signInWithRedirect,
   getRedirectResult, signOut,
@@ -80,10 +82,64 @@ export async function fetchFromDB(id: string): Promise<MapDocument | null> {
   return snap.exists() ? { id: snap.id, ...snap.data() } as MapDocument : null;
 }
 
-export async function fetchLibraryList(sortBy: 'createdAt' | 'reactionGod' = 'createdAt'): Promise<MapDocument[]> {
-  const q = query(collection(db, 'maps'), orderBy(sortBy, 'desc'), limit(50));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as MapDocument);
+// ── 라이브러리 목록 (커서 페이지네이션) ─────────────────
+// 예전에는 orderBy + limit(50) 한 방이었다. 맵이 50개를 넘긴 뒤로 오래된 맵이
+// 통째로 클라이언트에 도달하지 못했다(카탈로그·검색·필터가 전부 이 배열 위에서만
+// 돌기 때문에 "존재하지 않는 맵"이 된다). 이제 페이지 단위로 이어 받는다.
+
+export type LibrarySortKey = 'createdAt' | 'reactionGod';
+
+/** 커서. 값이 아니라 문서 스냅샷이라 직렬화 불가 — 스토어에 담되 persist 하지 말 것. */
+export type LibraryCursor = QueryDocumentSnapshot<DocumentData>;
+
+export interface LibraryPage {
+  maps: MapDocument[];
+  cursor: LibraryCursor | null;
+  hasMore: boolean;
+}
+
+export interface LibraryPageQuery {
+  sortBy: LibrarySortKey;
+  /** 비었으면 난이도 필터 없음. 복합 인덱스 미배포면 실패하므로 호출부가 폴백한다. */
+  difficulties?: Difficulty[];
+  cursor?: LibraryCursor | null;
+  pageSize?: number;
+}
+
+export const LIBRARY_PAGE_SIZE = 24;
+
+export async function fetchLibraryPage({
+  sortBy, difficulties, cursor, pageSize = LIBRARY_PAGE_SIZE,
+}: LibraryPageQuery): Promise<LibraryPage> {
+  const constraints: QueryConstraint[] = [];
+
+  // 난이도만 서버로 위임한다 — 최초 버전부터 모든 맵에 있는 필드이고 값 집합이
+  // 코드 상수(DIFFICULTIES)로 고정이라 복합 인덱스를 미리 배포할 수 있다.
+  // gridSize 는 6/10 이후 맵에만 있어서(필드 부재를 쿼리로 표현할 수 없다)
+  // 서버로 넘기면 옛날 맵이 통째로 누락된다 — 클라이언트 필터로 남겨 둘 것.
+  if (difficulties?.length) constraints.push(where('difficulty', 'in', difficulties));
+
+  // documentId tiebreaker 필수. createdAt 이 ISO 문자열이라 같은 초에 두 맵이
+  // 올라갈 수 있고, 정렬이 불안정하면 커서 경계에서 맵이 중복되거나 건너뛰어진다.
+  constraints.push(orderBy(sortBy, 'desc'), orderBy(documentId(), 'desc'));
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(pageSize));
+
+  const snap = await getDocs(query(collection(db, 'maps'), ...constraints));
+  return {
+    maps: snap.docs.map(d => ({ id: d.id, ...d.data() }) as MapDocument),
+    cursor: snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null,
+    hasMore: snap.docs.length === pageSize,
+  };
+}
+
+/**
+ * 복합 인덱스 미배포 시 Firestore 가 던지는 에러.
+ * `firebase deploy --only firestore:indexes` 는 rules 와 같은 메이커 액션이라
+ * 배포 전에는 난이도 서버 필터가 거부된다 — 호출부는 서버 필터를 끄고 재시도한다.
+ */
+export function isMissingIndexError(err: unknown): boolean {
+  return (err as { code?: string } | null)?.code === 'failed-precondition';
 }
 
 export async function updateMapReactionsInDB(
@@ -109,7 +165,8 @@ export async function deleteMapFromDB(id: string): Promise<void> {
   await deleteDoc(doc(db, 'maps', id));
 }
 
-// 어드민 목록 — fetchLibraryList() 는 limit(50) 이라 관리 화면엔 부족하다.
+// 어드민 목록 — 라이브러리는 fetchLibraryPage() 로 나눠 받지만, 관리 화면은
+// 검색·일괄 회전·통계가 전량을 전제로 하므로 여기서만 한 번에 받는다.
 export async function fetchAllMapsForAdmin(): Promise<MapDocument[]> {
   const q = query(collection(db, 'maps'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
