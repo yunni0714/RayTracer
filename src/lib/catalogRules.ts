@@ -3,6 +3,7 @@ import {
   USER_CONDITION_KINDS,
   type CatalogCondition, type CatalogDef, type CatalogSort, type SortKey,
 } from './catalogConfig';
+import { DIFFICULTIES, DIFFICULTY_RANK } from './difficulty';
 import type { Difficulty, MapDocument } from '../types/game';
 
 /* ════════════════════════════════════════════════════════
@@ -114,11 +115,6 @@ export function needsLogin(catalog: CatalogDef): boolean {
 
 const DEFAULT_SORT: CatalogSort = { by: 'createdAt', dir: 'desc' };
 
-// 난이도는 문자열이라 사전순이 무의미 — 체감 순서로 매긴다
-const DIFFICULTY_RANK: Record<Difficulty, number> = {
-  Tutor: 0, Easy: 1, Normal: 2, Hard: 3, Insane: 4,
-};
-
 export function sortMapsBy(maps: MapDocument[], sort: CatalogSort = DEFAULT_SORT): MapDocument[] {
   const dir = sort.dir === 'asc' ? -1 : 1;
   return [...maps].sort((a, b) => {
@@ -161,7 +157,6 @@ export function selectCatalogMaps(
 
 /* ── 사람이 읽는 요약 (어드민 목록/툴팁) ────────────────── */
 
-const DIFF_ALL = 5;
 
 export function describeCondition(cond: CatalogCondition): string {
   switch (cond.kind) {
@@ -174,7 +169,7 @@ export function describeCondition(cond: CatalogCondition): string {
       return `${label} 반응`;
     }
     case 'difficulty':
-      return cond.values.length === DIFF_ALL ? '난이도 전체' : `난이도 ${cond.values.join('·')}`;
+      return cond.values.length === DIFFICULTIES.length ? '난이도 전체' : `난이도 ${cond.values.join('·')}`;
     case 'category': return `카테고리 ${cond.values.map(v => CATEGORY_LABELS[v] ?? v).join('·')}`;
     case 'recent': return `최근 ${cond.days}일`;
     case 'gridSize': return `그리드 ${cond.min ?? ''}~${cond.max ?? ''}`.replace('~ ', '');

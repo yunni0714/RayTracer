@@ -2,8 +2,9 @@ import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { useGameStore } from '../../store/gameStore';
 import { computeMapCategory } from '../../lib/mapCategory';
-import { Pill, cx, type PillTone } from '../ui';
-import type { MapDocument, Difficulty } from '../../types/game';
+import { Pill, cx } from '../ui';
+import type { MapDocument } from '../../types/game';
+import { DIFF_TONE, calculateUserDifficulty } from '../../lib/difficulty';
 
 interface Props {
   map: MapDocument;
@@ -14,17 +15,7 @@ interface Props {
   reacted?: { ok: boolean; god: boolean };
 }
 
-const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
-};
 
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
-  const entries = Object.entries(diffVotes) as [Difficulty, number][];
-  if (entries.length === 0) return null;
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return null;
-  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-}
 
 function formatDate(iso: string): string {
   try {

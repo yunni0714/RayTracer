@@ -1,5 +1,6 @@
 import { cx } from './cx';
 import type { Difficulty } from '../../types/game';
+import { DIFF_TONE } from '../../lib/difficulty';
 
 export type PillTone =
   | 'tutor' | 'easy' | 'normal' | 'hard' | 'insane' | 'none'
@@ -45,9 +46,6 @@ export function Pill({ tone = 'neutral', children, className, title }: PillProps
   );
 }
 
-const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
-};
 
 export function DifficultyPill({ difficulty, className }: { difficulty: Difficulty | null; className?: string }) {
   return (

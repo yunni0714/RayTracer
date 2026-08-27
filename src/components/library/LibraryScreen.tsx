@@ -14,14 +14,11 @@ import { MapCard } from './MapCard';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { SuppliedPieces } from './SuppliedPieces';
-import { Button, TextInput, Select, Tabs, Pill, cx, type PillTone } from '../ui';
+import { Button, TextInput, Select, Tabs, Pill, cx } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
+import { DIFFICULTIES, DIFF_TONE, calculateUserDifficulty } from '../../lib/difficulty';
 
-const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
-};
 
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 const GRID_SIZES = [5, 6, 7, 8, 9];
 
 /* 정렬 옵션 — 값은 "키:방향". 'catalog' 만 예외(카탈로그 정의를 따른다). */
@@ -69,13 +66,6 @@ function activeFilterCount(f: Filters): number {
     + (f.play === 'all' ? 0 : 1) + (f.react === 'all' ? 0 : 1);
 }
 
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
-  const entries = Object.entries(diffVotes) as [Difficulty, number][];
-  if (entries.length === 0) return null;
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return null;
-  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-}
 
 const DEFAULT_CATALOG_ID = 'recent';
 

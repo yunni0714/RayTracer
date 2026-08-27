@@ -8,12 +8,11 @@ import {
   type CatalogCondition, type CatalogConditionKind, type CatalogSort, type SortKey,
 } from '../../lib/catalogConfig';
 import { Button, IconButton, Label, Select, TextInput, Pill, cx } from '../../components/ui';
-import type { Difficulty } from '../../types/game';
+import { DIFFICULTIES } from '../../lib/difficulty';
 
 /* 카탈로그 규칙 편집 — 조건 카드 리스트(AND) + 정렬 + 개수 제한.
    조건 스키마는 lib/catalogConfig.ts 의 CatalogCondition 과 1:1. */
 
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 const CATEGORIES: readonly MapCategory[] = CATEGORY_ORDER;
 const SORT_KEYS: SortKey[] = [
   'createdAt', 'reactionGod', 'reactionOk', 'difficulty', 'pieceCount', 'gridSize', 'title',

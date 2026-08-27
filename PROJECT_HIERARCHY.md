@@ -75,6 +75,7 @@ RayTracer/
 │   │   ├── catalogRules.ts              # 카탈로그 규칙 평가 (조건 AND, 고정/제외, 정렬, limit)
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전(단일·일괄) 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
+│   │   ├── difficulty.ts                # 난이도 단일 소스 (순서·랭크·Pill 톤·CSS 변수·최다득표 계산)
 │   │   ├── userSettings.ts              # 계정 설정 검증/로컬 캐시 (순수, 손상 시 기본값 폴백)
 │   │   ├── mapGrid.ts                   # 희소 DTO → NxN 그리드 단일 소스 (itemsToGrid/mapDocToGrid)
 │   │   ├── targets.ts                   # 인벤토리 표적 수 (StatusBar 승리판정 보정)
@@ -182,7 +183,8 @@ RayTracer/
 │   ├── inboxRefresh.test.ts             # 알림함 자동 갱신 스로틀/force/실패 시 기존 유지
 │   ├── targets.test.ts                  # 인벤토리 표적 카운트 + 승리판정 보정
 │   ├── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
-│   └── libraryPaging.test.ts            # 라이브러리 커서 페이지네이션 (이어붙이기·중복 방지·쿼리키 리셋)
+│   ├── libraryPaging.test.ts            # 라이브러리 커서 페이지네이션 (이어붙이기·중복 방지·쿼리키 리셋)
+│   └── difficulty.test.ts               # 난이도 단일 소스 계약 (랭크 파생·톤/변수 누락·전체 요약)
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)

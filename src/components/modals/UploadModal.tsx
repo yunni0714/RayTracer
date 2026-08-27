@@ -4,9 +4,9 @@ import { useGameStore, getAuthoredGrid } from '../../store/gameStore';
 import { uploadToDB, updateMapInDB } from '../../lib/firebaseService';
 import { itemsToGrid } from '../../lib/mapGrid';
 import type { Difficulty, MapDocument, MapItemDTO } from '../../types/game';
+import { DIFFICULTIES } from '../../lib/difficulty';
 import { Modal, Button, Label, TextInput, TextArea, Select } from '../ui';
 
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 
 export function UploadModal() {
   const {

@@ -6,7 +6,8 @@ import { MapCategoryBadge } from './MapCategoryBadge';
 import { computeMapCategory } from '../../lib/mapCategory';
 import { mapDocToGrid } from '../../lib/mapGrid';
 import { fetchLibraryPage } from '../../lib/firebaseService';
-import type { MapDocument, Difficulty } from '../../types/game';
+import type { MapDocument } from '../../types/game';
+import { calculateUserDifficulty } from '../../lib/difficulty';
 
 const LS_KEY = 'ray_map_states';
 
@@ -40,12 +41,6 @@ function pickNextMaps(allMaps: MapDocument[], currentId: string): MapDocument[] 
   return [...unplayed, ...played].slice(0, 3);
 }
 
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
-  const entries = Object.entries(diffVotes) as [Difficulty, number][];
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return null;
-  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-}
 
 function formatDate(iso: string): string {
   try {
