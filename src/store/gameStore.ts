@@ -202,6 +202,8 @@ interface GameStore {
   resetLibraryPage: (queryKey: string) => void;
   /** 받은 페이지를 누적본 뒤에 잇는다. 커서 경합으로 같은 맵이 두 번 오면 버린다. */
   appendLibraryMaps: (page: LibraryPage) => void;
+  /** 누적본 안의 맵 하나를 부분 갱신한다 (서버 쓰기 성공 후 로컬 동기화). */
+  patchLibraryMap: (id: string, patch: Partial<MapDocument>) => void;
   setCurrentMapReactions: (counts: { ok: number; god: number }) => void;
   setSuggestions: (sugs: SuggestionDocument[]) => void;
 
@@ -540,6 +542,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       libraryHasMore: page.hasMore,
     };
   }),
+  // 라이브러리 목록은 커서 페이지네이션의 "누적본" 이라 자동 재조회가 없다 —
+  // 맵을 수정하면(제목 등) 여기도 같이 고쳐야 카드가 옛 값을 보여주지 않는다.
+  // 어드민 useAdminMaps.patchMap 과 같은 "서버 쓰기 성공 후 로컬 동기화" 패턴.
+  patchLibraryMap: (id, patch) => set((s) => {
+    const idx = s.allLibraryMaps.findIndex(m => m.id === id);
+    if (idx < 0) return {};
+    const next = [...s.allLibraryMaps];
+    next[idx] = { ...next[idx], ...patch };
+    return { allLibraryMaps: next };
+  }),
+
   setCurrentMapReactions: (counts) => set({ currentMapReactions: counts }),
   setSuggestions: (sugs) => set({ suggestions: sugs }),
 

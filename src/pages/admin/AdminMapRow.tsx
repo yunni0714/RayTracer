@@ -129,7 +129,7 @@ export function AdminMapRow({ map, admin, selected = false, onToggleSelect }: Pr
           checked={selected}
           onChange={() => onToggleSelect(map.id)}
           aria-label={`${map.title || '제목 없음'} 선택`}
-          title="일괄 회전 대상으로 선택"
+          title="일괄 편집 대상으로 선택"
           className="mt-1 shrink-0 cursor-pointer"
         />
       )}

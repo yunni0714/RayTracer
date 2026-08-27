@@ -179,3 +179,17 @@ npm run dev              # 로컬 미리보기
 > **알려진 기존 e2e 실패 5건** (이번 변경과 무관, `da38feb` 에서도 동일 재현): `[data-tool=...]`·팝오버 버튼 로케이터가 데스크탑 aside 와 모바일 시트 양쪽에 매칭돼 strict mode 위반 또는 타임아웃. `inventory` 2건 · `palette-leak` 1건 · `piece-popover` 1건 · `rotation` 1건. 로케이터를 `:visible` 로 좁히면 해소된다.
 
 > **메이커 액션 여전히 잔여**: `firebase deploy --only firestore:rules`.
+
+---
+
+## 11. 맵 제목 수정 + 일괄 편집기 특성 삭제 (2026-08, `claude/map-title-edit-bulk-delete-htz4qq`)
+
+**맵 제목 수정** (`components/modals/UploadModal.tsx`): 수정 모드에서 제목 입력이 `readOnly` 로 잠겨 있어 작성자가 오타 하나 고치려 해도 방법이 없었다(어드민 `메타 편집`뿐). `firestore.rules` 는 처음부터 소유자의 `title` 수정을 허용했으므로 **순전히 클라이언트 UI 제약** — 잠금만 풀었고 규칙 배포는 불필요하다. 저장 패치에는 이미 `title` 이 들어 있었다.
+
+**라이브러리 누적본 동기화** (`store/gameStore.ts` `patchLibraryMap`): `allLibraryMaps` 는 커서 페이지네이션의 **누적본**이라 자동 재조회가 없다 — 제목만 바꾸고 라이브러리로 나가면 카드가 옛 제목을 계속 보여줬다. 어드민 `useAdminMaps.patchMap` 과 같은 "서버 쓰기 성공 후 로컬 동기화" 패턴으로 맵 하나만 얕게 머지한다(목록에 없으면 no-op). 스토어는 여전히 Firebase 를 import 하지 않는다.
+
+**일괄 편집기 확장** (`pages/admin/BulkEditModal.tsx`, 구 `BulkRotationModal`): 스코프 × 기물 타입 선택을 다 만들어 놓고 연산이 회전 하나뿐이었다. `lib/adminMaps.ts` 의 이름을 연산 중립으로 일반화(`BulkFilter`/`BulkPlanEntry`/`planBulkEdit` + `BulkOp` union)하고 `✨ 특성 삭제`를 두 번째 연산으로 추가 — `applyBulkTraitClearToItems()` 가 `canMove`/`canRotate`/`isInventory` 를 한 번에 끈다(인게임 `clearTraits()` 의 여러 맵 버전). 기물 자체는 지우지 않고 좌표·타입·회전도 유지. 3종을 함께 끄므로 **canMove 는 isInventory 에 종속** 규칙을 자동으로 만족한다.
+
+> ⚠️ **특성 삭제는 정답 회전을 노출한다.** `normalizePlayCell` 은 `canRotate && !isInventory` 인 기물만 rot 0 으로 정규화하므로, 특성을 지우면 그 기물은 고정 기물이 되어 **저장된 회전(정답 회전)이 플레이 화면에 그대로 드러난다**. 되돌릴 수 없는 노출이라 모달 설명·확인 다이얼로그 양쪽에 경고를 넣었다.
+
+> `특성 삭제` 로 전환하면 `🎒 인벤토리 포함` 을 자동으로 켠다 — 기본값(제외)이면 정작 주 대상인 유저 지급 기물이 집계·계획에서 통째로 빠진다. `tests/adminMaps.test.ts` 가 이 근거(인벤토리 제외 시 `changed === 0`)를 케이스로 고정한다.

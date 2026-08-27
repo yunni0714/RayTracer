@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { filterMaps, sortMaps, type MapSortKey } from '../../lib/adminMaps';
 import { Button, TextInput, Select, Pill } from '../../components/ui';
 import { AdminMapRow } from './AdminMapRow';
-import { BulkRotationModal, type BulkScope } from './BulkRotationModal';
+import { BulkEditModal, type BulkScope } from './BulkEditModal';
 import type { AdminMapsState } from './useAdminMaps';
 
-/* [맵 마스터 › 맵 관리] — 전체 맵 목록/검색/정렬 + 행별 편집·제안·이전·삭제 + 일괄 회전.
+/* [맵 마스터 › 맵 관리] — 전체 맵 목록/검색/정렬 + 행별 편집·제안·이전·삭제 + 일괄 편집(회전·특성 삭제).
    목록 상태는 MapMasterTab 소유 (admin prop).
    카드는 넓은 화면에서 2열 — 펼친 카드(메타/회전)만 전체 폭을 쓴다 (AdminMapRow 가 col-span). */
 
@@ -36,7 +36,7 @@ export function MapsTab({ admin }: { admin: AdminMapsState }) {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
 
-  // 스코프 객체는 참조 안정성이 필요하다 (BulkRotationModal 이 useMemo 의존성으로 쓴다)
+  // 스코프 객체는 참조 안정성이 필요하다 (BulkEditModal 이 useMemo 의존성으로 쓴다)
   const scopes: BulkScope[] = useMemo(() => [
     ...(selectedMaps.length > 0
       ? [{ id: 'selected', label: '✅ 선택한 맵', maps: selectedMaps }]
@@ -68,7 +68,7 @@ export function MapsTab({ admin }: { admin: AdminMapsState }) {
         <span className="text-[11px] text-ink-muted">{visible.length} / {admin.maps.length}</span>
       </div>
 
-      {/* 선택 + 일괄 회전 */}
+      {/* 선택 + 일괄 편집 */}
       <div className="flex items-center gap-2 flex-wrap text-[11px] text-ink-muted">
         <Pill tone={selectedMaps.length > 0 ? 'info' : 'neutral'} className="!text-[9px] !px-1 !py-0">
           {selectedMaps.length}개 선택
@@ -95,7 +95,7 @@ export function MapsTab({ admin }: { admin: AdminMapsState }) {
           onClick={() => setBulkOpen(true)}
           disabled={admin.maps.length === 0}
         >
-          🎛 일괄 회전
+          🎛 일괄 편집
         </Button>
       </div>
 
@@ -124,7 +124,7 @@ export function MapsTab({ admin }: { admin: AdminMapsState }) {
       )}
 
       {bulkOpen && (
-        <BulkRotationModal scopes={scopes} admin={admin} onClose={() => setBulkOpen(false)} />
+        <BulkEditModal scopes={scopes} admin={admin} onClose={() => setBulkOpen(false)} />
       )}
     </div>
   );

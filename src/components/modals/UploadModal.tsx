@@ -12,7 +12,7 @@ export function UploadModal() {
   const {
     currentUserUid, currentUserNickname, currentLoadedMapObj,
     mapData, isEditorMode, editorMapDataBackup, closeModal, showNotification,
-    exitMapEditMode, patchCurrentLoadedMap, loadMapForPlay,
+    exitMapEditMode, patchCurrentLoadedMap, patchLibraryMap, loadMapForPlay,
   } = useGameStore(useShallow(s => ({
     currentUserUid: s.currentUserUid,
     currentUserNickname: s.currentUserNickname,
@@ -24,6 +24,7 @@ export function UploadModal() {
     showNotification: s.showNotification,
     exitMapEditMode: s.exitMapEditMode,
     patchCurrentLoadedMap: s.patchCurrentLoadedMap,
+    patchLibraryMap: s.patchLibraryMap,
     loadMapForPlay: s.loadMapForPlay,
   })));
 
@@ -77,6 +78,9 @@ export function UploadModal() {
         };
         await updateMapInDB(currentLoadedMapObj!.id, editPatch);
         patchCurrentLoadedMap(editPatch);
+        // 라이브러리 목록은 누적본이라 자동 재조회가 없다 — 바뀐 제목/난이도가
+        // 카드에 바로 보이도록 여기서 같이 갱신한다 (목록에 없으면 no-op).
+        patchLibraryMap(currentLoadedMapObj!.id, editPatch);
         exitMapEditMode({ restore: false });
         showNotification('맵이 수정되었습니다!');
       } else {
@@ -133,7 +137,6 @@ export function UploadModal() {
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            readOnly={isEdit}
             placeholder="맵 제목"
             maxLength={40}
             className="mt-1"

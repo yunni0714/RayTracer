@@ -15,7 +15,7 @@ import type { MapDocument, MapItemDTO } from '../../types/game';
    저장된 rotation = 정답 회전이므로 그대로 렌더/저장한다 — 정규화 금지.
    회전 외 필드(좌표·특성·인벤토리 여부)는 건드리지 않는다.
    "같은 기물 전체" 토글을 켜면 이 맵 안의 동일 타입 기물에 같은 연산을 건다
-   (여러 맵 단위 일괄 회전은 맵 관리 툴바의 BulkRotationModal). */
+   (여러 맵 단위 일괄 회전·특성 삭제는 맵 관리 툴바의 BulkEditModal). */
 
 const DELTAS = [-90, -45, 45, 90] as const;
 
