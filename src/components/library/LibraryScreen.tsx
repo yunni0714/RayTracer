@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSearchParams } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
-import { fetchLibraryList } from '../../lib/firebaseService';
+import {
+  fetchLibraryPage, isMissingIndexError, type LibrarySortKey,
+} from '../../lib/firebaseService';
 import { getCatalogs, type CatalogDef, type CatalogSort, type SortKey } from '../../lib/catalogConfig';
 import { selectCatalogMaps, needsLogin, sortMapsBy } from '../../lib/catalogRules';
 import { computeMapCategory, CATEGORY_LABELS, CATEGORY_ORDER, type MapCategory } from '../../lib/mapCategory';
@@ -12,14 +14,11 @@ import { MapCard } from './MapCard';
 import { MiniGrid } from './MiniGrid';
 import { MapCategoryBadge } from './MapCategoryBadge';
 import { SuppliedPieces } from './SuppliedPieces';
-import { Button, TextInput, Select, Tabs, Pill, cx, type PillTone } from '../ui';
+import { Button, TextInput, Select, Tabs, Pill, cx } from '../ui';
 import type { MapDocument, Difficulty } from '../../types/game';
+import { DIFFICULTIES, DIFF_TONE, calculateUserDifficulty } from '../../lib/difficulty';
 
-const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
-};
 
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 const GRID_SIZES = [5, 6, 7, 8, 9];
 
 /* 정렬 옵션 — 값은 "키:방향". 'catalog' 만 예외(카탈로그 정의를 따른다). */
@@ -67,15 +66,16 @@ function activeFilterCount(f: Filters): number {
     + (f.play === 'all' ? 0 : 1) + (f.react === 'all' ? 0 : 1);
 }
 
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>>): Difficulty | null {
-  const entries = Object.entries(diffVotes) as [Difficulty, number][];
-  if (entries.length === 0) return null;
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return null;
-  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-}
 
 const DEFAULT_CATALOG_ID = 'recent';
+
+/* ── 페이지 로드 예산 ──────────────────────────────────────
+   화면에 보여줄 게 MIN_VISIBLE 개 미만이면 다음 페이지를 자동으로 당긴다.
+   상한이 없으면 "500개 중 2개" 같은 희귀 조건에서 종료 조건이 사실상
+   "컬렉션 소진"뿐이 되어 전량을 읽게 된다 — MAX_AUTO_LOADS 로 유계화하고,
+   그 이상은 사용자가 [계속 찾기] 를 눌렀을 때만 진행한다. */
+const MIN_VISIBLE = 12;
+const MAX_AUTO_LOADS = 4;
 
 function catalogLabel(c: CatalogDef): string {
   return c.emoji ? `${c.emoji} ${c.label}` : c.label;
@@ -142,11 +142,11 @@ function MapPreview({ map, onPlay }: { map: MapDocument; onPlay: (m: MapDocument
 
 export function LibraryScreen() {
   const {
-    allLibraryMaps, setAllLibraryMaps, setLibraryMode, resetEditorState, requestConfirm,
+    allLibraryMaps, libraryHasMore, setLibraryMode, resetEditorState, requestConfirm,
     currentUserUid,
   } = useGameStore(useShallow(s => ({
     allLibraryMaps: s.allLibraryMaps,
-    setAllLibraryMaps: s.setAllLibraryMaps,
+    libraryHasMore: s.libraryHasMore,
     setLibraryMode: s.setLibraryMode,
     resetEditorState: s.resetEditorState,
     requestConfirm: s.requestConfirm,
@@ -175,15 +175,78 @@ export function LibraryScreen() {
   const [mapStates, setMapStates] = useState(getAllMapStates);
   useEffect(() => { setMapStates(getAllMapStates()); }, [allLibraryMaps]);
 
-  // 서버 조회는 limit(50) 이라 정렬 키에 따라 표본이 달라진다 — 사용자가 God 정렬을
-  // 고르면 그 기준으로 다시 받아온다. 그 외에는 최신순으로 받고 선별/정렬은 클라이언트.
-  const fetchKey: 'createdAt' | 'reactionGod' = sortOverride?.by === 'reactionGod' ? 'reactionGod' : 'createdAt';
+  /* ── 서버 조회 ────────────────────────────────────────────
+     서버에 넘기는 건 두 가지뿐: 정렬 키와 난이도.
+       · 정렬 키 — 사용자가 👍 정렬을 고르면 그 기준으로 다시 페이징한다.
+         이게 있어야 🏆 명예의전당이 "받아온 범위의 1등"이 아니라 진짜 전체 1등이 된다.
+       · 난이도 — 모든 맵에 있는 필드 + 값 집합이 코드 상수라 인덱스를 미리 배포할 수
+         있다. 희귀 난이도를 고를 때 "전부 훑어서 몇 개 찾기"를 없애준다.
+     나머지(카테고리·그리드·플레이·반응·검색·카탈로그 조건)는 파생값이거나
+     localStorage 기준이라 서버가 알 수 없다 — 누적본 위에서 클라이언트가 판단한다. */
+  const fetchKey: LibrarySortKey = sortOverride?.by === 'reactionGod' ? 'reactionGod' : 'createdAt';
+
+  // 복합 인덱스가 아직 배포되지 않았으면 서버 난이도 필터가 거부된다.
+  // 한 번 실패하면 이 세션 동안 끄고 클라이언트 필터로만 돈다 (라이브러리는 계속 동작).
+  const [serverFilterOff, setServerFilterOff] = useState(false);
+  const serverDiffs = useMemo(
+    () => (serverFilterOff ? [] : [...filters.difficulties].sort()),
+    [serverFilterOff, filters.difficulties],
+  );
+  const queryKey = useMemo(
+    () => `${fetchKey}|${serverDiffs.join(',')}`,
+    [fetchKey, serverDiffs],
+  );
+
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [autoLoads, setAutoLoads] = useState(0);
+
+  // 진행 중인 요청 추적. 같은 쿼리의 중복 요청은 막고, 쿼리가 바뀌면 키가 갈려
+  // 전환 중에 도착한 이전 쿼리의 페이지를 새 목록에 섞지 않고 버린다
+  // (이 가드가 없으면 정렬/난이도를 바꾸는 순간 옛 결과가 새 목록에 들어가고
+  //  새 쿼리는 중복 차단에 걸려 아예 로드되지 않는다).
+  const active = useRef<{ key: string; busy: boolean }>({ key: '', busy: false });
+
+  const loadPage = useCallback(async (first: boolean) => {
+    if (active.current.key === queryKey && active.current.busy) return;
+    active.current = { key: queryKey, busy: true };
+    if (first) setLoading(true); else setLoadingMore(true);
+    try {
+      const page = await fetchLibraryPage({
+        sortBy: fetchKey,
+        difficulties: serverDiffs.length > 0 ? serverDiffs : undefined,
+        cursor: first ? null : useGameStore.getState().libraryCursor,
+      });
+      if (active.current.key !== queryKey) return; // 쿼리 전환됨 — 응답 폐기
+      useGameStore.getState().appendLibraryMaps(page);
+    } catch (err) {
+      if (active.current.key !== queryKey) return;
+      if (serverDiffs.length > 0 && isMissingIndexError(err)) {
+        // 인덱스 미배포 — 서버 필터를 끄면 queryKey 가 바뀌어 아래 effect 가 재시도한다
+        console.warn('[library] 난이도 인덱스 미배포 — 클라이언트 필터로 폴백합니다.', err);
+        setServerFilterOff(true);
+      } else {
+        console.error('[library] 맵 목록 조회 실패:', err);
+        useGameStore.getState().showNotification('맵 목록을 불러오지 못했습니다.', '#e74c3c');
+      }
+    } finally {
+      // 이미 다음 쿼리가 시작됐다면 그쪽 상태를 건드리지 않는다
+      if (active.current.key === queryKey) {
+        active.current.busy = false;
+        if (first) setLoading(false); else setLoadingMore(false);
+      }
+    }
+  }, [queryKey, fetchKey, serverDiffs]);
+
+  // 서버 쿼리가 바뀌면 누적본을 버리고 1페이지부터 다시 받는다
   useEffect(() => {
-    setLoading(true);
-    fetchLibraryList(fetchKey)
-      .then(setAllLibraryMaps)
-      .finally(() => setLoading(false));
-  }, [fetchKey, setAllLibraryMaps]);
+    setLoadingMore(false); // 이전 쿼리의 추가 로드 표시 정리 (그쪽 finally 는 이제 건너뛴다)
+    useGameStore.getState().resetLibraryPage(queryKey);
+    setAutoLoads(0);
+    void loadPage(true);
+  }, [queryKey, loadPage]);
+
+  // 클라이언트 쪽 탐색 조건이 바뀌면 = 새 탐색이므로 자동 로드 예산을 새로 준다
+  useEffect(() => { setAutoLoads(0); }, [activeCatalogId, search, filters]);
 
   function playMap(map: MapDocument) {
     const s = useGameStore.getState();
@@ -246,12 +309,37 @@ export function LibraryScreen() {
   const filterCount = activeFilterCount(filters);
   if (filterCount > 0) visibleMaps = visibleMaps.filter(passesFilters);
 
+  // 보여줄 게 모자라면 다음 페이지를 자동으로 당긴다 — 단 예산 안에서만.
+  // busy 는 ref 라서 동기적으로 읽힌다: 첫 페이지 로드와 같은 커밋에서 이 effect 가
+  // 돌 때 loading state 는 아직 stale(false) 이라, 이 가드가 없으면 loadPage 가
+  // 중복 차단으로 아무 일도 안 하면서 예산만 한 칸 까먹는다.
+  const autoBudgetLeft = autoLoads < MAX_AUTO_LOADS;
+  useEffect(() => {
+    if (active.current.busy || loading || loadingMore || !libraryHasMore) return;
+    if (visibleMaps.length >= MIN_VISIBLE) return;
+    if (!autoBudgetLeft) return;
+    setAutoLoads(n => n + 1);
+    void loadPage(false);
+  }, [loading, loadingMore, libraryHasMore, visibleMaps.length, autoBudgetLeft, loadPage]);
+
   const emptyMessage =
     activeCatalog && needsLogin(activeCatalog) && !currentUserUid && !isSearching
       ? '로그인하면 표시됩니다.'
       : filterCount > 0
         ? '세부 필터에 맞는 맵이 없습니다.'
         : '맵이 없습니다.';
+
+  // 목록 하단 안내 — 지금 보고 있는 게 "전체"가 아니라 "받아온 범위"임을 드러낸다.
+  // 자동 로드 예산이 남았으면 알아서 더 받으므로 버튼을 감추고, 예산을 다 쓴 뒤에만
+  // 사용자에게 선택권을 넘긴다 (모르고 전량 긁는 것과 눌러서 긁는 것은 다르다).
+  const showLoadMore = libraryHasMore && !loading && (!autoBudgetLeft || visibleMaps.length >= MIN_VISIBLE);
+  // 결과가 하나도 없을 때만 "계속 찾기" — 예산을 새로 줘서 나올 때까지 알아서 당긴다.
+  // 결과가 이미 보이는 상태의 "더 보기" 는 딱 한 페이지만 (한 번 눌러 120개가 딸려오지 않게).
+  const searchingEmpty = visibleMaps.length === 0;
+  function onLoadMore() {
+    if (searchingEmpty) setAutoLoads(0);
+    void loadPage(false);
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-full overflow-hidden bg-canvas text-ink">
@@ -395,7 +483,7 @@ export function LibraryScreen() {
           <div className="flex justify-center py-12 text-ink-muted">{emptyMessage}</div>
         ) : (
           <div
-            className="grid gap-4 pb-8"
+            className="grid gap-4"
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}
           >
             {visibleMaps.map(map => {
@@ -411,6 +499,25 @@ export function LibraryScreen() {
                 />
               );
             })}
+          </div>
+        )}
+
+        {/* 목록 꼬리 — 표본 안내 + 추가 로드 */}
+        {!loading && (
+          <div className="flex flex-col items-center gap-2 py-6 pb-8">
+            {loadingMore && <span className="text-xs text-ink-muted">더 불러오는 중...</span>}
+            {!loadingMore && showLoadMore && (
+              <Button variant="secondary" onClick={onLoadMore}>
+                {searchingEmpty ? '계속 찾기' : '더 보기'}
+              </Button>
+            )}
+            {!loadingMore && (
+              <p className="text-[11px] text-ink-muted">
+                {libraryHasMore
+                  ? `받아온 ${allLibraryMaps.length}개 중 ${visibleMaps.length}개 표시 — 검색·필터는 받아온 범위 안에서 동작합니다`
+                  : `전체 ${allLibraryMaps.length}개 중 ${visibleMaps.length}개 표시`}
+              </p>
+            )}
           </div>
         )}
       </section>

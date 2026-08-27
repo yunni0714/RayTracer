@@ -1,5 +1,6 @@
 import type { Difficulty } from '../types/game';
 import { normalizeCategory, CATEGORY_ORDER, type MapCategory } from './mapCategory';
+import { DIFFICULTIES } from './difficulty';
 
 /* ════════════════════════════════════════════════════════
    라이브러리 카탈로그 config 오버레이 (어드민)
@@ -158,7 +159,6 @@ export function getCustomCatalogIds(): string[] {
 
 /* ── 검증 ───────────────────────────────────────────────── */
 
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
 const SORT_KEYS: SortKey[] = [
   'createdAt', 'reactionGod', 'reactionOk', 'title', 'difficulty', 'pieceCount', 'gridSize',
 ];

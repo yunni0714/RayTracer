@@ -3,28 +3,10 @@ import { useGameStore } from '../../store/gameStore';
 import { useMapReactions } from '../../hooks/useMapReactions';
 import { deleteMapFromDB } from '../../lib/firebaseService';
 import { MapCategoryBadge } from './MapCategoryBadge';
-import { Button, Pill, cx, type PillTone } from '../ui';
-import type { Difficulty } from '../../types/game';
-
-const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
-
-const DIFF_TONE: Record<Difficulty, PillTone> = {
-  Tutor: 'tutor', Easy: 'easy', Normal: 'normal', Hard: 'hard', Insane: 'insane',
-};
-
-// 난이도 투표 칩 — 토큰 var 색으로 활성/비활성 표현
-const DIFF_VAR: Record<Difficulty, string> = {
-  Tutor: '--diff-tutor', Easy: '--diff-easy', Normal: '--diff-normal',
-  Hard: '--diff-hard', Insane: '--diff-insane',
-};
-
-function calculateUserDifficulty(diffVotes: Partial<Record<Difficulty, number>> | undefined | null): Difficulty | null {
-  if (!diffVotes) return null;
-  const entries = Object.entries(diffVotes) as [Difficulty, number][];
-  const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (total === 0) return null;
-  return entries.reduce((a, b) => (b[1] > a[1] ? b : a))[0];
-}
+import { Button, Pill, cx } from '../ui';
+import {
+  DIFFICULTIES, DIFF_TONE, DIFF_VAR, calculateUserDifficulty,
+} from '../../lib/difficulty';
 
 export function LoadedMapInfo() {
   const {

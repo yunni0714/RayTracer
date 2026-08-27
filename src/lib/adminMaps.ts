@@ -1,4 +1,5 @@
 import type { Difficulty, MapDocument, MapItemDTO, Rotation } from '../types/game';
+import { DIFFICULTIES } from './difficulty';
 
 /* ════════════════════════════════════════════════════════
    어드민 맵 관리의 순수 로직 (검색/정렬/통계/회전).
@@ -6,7 +7,8 @@ import type { Difficulty, MapDocument, MapItemDTO, Rotation } from '../types/gam
    컴포넌트는 렌더만, 계산은 여기 (laserEngine 의 계산/렌더 분리와 같은 결).
    ════════════════════════════════════════════════════════ */
 
-export const DIFFICULTIES: Difficulty[] = ['Tutor', 'Easy', 'Normal', 'Hard', 'Insane'];
+// 난이도 목록은 lib/difficulty.ts 단일 소스 — 어드민 화면들이 여기서 쓰던 경로를 유지한다
+export { DIFFICULTIES };
 export const ROTATIONS: Rotation[] = [0, 45, 90, 135, 180, 225, 270, 315];
 
 export type MapSortKey = 'createdAt' | 'reactionGod' | 'reactionOk';

@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "maps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "difficulty", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "maps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "difficulty", "order": "ASCENDING" },
+        { "fieldPath": "reactionGod", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

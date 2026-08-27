@@ -75,6 +75,7 @@ RayTracer/
 │   │   ├── catalogRules.ts              # 카탈로그 규칙 평가 (조건 AND, 고정/제외, 정렬, limit)
 │   │   ├── adminMaps.ts                 # 어드민 맵 검색/정렬/통계/회전(단일·일괄) 순수 로직
 │   │   ├── mapCategory.ts               # 맵 카테고리 판정 (기물 폴더 등급 파생)
+│   │   ├── difficulty.ts                # 난이도 단일 소스 (순서·랭크·Pill 톤·CSS 변수·최다득표 계산)
 │   │   ├── userSettings.ts              # 계정 설정 검증/로컬 캐시 (순수, 손상 시 기본값 폴백)
 │   │   ├── mapGrid.ts                   # 희소 DTO → NxN 그리드 단일 소스 (itemsToGrid/mapDocToGrid)
 │   │   ├── targets.ts                   # 인벤토리 표적 수 (StatusBar 승리판정 보정)
@@ -181,7 +182,9 @@ RayTracer/
 │   ├── userSettings.test.ts             # 계정 설정 검증/폴백 + localStorage 왕복 + setSetting
 │   ├── inboxRefresh.test.ts             # 알림함 자동 갱신 스로틀/force/실패 시 기존 유지
 │   ├── targets.test.ts                  # 인벤토리 표적 카운트 + 승리판정 보정
-│   └── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
+│   ├── mapGrid.test.ts                  # 희소 DTO → 그리드 변환 (좌표·필드 보존·범위 밖 폐기)
+│   ├── libraryPaging.test.ts            # 라이브러리 커서 페이지네이션 (이어붙이기·중복 방지·쿼리키 리셋)
+│   └── difficulty.test.ts               # 난이도 단일 소스 계약 (랭크 파생·톤/변수 누락·전체 요약)
 │
 ├── e2e/                                 # Playwright E2E
 │   ├── helpers.ts                       # 유틸 (스토어 접근, 셀 좌표, 맵 픽스처)
@@ -198,7 +201,8 @@ RayTracer/
 │   └── PIECE_TAXONOMY.md                # 기물 분류 멘탈 모델 (사용자 정본)
 │
 ├── scripts/
-│   └── migrate-author-uid.mjs           # 익명 UID → 구글 UID 일괄 마이그레이션 (firebase-admin, 1회용)
+│   ├── migrate-author-uid.mjs           # 익명 UID → 구글 UID 일괄 마이그레이션 (firebase-admin, 1회용)
+│   └── backfill-grid-size.mjs           # gridSize 없는 옛 맵에 5 채우기 (assert-then-write, --dry-run, 1회용)
 │
 ├── public/
 │   ├── favicon.svg
@@ -206,6 +210,8 @@ RayTracer/
 │
 ├── .github/workflows/deploy.yml         # main 푸시 → 빌드(VITE_FIREBASE_* 시크릿) → Pages 배포
 ├── firestore.rules                      # Firestore 보안 규칙 (admin.ts와 UID 동기화 필수)
+├── firestore.indexes.json               # 복합 인덱스 — 라이브러리 난이도 서버 필터용 (difficulty × createdAt/reactionGod)
+├── firebase.json                        # firestore rules/indexes 배포 대상 선언 (deploy 명령이 이걸 읽는다)
 ├── ADMIN.html                           # 독립 정적 관리자 툴 (레거시/백업 — /admin/mapmaster 로 이식됨)
 ├── PIECE_EDITOR.html                    # 독립 정적 기물 SVG 에디터 (100×100 그리드 드로잉 → svgArt.ts/config 용 SVG 문자열, 빌드 무관)
 ├── index.html                           # SPA 리다이렉트 복원 + 첫 페인트 전 다크 테마 적용
@@ -247,7 +253,7 @@ RayTracer/
 | `PieceType` | 빌트인 29개 피스 유니온 (기본 18 + Group A 6 + Group B 5) |
 | `AnyPieceType` | `string` — 빌트인 또는 config 커스텀 id. 저장·렌더 경계 타입 |
 | `Rotation` | 0\|45\|90\|135\|180\|225\|270\|315 |
-| `Difficulty` | 'Tutor'\|'Easy'\|'Normal'\|'Hard'\|'Insane' |
+| `Difficulty` | 'Tutor'\|'Easy'\|'Normal'\|'Tricky'\|'Hard'\|'Insane' (순서·색은 `lib/difficulty.ts` 단일 소스) |
 | `CellData` | 셀 데이터 (type, rotation, canMove, canRotate, isInventory) |
 | `InventoryItem` | 인벤토리 아이템 (count, type, canRotate, rotation) |
 | `MapItemDTO` | 저장/로드용 맵 아이템 (x, y 포함, 희소 배열 요소) |
@@ -272,6 +278,11 @@ RayTracer/
 
 ### `src/lib/firebaseService.ts` — Firebase CRUD
 Auth / 사용자 / 맵 / 풀이 제안 / **기물 config** 전체 Firestore 연산. 상세는 [§10](#10-firebase-연동-구조).
+
+라이브러리 목록은 `fetchLibraryPage()` **커서 페이지네이션**이다 (기본 24개/페이지).
+- 서버에 넘기는 조건은 **정렬 키 + 난이도** 둘뿐. `documentId()` desc tiebreaker 필수 — `createdAt` 이 ISO 문자열이라 동일 초 업로드가 가능하고, 정렬이 불안정하면 커서 경계에서 맵이 중복되거나 건너뛰어진다
+- `isMissingIndexError()` — 복합 인덱스 미배포(`failed-precondition`) 판별. 호출부는 서버 난이도 필터를 끄고 클라이언트 필터로 폴백한다
+- 어드민만 `fetchAllMapsForAdmin()` 로 전량 조회 (검색·일괄 회전·통계가 전량을 전제로 한다)
 
 ### `src/lib/laserEngine.ts` — 레이저 엔진 (계산/렌더 분리)
 - `computeLaser(mapData)`: 순수 계산 — `BeamSegment[]` + 셀별 incidence + 승리 판정(`solved`)

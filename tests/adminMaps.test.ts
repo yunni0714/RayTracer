@@ -4,6 +4,7 @@ import {
   findItemIndexAt, formatDateTime,
   collectPieceTypeCounts, applyBulkRotationToItems, planBulkRotation,
 } from '../src/lib/adminMaps';
+import { DIFFICULTIES } from '../src/lib/difficulty';
 import type { Difficulty, MapDocument, MapItemDTO, Rotation } from '../src/types/game';
 
 function map(p: Partial<MapDocument> & { id: string }): MapDocument {
@@ -92,7 +93,14 @@ describe('computeMapStats', () => {
     expect(s.total).toBe(3);
     expect(s.totalOk).toBe(5);
     expect(s.totalGod).toBe(12);
-    expect(s.byDifficulty).toEqual({ Tutor: 0, Easy: 2, Normal: 0, Hard: 0, Insane: 1 });
+    // 난이도 목록을 하드코딩하지 않는다 — 난이도를 추가할 때마다 이 테스트가
+    // 깨지면 안 된다. "표가 있는 것만 세고 나머지는 0" 이라는 계약만 검증한다.
+    expect(Object.keys(s.byDifficulty).sort()).toEqual([...DIFFICULTIES].sort());
+    expect(s.byDifficulty.Easy).toBe(2);
+    expect(s.byDifficulty.Insane).toBe(1);
+    for (const d of DIFFICULTIES) {
+      if (d !== 'Easy' && d !== 'Insane') expect(s.byDifficulty[d], `${d}`).toBe(0);
+    }
   });
 
   it('Top 5 는 각 반응 기준 내림차순, 5개 미만이면 있는 만큼', () => {

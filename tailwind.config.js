@@ -54,6 +54,7 @@ export default {
         'diff-tutor':  '#3498db',
         'diff-easy':   '#2ecc71',
         'diff-normal': '#f39c12',
+        'diff-tricky': '#f97316',
         'diff-hard':   '#e67e22',
         'diff-insane': '#e74c3c',
       },
