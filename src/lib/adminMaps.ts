@@ -2,7 +2,7 @@ import type { Difficulty, MapDocument, MapItemDTO, Rotation } from '../types/gam
 import { DIFFICULTIES } from './difficulty';
 
 /* ════════════════════════════════════════════════════════
-   어드민 맵 관리의 순수 로직 (검색/정렬/통계/회전).
+   어드민 맵 관리의 순수 로직 (검색/정렬/통계/회전·특성).
    Firestore 비의존 — 단위 테스트는 tests/adminMaps.test.ts.
    컴포넌트는 렌더만, 계산은 여기 (laserEngine 의 계산/렌더 분리와 같은 결).
    ════════════════════════════════════════════════════════ */
@@ -86,11 +86,11 @@ export function findItemIndexAt(items: MapItemDTO[], x: number, y: number): numb
   return items.findIndex(i => i.x === x && i.y === y);
 }
 
-/* ── 일괄 회전 ──────────────────────────────────────────
-   여러 맵 × 특정 기물 타입을 한 번에 돌린다. 단일 맵 회전 편집(MapRotationEditor)의
-   확장 — 대상 선별(필터)과 각도 연산(op)만 순수 함수로 두고, 저장은 호출부가 한다. */
+/* ── 일괄 편집 ──────────────────────────────────────────
+   여러 맵 × 특정 기물 타입에 같은 연산을 건다. 단일 맵 회전 편집(MapRotationEditor)의
+   확장 — 대상 선별(필터)과 연산(op)만 순수 함수로 두고, 저장은 호출부가 한다. */
 
-export interface BulkRotationFilter {
+export interface BulkFilter {
   types: string[];           // 대상 기물 타입. 빈 배열이면 대상 없음
   includeInventory: boolean; // 유저 지급(인벤토리) 기물 포함 여부
   rotatableOnly: boolean;    // canRotate 기물만 대상으로
@@ -100,7 +100,12 @@ export type BulkRotationOp =
   | { mode: 'delta'; delta: number }   // 현재 각도에서 상대 회전
   | { mode: 'set'; rotation: number }; // 절대 각도 지정
 
-type TypeScanFilter = Omit<BulkRotationFilter, 'types'>;
+// 일괄 편집이 지원하는 연산. 새 연산은 이 union + planBulkEdit 의 분기에만 추가한다.
+export type BulkOp =
+  | { kind: 'rotate'; op: BulkRotationOp }
+  | { kind: 'clearTraits' };
+
+type TypeScanFilter = Omit<BulkFilter, 'types'>;
 
 function passesScan(item: MapItemDTO, filter: TypeScanFilter): boolean {
   if (!filter.includeInventory && item.isInventory) return false;
@@ -108,7 +113,7 @@ function passesScan(item: MapItemDTO, filter: TypeScanFilter): boolean {
   return true;
 }
 
-export function matchesBulkFilter(item: MapItemDTO, filter: BulkRotationFilter): boolean {
+export function matchesBulkFilter(item: MapItemDTO, filter: BulkFilter): boolean {
   return filter.types.includes(item.type) && passesScan(item, filter);
 }
 
@@ -139,7 +144,7 @@ export function collectPieceTypeCounts(
 
 // 필터에 걸린 기물만 회전시킨 새 배열. 실제 변경이 없으면 원본을 그대로 돌려준다.
 export function applyBulkRotationToItems(
-  items: MapItemDTO[], filter: BulkRotationFilter, op: BulkRotationOp,
+  items: MapItemDTO[], filter: BulkFilter, op: BulkRotationOp,
 ): { items: MapItemDTO[]; changed: number } {
   let changed = 0;
   const next = items.map(item => {
@@ -154,20 +159,41 @@ export function applyBulkRotationToItems(
   return changed === 0 ? { items, changed: 0 } : { items: next, changed };
 }
 
-export interface BulkRotationPlanEntry {
+/* ✨ 특성 삭제 — 필터에 걸린 기물의 특성 3종(유저지급·이동·회전)을 한 번에 끈다.
+   인게임 clearTraits()(lib/pieceActions.ts)의 여러 맵 버전 — 기물 자체는 지우지 않고
+   좌표·타입·회전도 건드리지 않는다. 3종을 함께 끄므로 "canMove 는 isInventory 에
+   종속" 불변 규칙을 자동으로 만족한다. */
+export function applyBulkTraitClearToItems(
+  items: MapItemDTO[], filter: BulkFilter,
+): { items: MapItemDTO[]; changed: number } {
+  let changed = 0;
+  const next = items.map(item => {
+    if (!matchesBulkFilter(item, filter)) return item;
+    // 이미 특성이 없는 기물은 변경으로 세지 않는다 (회전의 "이미 그 각도" 와 같은 규칙)
+    if (!item.canMove && !item.canRotate && !item.isInventory) return item;
+    changed += 1;
+    return { ...item, canMove: false, canRotate: false, isInventory: false };
+  });
+  return changed === 0 ? { items, changed: 0 } : { items: next, changed };
+}
+
+export interface BulkPlanEntry {
   id: string;
   title: string;
-  items: MapItemDTO[]; // 저장할 전체 mapData (회전 외 필드는 원본 유지)
+  items: MapItemDTO[]; // 저장할 전체 mapData (연산 대상 외 필드는 원본 유지)
   changed: number;
 }
 
 // 실제로 바뀌는 맵만 담은 저장 계획. 빈 배열 = 적용할 것이 없음.
-export function planBulkRotation(
-  maps: MapDocument[], filter: BulkRotationFilter, op: BulkRotationOp,
-): BulkRotationPlanEntry[] {
-  const plan: BulkRotationPlanEntry[] = [];
+export function planBulkEdit(
+  maps: MapDocument[], filter: BulkFilter, op: BulkOp,
+): BulkPlanEntry[] {
+  const plan: BulkPlanEntry[] = [];
   for (const m of maps) {
-    const { items, changed } = applyBulkRotationToItems(m.mapData ?? [], filter, op);
+    const source = m.mapData ?? [];
+    const { items, changed } = op.kind === 'rotate'
+      ? applyBulkRotationToItems(source, filter, op.op)
+      : applyBulkTraitClearToItems(source, filter);
     if (changed > 0) plan.push({ id: m.id, title: m.title, items, changed });
   }
   return plan;

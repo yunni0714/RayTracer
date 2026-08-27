@@ -5,17 +5,18 @@ import { updateMapInDB } from '../../lib/firebaseService';
 import { getSvgArt } from '../../lib/svgArt';
 import { getPieceLabel } from '../../lib/pieceActions';
 import {
-  ROTATIONS, collectPieceTypeCounts, planBulkRotation,
-  type BulkRotationFilter, type BulkRotationOp,
+  ROTATIONS, collectPieceTypeCounts, planBulkEdit,
+  type BulkFilter, type BulkOp, type BulkRotationOp,
 } from '../../lib/adminMaps';
 import { Button, Modal, Pill, Select, cx } from '../../components/ui';
 import type { AdminMapsState } from './useAdminMaps';
 import type { MapDocument } from '../../types/game';
 
-/* 일괄 회전 — 여러 맵의 특정 기물 타입 각도를 한 번에 바꾼다.
+/* 일괄 편집 — 여러 맵의 특정 기물 타입에 같은 연산을 한 번에 건다.
+   연산 2종: 🎛 회전(각도 상대/절대) · ✨ 특성 삭제(유저지급·이동·회전 끄기).
    단일 맵 정밀 편집은 MapRotationEditor, 여기는 스코프(선택/검색결과/단일 맵) × 기물 타입 단위.
-   저장된 rotation = 정답 회전이므로 정규화 금지 — 회전 외 필드는 건드리지 않는다.
-   계산은 전부 lib/adminMaps 의 순수 함수(planBulkRotation), 여기는 선택 UI + 저장 루프만. */
+   저장된 rotation = 정답 회전이므로 정규화 금지 — 연산 대상 외 필드는 건드리지 않는다.
+   계산은 전부 lib/adminMaps 의 순수 함수(planBulkEdit), 여기는 선택 UI + 저장 루프만. */
 
 export interface BulkScope {
   id: string;
@@ -25,13 +26,15 @@ export interface BulkScope {
 
 const DELTAS = [-90, -45, 45, 90, 180] as const;
 
+type OpKind = BulkOp['kind'];
+
 interface Props {
   scopes: BulkScope[];
   admin: AdminMapsState;
   onClose: () => void;
 }
 
-export function BulkRotationModal({ scopes, admin, onClose }: Props) {
+export function BulkEditModal({ scopes, admin, onClose }: Props) {
   const { showNotification, requestConfirm } = useGameStore(useShallow(s => ({
     showNotification: s.showNotification,
     requestConfirm: s.requestConfirm,
@@ -41,10 +44,13 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
   const [types, setTypes] = useState<string[]>([]);
   const [includeInventory, setIncludeInventory] = useState(false);
   const [rotatableOnly, setRotatableOnly] = useState(false);
-  const [op, setOp] = useState<BulkRotationOp>({ mode: 'delta', delta: 90 });
+  const [opKind, setOpKind] = useState<OpKind>('rotate');
+  const [rotationOp, setRotationOp] = useState<BulkRotationOp>({ mode: 'delta', delta: 90 });
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
+
+  const isClear = opKind === 'clearTraits';
 
   const scope = scopes.find(s => s.id === scopeId) ?? scopes[0];
   const scopeMaps = useMemo(() => scope?.maps ?? [], [scope]);
@@ -62,9 +68,10 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
 
   const plan = useMemo(() => {
     if (activeTypes.length === 0) return [];
-    const filter: BulkRotationFilter = { types: activeTypes, includeInventory, rotatableOnly };
-    return planBulkRotation(scopeMaps, filter, op);
-  }, [scopeMaps, activeTypes, includeInventory, rotatableOnly, op]);
+    const filter: BulkFilter = { types: activeTypes, includeInventory, rotatableOnly };
+    const op: BulkOp = isClear ? { kind: 'clearTraits' } : { kind: 'rotate', op: rotationOp };
+    return planBulkEdit(scopeMaps, filter, op);
+  }, [scopeMaps, activeTypes, includeInventory, rotatableOnly, isClear, rotationOp]);
 
   const totalPieces = plan.reduce((n, p) => n + p.changed, 0);
 
@@ -72,12 +79,23 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
     setTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
   }
 
+  // 특성 삭제의 주 대상은 🎒 유저 지급 기물이다 — 기본값(제외)이면 정작 지울 기물이
+  // 집계·계획에서 통째로 빠지므로 전환 시 켜 준다 (체크박스로 다시 끌 수 있다).
+  function selectOpKind(kind: OpKind) {
+    setOpKind(kind);
+    if (kind === 'clearTraits') setIncludeInventory(true);
+  }
+
   async function apply() {
     if (plan.length === 0) return;
     const ok = await requestConfirm({
-      message:
-        `맵 ${plan.length}개의 기물 ${totalPieces}개 회전을 저장할까요?\n` +
-        '저장된 회전은 각 맵의 정답 회전입니다 — 되돌리려면 반대로 다시 적용해야 합니다.',
+      message: isClear
+        ? `맵 ${plan.length}개의 기물 ${totalPieces}개에서 특성을 지울까요?\n` +
+          '🎒 유저 지급 · 🔄 회전 가능 · 🖐 이동 가능 이 모두 꺼지고, 유저 지급 기물은 ' +
+          '고정 기물이 되어 저장된 회전(정답 회전)이 플레이 화면에 드러납니다. ' +
+          '되돌리려면 맵마다 다시 지정해야 합니다.'
+        : `맵 ${plan.length}개의 기물 ${totalPieces}개 회전을 저장할까요?\n` +
+          '저장된 회전은 각 맵의 정답 회전입니다 — 되돌리려면 반대로 다시 적용해야 합니다.',
       danger: true,
     });
     if (!ok) return;
@@ -105,7 +123,11 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
     setFailures(failed);
 
     if (failed.length === 0) {
-      showNotification(`맵 ${saved}개 · 기물 ${totalPieces}개 회전 저장 완료.`);
+      showNotification(
+        isClear
+          ? `맵 ${saved}개 · 기물 ${totalPieces}개 특성 삭제 완료.`
+          : `맵 ${saved}개 · 기물 ${totalPieces}개 회전 저장 완료.`,
+      );
       onClose();
     } else {
       showNotification(`${saved}개 저장 · ${failed.length}개 실패 — 아래 목록을 확인하세요.`, '#e74c3c');
@@ -114,7 +136,7 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
 
   return (
     <Modal
-      title="🎛 일괄 회전"
+      title="🎛 일괄 편집"
       width="lg"
       dismissable={!saving}
       onClose={onClose}
@@ -227,53 +249,90 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
           )}
         </section>
 
-        {/* 3. 회전 */}
+        {/* 3. 작업 */}
         <section className="flex flex-col gap-1.5">
           <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted">
-            3. 회전
+            3. 작업
           </h5>
-          <div className="flex items-center gap-2 flex-wrap">
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="radio"
-                name="bulk-rot-mode"
-                checked={op.mode === 'delta'}
-                onChange={() => setOp({ mode: 'delta', delta: 90 })}
-              />
-              상대 회전
-            </label>
-            <div className="flex gap-1 flex-wrap">
-              {DELTAS.map(d => (
-                <Button
-                  key={d}
-                  variant={op.mode === 'delta' && op.delta === d ? 'accent' : 'secondary'}
-                  className="!text-xs"
-                  onClick={() => setOp({ mode: 'delta', delta: d })}
-                >
-                  {d < 0 ? '↺' : '↻'} {d > 0 ? `+${d}` : d}°
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                type="radio"
-                name="bulk-rot-mode"
-                checked={op.mode === 'set'}
-                onChange={() => setOp({ mode: 'set', rotation: 0 })}
-              />
-              절대 지정
-            </label>
-            <Select
-              value={op.mode === 'set' ? op.rotation : 0}
-              onChange={e => setOp({ mode: 'set', rotation: Number(e.target.value) })}
-              className="!w-auto"
-              disabled={op.mode !== 'set'}
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => selectOpKind('rotate')}
+              className={cx(
+                'px-2 py-1 rounded-tile border text-xs transition-colors',
+                !isClear ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2',
+              )}
             >
-              {ROTATIONS.map(r => <option key={r} value={r}>{r}°</option>)}
-            </Select>
+              ↻ 회전
+            </button>
+            <button
+              type="button"
+              onClick={() => selectOpKind('clearTraits')}
+              className={cx(
+                'px-2 py-1 rounded-tile border text-xs transition-colors',
+                isClear ? 'border-accent bg-accent-soft' : 'border-line hover:bg-surface-2',
+              )}
+            >
+              ✨ 특성 삭제
+            </button>
           </div>
+
+          {isClear ? (
+            <div className="flex flex-col gap-1 border border-line rounded-tile p-2 bg-surface">
+              <p className="text-[11px] text-ink-muted">
+                선택한 기물의 <strong className="text-ink">🎒 유저 지급 · 🔄 회전 가능 · 🖐 이동 가능</strong>
+                {' '}을 모두 끕니다. 기물 자체는 지우지 않고 좌표·타입·회전도 그대로입니다.
+              </p>
+              <p className="text-[11px] text-warning">
+                ⚠️ 유저 지급 기물이 고정 기물이 되면 저장된 회전(정답 회전)이 플레이 화면에 그대로 드러납니다.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="radio"
+                    name="bulk-rot-mode"
+                    checked={rotationOp.mode === 'delta'}
+                    onChange={() => setRotationOp({ mode: 'delta', delta: 90 })}
+                  />
+                  상대 회전
+                </label>
+                <div className="flex gap-1 flex-wrap">
+                  {DELTAS.map(d => (
+                    <Button
+                      key={d}
+                      variant={rotationOp.mode === 'delta' && rotationOp.delta === d ? 'accent' : 'secondary'}
+                      className="!text-xs"
+                      onClick={() => setRotationOp({ mode: 'delta', delta: d })}
+                    >
+                      {d < 0 ? '↺' : '↻'} {d > 0 ? `+${d}` : d}°
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="radio"
+                    name="bulk-rot-mode"
+                    checked={rotationOp.mode === 'set'}
+                    onChange={() => setRotationOp({ mode: 'set', rotation: 0 })}
+                  />
+                  절대 지정
+                </label>
+                <Select
+                  value={rotationOp.mode === 'set' ? rotationOp.rotation : 0}
+                  onChange={e => setRotationOp({ mode: 'set', rotation: Number(e.target.value) })}
+                  className="!w-auto"
+                  disabled={rotationOp.mode !== 'set'}
+                >
+                  {ROTATIONS.map(r => <option key={r} value={r}>{r}°</option>)}
+                </Select>
+              </div>
+            </>
+          )}
         </section>
 
         {/* 4. 적용 결과 미리보기 */}
@@ -285,6 +344,7 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
             <span className="text-[11px] text-ink-muted">
               맵 <strong className="text-ink">{plan.length}</strong>개 ·
               {' '}기물 <strong className="text-ink">{totalPieces}</strong>개
+              {isClear ? ' 특성 삭제' : ' 회전'}
               {' '}(대상 {scopeMaps.length}개 중)
             </span>
           </div>
@@ -293,7 +353,9 @@ export function BulkRotationModal({ scopes, admin, onClose }: Props) {
             <p className="text-[11px] text-ink-muted">대상 기물을 하나 이상 선택하세요.</p>
           ) : plan.length === 0 ? (
             <p className="text-[11px] text-ink-muted">
-              바뀌는 기물이 없습니다 (이미 지정한 각도이거나 대상이 없습니다).
+              {isClear
+                ? '바뀌는 기물이 없습니다 (이미 특성이 없거나 대상이 없습니다).'
+                : '바뀌는 기물이 없습니다 (이미 지정한 각도이거나 대상이 없습니다).'}
             </p>
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">

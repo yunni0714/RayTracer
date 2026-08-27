@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   filterMaps, sortMaps, computeMapStats, rotateMapItem, setMapItemRotation,
   findItemIndexAt, formatDateTime,
-  collectPieceTypeCounts, applyBulkRotationToItems, planBulkRotation,
+  collectPieceTypeCounts, applyBulkRotationToItems, applyBulkTraitClearToItems, planBulkEdit,
 } from '../src/lib/adminMaps';
 import { DIFFICULTIES } from '../src/lib/difficulty';
 import type { Difficulty, MapDocument, MapItemDTO, Rotation } from '../src/types/game';
@@ -177,7 +177,7 @@ describe('findItemIndexAt / formatDateTime', () => {
   });
 });
 
-/* ── 일괄 회전 ────────────────────────────────────────── */
+/* ── 일괄 편집 (회전 · 특성 삭제) ─────────────────────── */
 
 function piece(p: Partial<MapItemDTO> & { type: string }): MapItemDTO {
   return {
@@ -263,12 +263,56 @@ describe('applyBulkRotationToItems', () => {
   });
 });
 
-describe('planBulkRotation', () => {
-  it('실제로 바뀌는 맵만 계획에 담는다', () => {
-    const plan = planBulkRotation(
+describe('applyBulkTraitClearToItems', () => {
+  const traitMaps: MapItemDTO[] = [
+    piece({ type: 'mirror', x: 0, y: 0, rotation: 90, canRotate: true, canMove: true, isInventory: true }),
+    piece({ type: 'mirror', x: 1, y: 0, rotation: 45, canRotate: false, canMove: false, isInventory: false }),
+    piece({ type: 'target', x: 2, y: 0, rotation: 0, canRotate: true, canMove: false, isInventory: false }),
+  ];
+  const filter = { types: ['mirror'], includeInventory: true, rotatableOnly: false };
+
+  it('선택 타입의 특성 3종을 끄고, 대상 아닌 기물은 참조까지 보존한다', () => {
+    const { items: next, changed } = applyBulkTraitClearToItems(traitMaps, filter);
+    expect(changed).toBe(1);
+    expect(next[0].canMove).toBe(false);
+    expect(next[0].canRotate).toBe(false);
+    expect(next[0].isInventory).toBe(false);
+    expect(next[2]).toBe(traitMaps[2]); // target — 대상 아님
+  });
+
+  it('좌표·타입·회전은 건드리지 않는다', () => {
+    const next = applyBulkTraitClearToItems(traitMaps, filter).items;
+    expect(next[0].x).toBe(0);
+    expect(next[0].y).toBe(0);
+    expect(next[0].type).toBe('mirror');
+    expect(next[0].rotation).toBe(90);
+  });
+
+  it('이미 특성이 없는 기물은 변경으로 세지 않는다', () => {
+    expect(applyBulkTraitClearToItems(traitMaps, filter).items[1]).toBe(traitMaps[1]);
+  });
+
+  it('변경이 없으면 원본 배열을 그대로 돌려준다', () => {
+    const clean = [piece({ type: 'mirror', canRotate: false, canMove: false, isInventory: false })];
+    const res = applyBulkTraitClearToItems(clean, filter);
+    expect(res.items).toBe(clean);
+    expect(res.changed).toBe(0);
+  });
+
+  it('인벤토리 제외 필터면 🎒 기물은 대상에서 빠진다', () => {
+    // 모달이 특성 삭제 전환 시 includeInventory 를 켜 두는 근거 — 끄면 주 대상이 통째로 빠진다
+    const res = applyBulkTraitClearToItems(traitMaps, { ...filter, includeInventory: false });
+    expect(res.changed).toBe(0);
+    expect(res.items).toBe(traitMaps);
+  });
+});
+
+describe('planBulkEdit', () => {
+  it('회전 — 실제로 바뀌는 맵만 계획에 담는다', () => {
+    const plan = planBulkEdit(
       bulkMaps,
       { types: ['mirror'], includeInventory: false, rotatableOnly: false },
-      { mode: 'delta', delta: 45 },
+      { kind: 'rotate', op: { mode: 'delta', delta: 45 } },
     );
     expect(plan.map(p => p.id)).toEqual(['m1', 'm2']); // m3 에는 mirror 가 없다
     expect(plan[0].changed).toBe(2);
@@ -276,13 +320,29 @@ describe('planBulkRotation', () => {
     expect(plan[0].items).toHaveLength(4);             // 전체 mapData 를 저장한다
   });
 
-  it('대상 타입이 없으면 빈 계획', () => {
-    expect(planBulkRotation(bulkMaps, { types: [], includeInventory: true, rotatableOnly: false }, { mode: 'set', rotation: 0 })).toEqual([]);
+  it('특성 삭제 — 특성이 붙은 기물이 있는 맵만 계획에 담는다', () => {
+    const plan = planBulkEdit(
+      bulkMaps,
+      { types: ['mirror'], includeInventory: true, rotatableOnly: false },
+      { kind: 'clearTraits' },
+    );
+    expect(plan.map(p => p.id)).toEqual(['m1', 'm2']);
+    expect(plan[0].changed).toBe(3);  // m1 의 mirror 3개는 전부 canRotate: true
+    expect(plan[0].items[2]).toBe(bulkMaps[0].mapData[2]); // block — 대상 아님
+    expect(plan[0].items[3].isInventory).toBe(false);      // 🎒 도 꺼진다
+  });
+
+  it('대상 타입이 없으면 빈 계획 (연산 무관)', () => {
+    const empty = { types: [], includeInventory: true, rotatableOnly: false };
+    expect(planBulkEdit(bulkMaps, empty, { kind: 'rotate', op: { mode: 'set', rotation: 0 } })).toEqual([]);
+    expect(planBulkEdit(bulkMaps, empty, { kind: 'clearTraits' })).toEqual([]);
   });
 
   it('원본 맵의 mapData 는 변형되지 않는다', () => {
+    const filter = { types: ['mirror', 'target'], includeInventory: true, rotatableOnly: false };
     const before = JSON.stringify(bulkMaps);
-    planBulkRotation(bulkMaps, { types: ['mirror', 'target'], includeInventory: true, rotatableOnly: false }, { mode: 'delta', delta: 90 });
+    planBulkEdit(bulkMaps, filter, { kind: 'rotate', op: { mode: 'delta', delta: 90 } });
+    planBulkEdit(bulkMaps, filter, { kind: 'clearTraits' });
     expect(JSON.stringify(bulkMaps)).toBe(before);
   });
 });
